@@ -3,6 +3,14 @@
 Every key change to OpenMotionStudio, newest first, by date. What counts as key and the entry format are in
 `CLAUDE.md`, "The changelog".
 
+## 2026-11-22 — The narrated explainers on /examples no longer name the tool they were made with
+
+- **What:** The 23 narrated explainers on /examples show the films alone: their head ("More films"), cards, buttons ("Download source") and labels, in English and Chinese, no longer name the tool they were made with. Each card still links its original and credits others' media; the head says their source was made with another engine and does not open in the Studio, and links the licence and credits. Every file and address is unchanged.
+- **Why:** The page shows the work, not the tool behind it.
+- **Breaking:** None.
+- **Upgrade:** Nothing.
+- **Refs:** `site/examples.html`, `site/studio.css`, `docs/prd/examples.md`, `docs/design.md`.
+
 ## 2026-11-22 — /examples shows twenty-three narrated explainers made with VisoTalk
 
 - **What:** Under "Made with VisoTalk", /examples shows 23 of VisoTalk's examples as visotalk.dev rendered them, each with its narration, a link to the original and its VisoTalk source to download (the document, its parts, media, voice and captions; it opens in VisoTalk): Liftoff, the Roadster's wind tunnel, UTMB, How a Chip Is Made, the Moon's phases, photosynthesis, the sky's colours, from URL to page, the HTTPS handshake, Fourier, the eight billion, uv, an incident review, Nook Notes, Quiet Hours, a clock's escapement, the North Wind and the Sun, 守株待兔, Sonnet 18, the Shinkansen, Japan's population, hiccups in Korean and seven probability distributions. Five made in Chinese as well play, show and offer the Chinese cut on the Chinese page. Media by others are credited on their cards and in each bundle's credits.md; the source's MIT notice is beside the files.

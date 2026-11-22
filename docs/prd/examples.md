@@ -1,6 +1,6 @@
 # Examples
 
-> **Status:** Plan · **Updated:** 2026-11-21
+> **Status:** Plan · **Updated:** 2026-11-22
 
 Which films openmotion.studio shows as examples of the Studio's work, what each offers, and how new ones get made.
 
@@ -31,7 +31,9 @@ are made by a scheduled agent, one a day, and land as a pull request that a pers
   steps (an explainer in kinetic type) each offer their source and name the post that inspired them.
 - Twenty-three narrated explainers made with VisoTalk follow them under a head of their own, as visotalk.dev rendered
   them: its film with its narration, its poster and its source bundle (`<name>.visotalk`, which opens in VisoTalk, not
-  in the Studio), in `site/media/visotalk/<name>/` beside the MIT notice their source carries. A film VisoTalk made in
+  in the Studio), in `site/media/visotalk/<name>/` beside the MIT notice their source carries. The page names no tool:
+  their head says they were made with another engine and that their source is not a Studio project, and each card links
+  its original and credits the media of others. A film VisoTalk made in
   Chinese as well is one card whose cut, poster and source follow the page's language. Left out: VisoTalk's own
   introduction (it presents VisoTalk, and has no source), Why is the sky blue? (Why the sky is blue and sunsets are red
   covers it, newer), the 16-second Why ice floats, and the looks' samples (they are MotionHub's looks, shown on the
