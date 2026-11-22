@@ -12,7 +12,7 @@ import { homedir, release as osRelease } from 'node:os';
 import { basename, dirname, join, resolve } from 'node:path';
 import type { Readable, Writable } from 'node:stream';
 import { filmFile, filmPolicy } from '../desktop/src/main/film/serve';
-import type { FilmInfo } from '../desktop/src/shared/preview';
+import { seekScript, type FilmInfo } from '../desktop/src/shared/preview';
 import type { PhotoStage } from '../desktop/src/main/film/stage';
 
 /**
@@ -286,6 +286,9 @@ async function start(binary: string, profile: string, sandbox: boolean): Promise
     '--mute-audio',
     '--force-color-profile=srgb',
     '--force-device-scale-factor=1',
+    // Each frame rastered whole: rastering only what changed leaves a frame's pixels depending on the frame drawn before
+    // it, so frames drawn by several Chromes, or in another order, would differ.
+    '--disable-partial-raster',
     // WebGL in software where there is no GPU, as the Studio does (stage.ts allowSoftwareWebGL).
     '--enable-unsafe-swiftshader',
     // Nothing leaves the machine: every name fails to resolve and every request not answered from the film goes to a
@@ -406,21 +409,15 @@ export async function openChromeStage(binary: string, dir: string, output: strin
     await evaluate('document.fonts.ready.then(() => true)');
     return {
       film,
-      async frame(t) {
-        await timeout(evaluate(`window.__oms.seek(${Number(t)})`), `The frame at ${t.toFixed(2)} s`);
-        await timeout(
-          evaluate('Promise.all([...document.images].map(image => image.decode()).concat(document.fonts.ready)).then(() => true)'),
-          'Loading image assets and faces',
-        );
-        const error = await failed();
+      async png(t) {
+        const error = await timeout(evaluate<string | null>(seekScript(t)), `The frame at ${t.toFixed(2)} s`);
         if (error) throw new Error(error);
         // DevTools' screenshot waits for a frame drawn from the page as it is now (stage.ts says why that matters).
         const shot = await timeout(
           pipe.send<{ data: string }>('Page.captureScreenshot', { format: 'png', optimizeForSpeed: true }, sessionId),
           `Photographing the frame at ${t.toFixed(2)} s`,
         );
-        const png = Buffer.from(shot.data, 'base64');
-        return { toPNG: () => png };
+        return Buffer.from(shot.data, 'base64');
       },
       close,
     };

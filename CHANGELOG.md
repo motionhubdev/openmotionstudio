@@ -3,6 +3,14 @@
 Every key change to OpenMotionStudio, newest first, by date. What counts as key and the entry format are in
 `CLAUDE.md`, "The changelog".
 
+## 2026-11-22 — Exports are faster, and `oms render` draws with several Chromes
+
+- **What:** Each exported frame costs one round trip to the page instead of four, is passed to ffmpeg as the PNG DevTools made instead of decoded and encoded again, and no longer waits two animation frames after a seek: a plain film exports about a quarter faster in the Studio and with `oms`. `oms render` also draws with several Chromes at once, one a core as memory allows: on four cores a plain 20-second film rendered in 9 s instead of 28 s, and a heavily blurred one in 19 s instead of 51 s (Linux, no GPU). The same film renders to the same frames however many Chromes draw it.
+- **Why:** VisoTalk's exporter, which oms takes over from, renders in parallel; most of a frame's cost in a plain film was waiting, not drawing.
+- **Breaking:** None. Frames from `oms` are rastered whole, so a film with fine anti-aliased motion may differ from an earlier render by invisible amounts (PSNR above 58 dB in the films measured).
+- **Upgrade:** Nothing.
+- **Refs:** `apps/desktop/src/main/film/capture.ts`, `apps/desktop/src/main/film/stage.ts`, `apps/desktop/src/shared/preview.ts`, `apps/desktop/src/preview/core.tsx`, `apps/cli/chrome.ts`, `apps/cli/worker.ts`, `docs/adr/0016-terminal-agents-author-films-through-the-oms-command.md`.
+
 ## 2026-11-22 — Every still and exported frame is the frame at its time, and three.js films draw without a GPU
 
 - **What:** Stills, the timeline's frames, checks and MP4 exports photograph each frame through DevTools' screenshot instead of the offscreen window's last painted frame. A film heavy to draw (large blurs, backdrop filters, many blended layers) was photographed a frame behind, or at the previous seek's time, and could fail with `UnknownVizError` on its first frame. The Studio and `oms` also let Chromium draw WebGL with SwiftShader where no GPU can, so a three.js film no longer fails to start on a virtual machine, in CI or over a remote desktop.

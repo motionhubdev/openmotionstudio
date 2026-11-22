@@ -34,6 +34,11 @@ not in Electron (`apps/cli/chrome.ts`):
   (`serve.ts`, [ADR 0004](0004-a-films-code-runs-in-a-sandboxed-frame-on-its-own-scheme.md)); every other request is
   refused, names do not resolve and anything else goes to a proxy that is not there; a window the film opens is
   closed. Frames are taken with `Page.captureScreenshot`, as the Studio's stage takes them.
+- **A render draws with several Chromes at once**, one a core as memory allows (about 1.5 GB each, at most eight), each
+  drawing every n-th frame into the Studio's own ordered writer (`exportFrames`'s `stages`). Each Chrome rasters every
+  frame whole (`--disable-partial-raster`): rastering only what changed left a frame's pixels depending on the frame
+  drawn before it, so the same film rendered by one Chrome and by four would differ. With it they are the same, frame
+  for frame.
 - **The sandbox**, as HyperFrames decides it: on, except on Linux as root, in a container, on a serverless or
   orchestrated host, or where unprivileged user namespaces are off, where Chrome's sandbox cannot start; a sandbox that
   fails to start is retried without it. Without it `oms` warns once, and the film keeps its page's policy and the

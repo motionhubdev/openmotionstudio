@@ -2,7 +2,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { COVER_SIDE, SCENE_STILLS, type Stage, jpegSize, sceneStills, stillsDir } from '../capture';
+import { execFileSync } from 'node:child_process';
+import { deflateSync } from 'node:zlib';
+import ffmpegStatic from 'ffmpeg-static';
+import { COVER_SIDE, SCENE_STILLS, type Stage, exportFrames, jpegSize, sceneStills, stillsDir } from '../capture';
 import { buildDir } from '../film';
 import type { FilmInfo } from '../../../shared/preview';
 
@@ -30,6 +33,7 @@ function fakeStage() {
       const bytes = Buffer.from(`frame at ${t}`);
       return { getSize: () => ({ width: film.width, height: film.height }), resize: () => ({ toJPEG: () => bytes }) } as never;
     },
+    png: async () => Buffer.from(''),
     close: vi.fn(),
   };
   return { stage, times, open: vi.fn(async () => stage) };
@@ -131,4 +135,87 @@ describe('the scenes photographed for the timeline', () => {
     await expect(readdir(stillsDir(dir))).rejects.toThrow();
     await expect(readFile(join(dir, '.motion-studio', 'cover.jpg'))).rejects.toThrow();
   });
+});
+
+describe('an export drawn by several stages', () => {
+  const small = { ...film, width: 32, height: 16, fps: 10, seconds: 3, sounds: [], narration: [], lines: [], scenes: [{ id: 'all', start: 0, duration: 3, layers: [], lines: [] }] } as unknown as FilmInfo;
+  const ffmpeg = ffmpegStatic as unknown as string;
+
+  /** A PNG of one colour, from the frame's time, so each frame differs and its place in the video can be checked. */
+  function png(t: number): Buffer {
+    const crc = (bytes: Buffer) => {
+      let c = ~0;
+      for (const byte of bytes) for (let k = 0, x = (c ^ byte) & 0xff; k < 8; k++) x = x & 1 ? 0xedb88320 ^ (x >>> 1) : x >>> 1, k === 7 && (c = (c >>> 8) ^ x);
+      return ~c >>> 0;
+    };
+    const chunk = (type: string, data: Buffer) => {
+      const body = Buffer.concat([Buffer.from(type), data]);
+      const out = Buffer.alloc(12 + data.length);
+      out.writeUInt32BE(data.length, 0);
+      body.copy(out, 4);
+      out.writeUInt32BE(crc(body), 8 + data.length);
+      return out;
+    };
+    const header = Buffer.alloc(13);
+    header.writeUInt32BE(small.width, 0);
+    header.writeUInt32BE(small.height, 4);
+    header.set([8, 2, 0, 0, 0], 8);
+    const shade = Math.round((t / small.seconds) * 255);
+    const row = Buffer.concat([Buffer.from([0]), Buffer.alloc(small.width * 3, shade)]);
+    const pixels = deflateSync(Buffer.concat(Array.from({ length: small.height }, () => row)));
+    return Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), chunk('IHDR', header), chunk('IDAT', pixels), chunk('IEND', Buffer.alloc(0))]);
+  }
+
+  /** Stages that draw each frame after a random wait, so they finish out of order; `fail` makes one throw at a frame. */
+  function stages(fail?: number) {
+    const opened: { close: ReturnType<typeof vi.fn> }[] = [];
+    const open = vi.fn(async () => {
+      const stage = {
+        film: small,
+        png: async (t: number) => {
+          await new Promise((done) => setTimeout(done, Math.random() * 5));
+          if (fail !== undefined && Math.round(t * small.fps) === fail) throw new Error(`No frame ${fail}`);
+          return png(t);
+        },
+        close: vi.fn(),
+      };
+      opened.push(stage);
+      return stage;
+    });
+    return { open, opened };
+  }
+
+  const frames = (file: string) =>
+    execFileSync(ffmpeg, ['-hide_banner', '-loglevel', 'error', '-i', file, '-f', 'framemd5', '-'], { encoding: 'utf8' })
+      .split('\n')
+      .filter((line) => line && !line.startsWith('#'));
+
+  it('writes the same video however many stages draw it, and closes every one', async () => {
+    const one = stages();
+    await exportFrames(dir, 1, join(dir, 'one.mp4'), () => {}, new AbortController().signal, one.open, ffmpeg, dir, 1);
+    const three = stages();
+    await exportFrames(dir, 1, join(dir, 'three.mp4'), () => {}, new AbortController().signal, three.open, ffmpeg, dir, 3);
+    expect(three.open).toHaveBeenCalledTimes(3);
+    expect(three.opened.every((stage) => stage.close.mock.calls.length === 1)).toBe(true);
+    expect(frames(join(dir, 'three.mp4'))).toEqual(frames(join(dir, 'one.mp4')));
+    expect(frames(join(dir, 'one.mp4'))).toHaveLength(small.seconds * small.fps);
+  }, 30_000);
+
+  it('stops every stage at the first failure, and leaves no video', async () => {
+    const failing = stages(7);
+    const file = join(dir, 'failed.mp4');
+    await expect(exportFrames(dir, 1, file, () => {}, new AbortController().signal, failing.open, ffmpeg, dir, 3)).rejects.toThrow('No frame 7');
+    expect(failing.opened.every((stage) => stage.close.mock.calls.length === 1)).toBe(true);
+    expect((await readdir(dir)).filter((name) => name.startsWith('failed'))).toEqual([]);
+  }, 30_000);
+
+  it('is cancelled between frames', async () => {
+    const cancel = new AbortController();
+    const drawn = stages();
+    const file = join(dir, 'cancelled.mp4');
+    const done = exportFrames(dir, 1, file, (share) => share > 0.3 && cancel.abort(), cancel.signal, drawn.open, ffmpeg, dir, 2);
+    await expect(done).rejects.toThrow('cancelled');
+    expect(drawn.opened.every((stage) => stage.close.mock.calls.length === 1)).toBe(true);
+    expect((await readdir(dir)).filter((name) => name.startsWith('cancelled'))).toEqual([]);
+  }, 30_000);
 });

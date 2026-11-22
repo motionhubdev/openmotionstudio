@@ -46,7 +46,7 @@ export async function reviewBuild(
     for (const time of times) {
       signal?.throwIfAborted();
       try {
-        await stage.frame(time);
+        await stage.png(time);
         review.checkedFrames++;
       } catch (error) {
         if (signal?.aborted) throw error;

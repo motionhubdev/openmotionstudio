@@ -1,5 +1,5 @@
 import { BrowserWindow, app, nativeImage, type Session, type NativeImage } from 'electron';
-import type { Box, FilmInfo } from '../../shared/preview';
+import { seekScript, type Box, type FilmInfo } from '../../shared/preview';
 import { keepFilmsInPlace, PREVIEW_URL } from './preview';
 
 const FRAME_MS = 60_000;
@@ -29,14 +29,19 @@ export interface Stage {
   film: FilmInfo;
   /** The frame at `t`; with a box, outlined in red where the person marked it. */
   frame(t: number, box?: Box): Promise<NativeImage>;
+  /** The frame at `t` as the PNG DevTools made of it, for an export: not decoded and encoded again. */
+  png(t: number): Promise<Buffer>;
   close(): void;
 }
+
+/** A PNG's width and height, from its header. */
+const pngSize = (png: Buffer): { width: number; height: number } => ({ width: png.readUInt32BE(16), height: png.readUInt32BE(20) });
 
 /**
  * What a review or an export needs of a stage: the film, its frames as PNGs, and closing it. The oms command's Chrome
  * stage (apps/cli/chrome.ts) is one too.
  */
-export type PhotoStage = Pick<Stage, 'film'> & { frame(t: number): Promise<{ toPNG(): Buffer }>; close(): void | Promise<void> };
+export type PhotoStage = Pick<Stage, 'film' | 'png'> & { close(): void | Promise<void> };
 
 /** Opens the film of build `version` for photographing. Rejects with the page's own error when it fails. */
 export async function openStage(version: number, session: Session): Promise<Stage> {
@@ -73,28 +78,33 @@ export async function openStage(version: number, session: Session): Promise<Stag
     );
     window.setContentSize(film.width, film.height);
     await contents.executeJavaScript('document.fonts.ready.then(() => true)');
+    // The frame at `t` as DevTools draws it, with a box outlined in red where the person marked it.
+    const shoot = async (t: number, box?: Box): Promise<Buffer> => {
+      const error = (await timeout(contents.executeJavaScript(seekScript(t)), `The frame at ${t.toFixed(2)} s`)) as string | null;
+      if (error) throw new Error(error);
+      if (box) {
+        await contents.executeJavaScript(`window.__omsMark?.(${JSON.stringify(box)})`);
+        await contents.executeJavaScript('new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))');
+      }
+      const shot = (await timeout(
+        contents.debugger.sendCommand('Page.captureScreenshot', { format: 'png', optimizeForSpeed: true }),
+        `Photographing the frame at ${t.toFixed(2)} s`,
+      )) as { data: string };
+      if (box) await contents.executeJavaScript('window.__omsMark?.(null)');
+      return Buffer.from(shot.data, 'base64');
+    };
+    // A screen with more device pixels than CSS pixels gives a larger frame, brought to the film's size.
+    const toFilm = (image: NativeImage) => {
+      const size = image.getSize();
+      return size.width === film.width && size.height === film.height ? image : image.resize({ width: film.width, height: film.height });
+    };
     return {
       film,
-      async frame(t, box) {
-        await timeout(contents.executeJavaScript(`window.__oms.seek(${Number(t)})`), `The frame at ${t.toFixed(2)} s`);
-        await timeout(
-          contents.executeJavaScript('Promise.all([...document.images].map(image => image.decode()).concat(document.fonts.ready)).then(() => true)'),
-          'Loading image assets and faces',
-        );
-        const error = await failed();
-        if (error) throw new Error(error);
-        if (box) {
-          await contents.executeJavaScript(`window.__omsMark?.(${JSON.stringify(box)})`);
-          await contents.executeJavaScript('new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))');
-        }
-        const shot = (await timeout(
-          contents.debugger.sendCommand('Page.captureScreenshot', { format: 'png', optimizeForSpeed: true }),
-          `Photographing the frame at ${t.toFixed(2)} s`,
-        )) as { data: string };
-        const image = nativeImage.createFromBuffer(Buffer.from(shot.data, 'base64'));
-        if (box) await contents.executeJavaScript('window.__omsMark?.(null)');
-        const size = image.getSize();
-        return size.width === film.width && size.height === film.height ? image : image.resize({ width: film.width, height: film.height });
+      frame: async (t, box) => toFilm(nativeImage.createFromBuffer(await shoot(t, box))),
+      async png(t) {
+        const png = await shoot(t);
+        const size = pngSize(png);
+        return size.width === film.width && size.height === film.height ? png : toFilm(nativeImage.createFromBuffer(png)).toPNG();
       },
       close: () => { if (!window.isDestroyed()) window.destroy(); },
     };

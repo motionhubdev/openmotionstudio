@@ -6,7 +6,8 @@
 //
 //   - In the Studio's preview it plays on its own clock and obeys play, pause and seek.
 //   - With ?render=1 it holds still and exposes window.__oms.seek(t) for the exporter and
-//     for stills, which resolves once the frame at t is painted.
+//     for stills, which resolves once the frame at t is committed; a DevTools screenshot then
+//     draws it.
 //
 // Built by scripts/build-preview.mjs into resources/preview/core.js.
 
@@ -22,7 +23,7 @@ import { FilmAudio } from './sound';
 
 declare global {
   interface Window {
-    /** In a render (?render=1): the film's size and length, and seek(t), resolved once the frame at t is painted. */
+    /** In a render (?render=1): the film's size and length, and seek(t), resolved once the frame at t is committed (a DevTools screenshot then draws it). */
     __oms?: FilmInfo & { seek(t: number): Promise<number> };
     /** In a render: the first error the page met, for the main process to report. */
     __omsError?: string;
@@ -286,7 +287,8 @@ function Still({ Film, film }: { Film: ComponentType; film: FilmInfo }) {
     const done = painted.current;
     if (!done) return;
     painted.current = null;
-    requestAnimationFrame(() => requestAnimationFrame(() => done(at.t)));
+    // Committed: the DevTools screenshot that follows draws a frame from the page as it now is.
+    done(at.t);
   }, [at]);
   return <Frame Film={Film} film={film} t={at.t} scale={1} />;
 }

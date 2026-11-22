@@ -153,8 +153,13 @@ export const subtitlesFile = (file: string): string => `${file.replace(/\.mp4$/i
 /**
  * Renders build `version` of the film in `dir` to `file` as an MP4 with the `ffmpeg` at that path, its sounds mixed in
  * and its lines as a soft subtitle track, reporting the share done (0 to 1); the lines are written beside it as SubRip
- * too (subtitlesFile). The film's bundle, which its imported sounds sit beside, is in `output`. Each is written beside its place and moved there only when the video is whole, so a failed or
- * cancelled export leaves whatever was there untouched.
+ * too (subtitlesFile). The film's bundle, which its imported sounds sit beside, is in `output`. Each is written beside
+ * its place and moved there only when the video is whole, so a failed or cancelled export leaves whatever was there
+ * untouched.
+ *
+ * With `stages` above one, that many stages draw at once, stage c the frames c, c + stages, c + 2 stages…, each
+ * written to the encoder in its turn; a stage holds at most the one frame it waits to write. A frame is a function of
+ * its time alone, so the video is the same however many draw it.
  */
 export async function exportFrames(
   dir: string,
@@ -165,8 +170,10 @@ export async function exportFrames(
   open: (version: number) => Promise<PhotoStage>,
   ffmpeg: string,
   output = buildDir(dir),
+  stages = 1,
 ): Promise<void> {
   const stage = await open(version);
+  const others: PhotoStage[] = [];
   const partial = `${file}.partial.mp4`;
   const partialSubtitles = `${file}.partial.srt`;
   try {
@@ -225,11 +232,44 @@ export async function exportFrames(
     });
     finished.catch(() => {});
     try {
-      for (let i = 0; i < frames; i++) {
-        if (signal.aborted) throw new Error('The export was cancelled.');
-        await write(encoder.stdin, (await stage.frame(i / film.fps)).toPNG());
-        onProgress((i + 1) / frames);
-      }
+      // Every stage, opened before a frame is drawn; one that fails to open fails the export.
+      const opening = await Promise.allSettled(Array.from({ length: Math.min(stages, frames) - 1 }, () => open(version)));
+      for (const opened of opening) if (opened.status === 'fulfilled') others.push(opened.value);
+      const refused = opening.find((opened) => opened.status === 'rejected');
+      if (refused) throw refused.reason;
+      const drawing = [stage, ...others];
+      // Frame i goes to the encoder when frame i - 1 has: a stage that drew ahead waits for its turn.
+      let next = 0;
+      let broken: unknown = null;
+      const waiting = new Map<number, { go: () => void; stop: (error: unknown) => void }>();
+      const turn = (i: number) =>
+        broken ? Promise.reject(broken) : i === next ? Promise.resolve() : new Promise<void>((go, stop) => waiting.set(i, { go, stop }));
+      const draw = async (photographer: PhotoStage, first: number) => {
+        for (let i = first; i < frames; i += drawing.length) {
+          if (broken) throw broken;
+          if (signal.aborted) throw new Error('The export was cancelled.');
+          const png = await photographer.png(i / film.fps);
+          await turn(i);
+          if (broken) throw broken;
+          await write(encoder.stdin, png);
+          onProgress((i + 1) / frames);
+          next = i + 1;
+          waiting.get(next)?.go();
+          waiting.delete(next);
+        }
+      };
+      const drawn = await Promise.allSettled(
+        drawing.map((photographer, c) =>
+          draw(photographer, c).catch((error) => {
+            // The first failure stops every stage: those waiting for a turn, and those drawing, at their next frame.
+            if (!broken) broken = error;
+            for (const waiter of waiting.values()) waiter.stop(broken);
+            waiting.clear();
+            throw error;
+          }),
+        ),
+      );
+      if (broken || drawn.some((result) => result.status === 'rejected')) throw broken;
       encoder.stdin.end();
     } catch (error) {
       encoder.kill('SIGKILL');
@@ -240,7 +280,7 @@ export async function exportFrames(
     await rename(partial, file);
     if (subtitles) await rename(partialSubtitles, subtitlesFile(file));
   } finally {
-    await stage.close();
+    await Promise.allSettled([stage, ...others].map((photographer) => photographer.close()));
     await rm(partial, { force: true });
     await rm(partialSubtitles, { force: true });
   }

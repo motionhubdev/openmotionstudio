@@ -17,19 +17,19 @@ const film = {
     { id: 'end', start: 3, duration: 3, layers: [], lines: [] },
   ],
 };
-const stage = () => ({ film, frame: vi.fn().mockResolvedValue({}), close: vi.fn() }) as unknown as Stage;
+const stage = () => ({ film, png: vi.fn().mockResolvedValue(Buffer.from('')), close: vi.fn() }) as unknown as Stage;
 it('samples each scene and closes the renderer', async () => {
   const s = stage();
   const result = await reviewBuild({ ok: true, version: 4, errors: [] }, async () => s);
   expect(result.checkedFrames).toBe(4);
   expect(result.issues).toEqual([]);
-  expect(s.frame).toHaveBeenCalledWith(1.5);
-  expect(s.frame).toHaveBeenCalledWith(4.5);
+  expect(s.png).toHaveBeenCalledWith(1.5);
+  expect(s.png).toHaveBeenCalledWith(4.5);
   expect(s.close).toHaveBeenCalledOnce();
 });
 it('reports the failing moment and always releases the renderer', async () => {
   const s = stage();
-  vi.mocked(s.frame).mockRejectedValue(new Error('Missing picture'));
+  vi.mocked(s.png).mockRejectedValue(new Error('Missing picture'));
   const result = await reviewBuild({ ok: true, version: 1, errors: [] }, async () => s);
   expect(result.issues).toMatchObject([{ kind: 'runtime', time: 0, text: 'Missing picture' }]);
   expect(s.close).toHaveBeenCalledOnce();

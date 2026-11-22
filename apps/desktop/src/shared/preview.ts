@@ -103,3 +103,10 @@ export type FromPreview =
   | { type: 'oms:error'; message: string }
   /** `levels` is how many elements, the innermost first, a pick at that point can step out through. */
   | { type: 'oms:picked'; element: PickedElement | null; box: Box | null; levels: number };
+
+/**
+ * The script that moves a render page to `t` and resolves, once its images are decoded and its faces loaded, with the
+ * page's own error or null: one round trip a frame. A DevTools screenshot after it draws the page as it now is.
+ */
+export const seekScript = (t: number): string =>
+  `window.__oms.seek(${Number(t)}).then(() => Promise.all([...document.images].map(image => image.decode()).concat(document.fonts.ready))).then(() => window.__omsError ?? null)`;

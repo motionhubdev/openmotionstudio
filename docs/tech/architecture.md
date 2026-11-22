@@ -186,7 +186,7 @@ One engine, the Studio's own ([ADR 0005](../adr/0005-the-studio-has-one-engine-i
 - **Playing, stills and export**: the Studio plays the film on the core's own clock; a still or an export opens the page
   with `?render=1` in an offscreen window, moves it to each frame's time (`window.__oms.seek`) and photographs it with
   DevTools' `Page.captureScreenshot`, which waits for a frame drawn from the page as it is (`capturePage` returned the
-  last painted frame, a frame behind while a heavy one was still rasterizing), and
+  last painted frame, a frame behind while a heavy one was still rasterizing), passing its PNG on as it is, and
   export pipes the frames to ffmpeg (shipped with the app) as H.264 High at level 4.1, BT.709, a key frame every two
   seconds, faststart.
 - **Sound** ([ADR 0010](../adr/0010-a-films-sound-is-sound-elements-mixed-on-export.md)): `<Film>` reports each
