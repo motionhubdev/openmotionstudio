@@ -34,6 +34,7 @@ function fakeStage() {
       return { getSize: () => ({ width: film.width, height: film.height }), resize: () => ({ toJPEG: () => bytes }) } as never;
     },
     png: async () => Buffer.from(''),
+    inspect: async () => ({ outside: [], unloaded: [] }),
     close: vi.fn(),
   };
   return { stage, times, open: vi.fn(async () => stage) };
@@ -177,6 +178,7 @@ describe('an export drawn by several stages', () => {
           if (fail !== undefined && Math.round(t * small.fps) === fail) throw new Error(`No frame ${fail}`);
           return png(t);
         },
+        inspect: async () => ({ outside: [], unloaded: [] }),
         close: vi.fn(),
       };
       opened.push(stage);

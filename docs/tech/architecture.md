@@ -43,6 +43,7 @@ apps/desktop/
       serve.ts         those files and their policy, without Electron, for the scheme and for oms's Chrome
       stage.ts         an offscreen window that photographs the film at a time, through DevTools' screenshot
       capture.ts       stills, the timeline's scene frames, and export through ffmpeg, from a stage
+      effects.ts       a film's sound effects: its motion's sound.json rendered for cues into a WAV (oms sound)
       mix.ts           a film's sounds for the export: each <Sound>'s file found in the project, decoded by ffmpeg
                        and mixed in blocks (ADR 0010, 0017); and each file's waveform for the timeline
       remotion-export.ts  the film written as a Remotion project
@@ -50,7 +51,8 @@ apps/desktop/
                        voices each offers (ADR 0012)
     narration.ts       a film's lines voiced into the project's voice/, each clip once per voice, model and words
       review.ts        the sampled check before an export: build errors, a size MP4 refuses, layers past the frame,
-                       and a draw of the start, each scene's middle and the end
+                       and a draw of the start, each scene's middle, 85 % through each line and the end, in which
+                       text past the frame's edge and faces never loaded are found
     agent/
       loop.ts          one turn: call the model, run the tools it asks for, until it ends its turn
       model.ts         a call to the model: a Messages server through the official SDK, or Chat Completions

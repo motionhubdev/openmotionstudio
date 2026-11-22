@@ -42,12 +42,47 @@ export async function reviewBuild(
             scene: scene.id,
           });
       }
-    const times = [...new Set([0, ...film.scenes.map((s) => s.start + s.duration / 2), Math.max(0, film.seconds - 1 / film.fps)])];
+    // The start, each scene's middle, 85 % of the way through each line (where what it names has appeared), the end.
+    const lineTimes = film.scenes.flatMap((s) => s.lines.map((line) => line.start + 0.85 * (line.end - line.start)));
+    const times = [...new Set([0, ...film.scenes.map((s) => s.start + s.duration / 2), ...lineTimes, Math.max(0, film.seconds - 1 / film.fps)])]
+      .filter((time) => time >= 0 && time < film.seconds)
+      .sort((a, b) => a - b);
+    const sceneAt = (time: number) => film.scenes.find((s) => time >= s.start && time < s.start + s.duration)?.id;
+    const said = new Set<string>();
     for (const time of times) {
       signal?.throwIfAborted();
       try {
         await stage.png(time);
         review.checkedFrames++;
+        const seen = await stage.inspect();
+        // One warning a layer, at the first frame it shows in: its first words, and every edge any of its text crosses.
+        for (const layer of new Set(seen.outside.map((o) => o.layer))) {
+          if (said.has(`outside|${layer}`)) continue;
+          said.add(`outside|${layer}`);
+          const texts = seen.outside.filter((o) => o.layer === layer);
+          const edges = [...new Set(texts.flatMap((o) => o.edges))];
+          const more = texts.length > 1 ? ` and ${texts.length - 1} more` : '';
+          review.issues.push({
+            id: `outside-${layer}`,
+            kind: 'layout',
+            severity: 'warning',
+            text: `Text in layer “${layer}” (“${texts[0]!.text}”${more}) runs past the frame's ${edges.join(' and ')} edge at ${time.toFixed(2)} s. A component's coordinates are its layer's, not the frame's.`,
+            time,
+            scene: sceneAt(time),
+          });
+        }
+        for (const { layer, family } of seen.unloaded) {
+          if (said.has(`face|${family}`)) continue;
+          said.add(`face|${family}`);
+          review.issues.push({
+            id: `face-${family}`,
+            kind: 'layout',
+            severity: 'warning',
+            text: `Layer “${layer}” sets text in “${family}”, which neither the film nor its motion loads: it draws in this machine's fallback face, so frames differ between machines. Declare the face from the project's files, or use one the motion ships.`,
+            time,
+            scene: sceneAt(time),
+          });
+        }
       } catch (error) {
         if (signal?.aborted) throw error;
         review.issues.push({

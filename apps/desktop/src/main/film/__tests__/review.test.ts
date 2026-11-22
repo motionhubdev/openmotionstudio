@@ -17,7 +17,7 @@ const film = {
     { id: 'end', start: 3, duration: 3, layers: [], lines: [] },
   ],
 };
-const stage = () => ({ film, png: vi.fn().mockResolvedValue(Buffer.from('')), close: vi.fn() }) as unknown as Stage;
+const stage = () => ({ film, png: vi.fn().mockResolvedValue(Buffer.from('')), inspect: vi.fn().mockResolvedValue({ outside: [], unloaded: [] }), close: vi.fn() }) as unknown as Stage;
 it('samples each scene and closes the renderer', async () => {
   const s = stage();
   const result = await reviewBuild({ ok: true, version: 4, errors: [] }, async () => s);
@@ -45,4 +45,22 @@ it('distinguishes an export blocker from an intentional overflow warning', async
   s.film = { ...film, width: 1919, scenes: [{ ...film.scenes[0]!, layers: [{ id: 'bleed', x: -10, y: 0, w: 100, h: 100, z: 0 }] }] };
   const r = await reviewBuild({ ok: true, version: 1, errors: [] }, async () => s);
   expect(r.issues.map((i) => i.severity)).toEqual(['error', 'warning']);
+});
+
+it('says once each text past the frame, and each face that never loaded, at the first frame it shows in', async () => {
+  const s = stage();
+  vi.mocked(s.inspect)
+    .mockResolvedValueOnce({ outside: [], unloaded: [] })
+    .mockResolvedValue({
+      outside: [{ layer: 'figure', text: '约 6 倍', edges: ['left'] }, { layer: 'figure', text: '计算值', edges: ['bottom'] }],
+      unloaded: [{ layer: 'title', family: 'Noto Sans SC' }],
+    });
+  const result = await reviewBuild({ ok: true, version: 1, errors: [] }, async () => s);
+  const outside = result.issues.filter((issue) => issue.id.startsWith('outside-'));
+  const faces = result.issues.filter((issue) => issue.id.startsWith('face-'));
+  expect(outside).toHaveLength(1);
+  expect(outside[0]).toMatchObject({ kind: 'layout', severity: 'warning', time: 1.5 });
+  expect(outside[0]!.text).toContain('layer “figure” (“约 6 倍” and 1 more) runs past the frame\'s left and bottom edge');
+  expect(faces).toHaveLength(1);
+  expect(faces[0]!.text).toContain('“Noto Sans SC”');
 });

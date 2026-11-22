@@ -3,12 +3,12 @@ import { constants, existsSync } from 'node:fs';
 import { cp, copyFile, mkdir, mkdtemp, readdir, rm, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { homedir, tmpdir } from 'node:os';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 
 const root = dirname(fileURLToPath(import.meta.url));
-const usage = 'oms install <claude|codex> | init <folder> | check <folder> [--json] | still <folder> --at <seconds> --out <new.png> | render <folder> --out <new.mp4> | motion search <words…> [--json] | motion use <@scope/slug> <folder>';
+const usage = 'oms install <claude|codex> | init <folder> | check <folder> [--json] | still <folder> --at <seconds> --out <new.png> | render <folder> --out <new.mp4> | motion search <words…> [--json] | motion use <@scope/slug> <folder> | sound <folder> --cues <at:role,…> --seconds <s> --out <new.wav> [--motion <id>]';
 
 /** `oms motion search <words…> [--json]` and `oms motion use <@scope/slug> <folder>`: motions from motionhub, on demand. */
 async function motion(args) {
@@ -29,10 +29,30 @@ async function motion(args) {
   throw new Error(usage);
 }
 
+/**
+ * `oms sound <folder> --cues <at:role,…> --seconds <s> --out <new.wav> [--motion <id>]`: the project's motion's sound
+ * for those cues, a track the film's length, written as a new WAV inside the project for a <Sound> to play.
+ */
+async function sound(args) {
+  const { values, positionals } = parseArgs({ args, options: { cues: { type: 'string' }, seconds: { type: 'string' }, out: { type: 'string' }, motion: { type: 'string' } }, allowPositionals: true });
+  if (positionals.length !== 1 || !values.cues || !values.seconds || !values.out?.toLowerCase().endsWith('.wav')) throw new Error(usage);
+  const dir = resolve(positionals[0]);
+  const file = resolve(dir, values.out);
+  if (!file.startsWith(dir + sep)) throw new Error(`${values.out} is outside the project: a film plays only its own files.`);
+  if (existsSync(file)) throw new Error(`${file} is there already: name a new file.`);
+  const worker = createRequire(import.meta.url)(join(root, 'dist/worker.cjs'));
+  const { motion, wav } = await worker.effectsTrack(dir, worker.parseCues(values.cues), Number(values.seconds), values.motion);
+  await mkdir(dirname(file), { recursive: true });
+  await writeFile(file, wav, { flag: 'wx' });
+  const src = relative(dir, file).split(sep).join('/');
+  console.log(`Wrote ${src} from ${motion}'s sound. Play it across the film: <Sound src="${src}" />`);
+}
+
 async function run() {
   const [command, ...args] = process.argv.slice(2);
   if (!command || command === '--help') return console.log(usage);
   if (command === 'motion') return motion(args);
+  if (command === 'sound') return sound(args);
   const options = command === 'still' ? { at: { type: 'string' }, out: { type: 'string' } }
     : command === 'render' ? { out: { type: 'string' } }
     : command === 'check' ? { json: { type: 'boolean' } } : {};

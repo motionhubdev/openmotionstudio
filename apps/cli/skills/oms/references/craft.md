@@ -28,8 +28,12 @@
 
 ## Sound
 
-- A music bed comes in once the first thing has been said, not under the cold open: fade in over about a second and out over several, and let it run a few seconds past the last line. The voice stays the loudest thing.
-- An effect only where it tells the viewer something the picture does not: a click on a moment the picture already carries only makes the film busier.
+oms makes no narration, so a film's sound is music the person gives and effects from its motion.
+
+- **Effects follow the picture**, one cue for each thing a viewer should feel happen, not one for every element: `land` when something arrives and settles, `move` for a slide, morph or camera move (with its length, `at:move:dur`), `draw` for a stroke drawn on (with its length), `count` as a figure counts up, `cut` at a scene's change, `out` as something leaves. Take the times from your board: the moment, not the start of a long ease. An effect that tells the viewer nothing the picture does not is noise; leave it out.
+- **One track**: `oms sound` renders every cue into one WAV as long as the film, in the motion's own sound (its `react/sound.json`, with its bed when it has one). Play it with `<Sound src="media/effects.wav" />` directly in `<Film>`. Change a cue, render a new track under a new name, and point the `<Sound>` at it.
+- **Music**: a bed under everything, `<Sound src="media/music.mp3" loop volume={-16} fadeIn={1} fadeOut={3} />`, between -18 and -14 dB, in from the start or once the title has landed, out a few seconds after the last line. `duck` sinks it only under a narration, and an oms film has none: keep it low enough for the effects to read over it.
+- You cannot hear the film: keep levels where these numbers put them, and say in your report that the sound is unheard.
 
 ## Honest pictures
 

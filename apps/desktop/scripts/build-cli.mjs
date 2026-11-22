@@ -22,7 +22,9 @@ await build({
   platform: 'node',
   format: 'cjs',
   bundle: true,
-  packages: 'external',
+  // Packages the oms package installs stay outside; @motionhub/runtime's synth (sound effects) is bundled, the copy the
+  // Studio's preview core holds too.
+  external: ['@puppeteer/browsers', '@motionhub/cli', '@motionhub/cli/*', 'esbuild', 'three', 'three/*'],
   plugins: [{
     name: 'raw-text',
     setup(builder) {
@@ -37,7 +39,9 @@ await cp(join(desktop, 'resources/preview/core.js'), join(dist, 'resources/previ
 await cp(join(desktop, 'resources/preview/pick.js'), join(dist, 'resources/preview/pick.js'));
 await cp(join(desktop, 'src/main/film/starter.tsx.txt'), join(dist, 'starter.tsx'));
 const guide = await readFile(join(desktop, 'src/main/film/film.md'), 'utf8');
-await writeFile(join(dist, 'film-format.md'), guide.slice(guide.indexOf('# The film'), guide.indexOf('# How you work')));
+// The film format as the Studio's agent has it, but narration, which oms does not speak: its lines are captions.
+const format = guide.slice(guide.indexOf('# The film'), guide.indexOf('# How you work'));
+await writeFile(join(dist, 'film-format.md'), format.split('\n').filter((line) => !line.startsWith('- **A narration speaks the lines**')).join('\n'));
 await cp(join(desktop, '../../LICENSE'), join(dist, 'LICENSE'));
 
 // The example is apps/cli/example as it is: one film.tsx, drawn from code.

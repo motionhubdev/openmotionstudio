@@ -37,12 +37,17 @@ try {
   assert(JSON.parse(await readFile(join(starter, 'motions.lock.json'), 'utf8')).motions['@iamsuosi/plumb-line'].sha256);
   assert.throws(() => oms('motion', 'use', '@iamsuosi/plumb-line', starter), /already holds/);
   assert.equal(JSON.parse(oms('check', starter, '--json')).issues.length, 0);
+  // Its sound, for the starter's cues, as a track the film plays.
+  assert.match(oms('sound', starter, '--cues', '0.5:land, 3:cut', '--seconds', '6', '--out', 'media/effects.wav'), /Wrote media\/effects\.wav from @iamsuosi\/plumb-line/);
+  assert.equal((await readFile(join(starter, 'media/effects.wav'))).toString('ascii', 0, 4), 'RIFF');
+  assert.throws(() => oms('sound', starter, '--cues', '0.5:land', '--seconds', '6', '--out', 'media/effects.wav'), /is there already/);
+  assert.throws(() => oms('sound', starter, '--cues', '0.5:bang', '--seconds', '6', '--out', 'media/other.wav'), /no cue/);
 
   const project = join(scratch, '影片 Sample');
   await cp(join(installed, 'dist/example'), project, { recursive: true });
   const report = JSON.parse(oms('check', project, '--json'));
   assert.equal(report.film.seconds, 20);
-  assert.equal(report.checkedFrames, 5);
+  assert.equal(report.checkedFrames, 9); // its start, three scenes' middles, four lines at 85 %, its end
   assert.deepEqual(report.issues, []);
   assert(report.film.scenes[2].layers.some(layer => layer.id === 'download-address'));
   const png = join(scratch, 'ending.png');
@@ -112,7 +117,7 @@ export default function Main() {
 `);
   assert.throws(() => oms('check', silent, '--json'), error =>
     error.status === 1 && JSON.parse(error.stdout).issues.some(issue => issue.text.includes('media/chime.wav')));
-  console.log('PASS installed skill, starter, editable example, PNG, bounds, a fresh frame, a render, a motion from motionhub and missing audio');
+  console.log('PASS installed skill, starter, editable example, PNG, bounds, a fresh frame, a render, a motion from motionhub and its sound, and missing audio');
 } finally {
   await rm(scratch, { recursive: true, force: true });
 }

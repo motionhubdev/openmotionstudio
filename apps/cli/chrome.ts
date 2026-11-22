@@ -12,7 +12,7 @@ import { homedir, release as osRelease } from 'node:os';
 import { basename, dirname, join, resolve } from 'node:path';
 import type { Readable, Writable } from 'node:stream';
 import { filmFile, filmPolicy } from '../desktop/src/main/film/serve';
-import { seekScript, type FilmInfo } from '../desktop/src/shared/preview';
+import { inspectScript, seekScript, type FilmInfo, type Inspection } from '../desktop/src/shared/preview';
 import type { PhotoStage } from '../desktop/src/main/film/stage';
 
 /**
@@ -459,6 +459,7 @@ async function openIn(binary: string, dir: string, output: string, studio: strin
     }
     return {
       film,
+      inspect: () => timeout(evaluate<Inspection>(inspectScript), 'Inspecting the frame'),
       async png(t) {
         const error = await timeout(evaluate<string | null>(seekScript(t)), `The frame at ${t.toFixed(2)} s`);
         if (error) throw new Error(error);

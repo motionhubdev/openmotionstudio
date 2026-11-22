@@ -3,6 +3,14 @@
 Every key change to OpenMotionStudio, newest first, by date. What counts as key and the entry format are in
 `CLAUDE.md`, "The changelog".
 
+## 2026-11-22 — A check finds text past the frame and faces never loaded, and `oms sound` makes effects
+
+- **What:** The check before an export (and `oms check`) also draws each line 85 % of the way through and inspects every frame it draws: text running past the frame's edge, and text set in a face that neither the film nor its motion loads (so it draws in the machine's fallback), each said once as a warning. `oms sound <folder> --cues <at:role,…> --seconds <s> --out <new.wav>` renders the project's motion's sound (`react/sound.json`) for the film's cues into a WAV a `<Sound>` plays, with the synth motionhub.dev gives reels. The skill gains a sound step and sound craft for films without narration, and the film format `oms install` puts beside it leaves narration out.
+- **Why:** A trial of the skill drew two figure cards outside the frame and set a whole Chinese film in a fallback face, and `oms check` said nothing of either; it also had no way to make the sound effects a motion describes.
+- **Breaking:** None. A check takes a little longer: it draws a frame for each line.
+- **Upgrade:** Move the installed `skills/oms` folder aside and run `oms install claude` or `oms install codex` again.
+- **Refs:** `apps/desktop/src/main/film/review.ts`, `apps/desktop/src/shared/preview.ts`, `apps/desktop/src/main/film/effects.ts`, `apps/cli/oms.mjs`, `apps/cli/skills/oms/`, `docs/adr/0016-terminal-agents-author-films-through-the-oms-command.md`.
+
 ## 2026-11-22 — A mono sound exports as loud as the preview plays it
 
 - **What:** An export puts a mono sound in both channels at its own level, as the preview's Web Audio plays it. ffmpeg's conversion to stereo had taken 3 dB off each channel, so mono music, effects and narration were quieter in the MP4 than in the preview.

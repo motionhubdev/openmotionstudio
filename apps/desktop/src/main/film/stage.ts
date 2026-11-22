@@ -1,5 +1,5 @@
 import { BrowserWindow, app, nativeImage, type Session, type NativeImage } from 'electron';
-import { seekScript, type Box, type FilmInfo } from '../../shared/preview';
+import { inspectScript, seekScript, type Box, type FilmInfo, type Inspection } from '../../shared/preview';
 import { keepFilmsInPlace, PREVIEW_URL } from './preview';
 
 const FRAME_MS = 60_000;
@@ -31,6 +31,8 @@ export interface Stage {
   frame(t: number, box?: Box): Promise<NativeImage>;
   /** The frame at `t` as the PNG DevTools made of it, for an export: not decoded and encoded again. */
   png(t: number): Promise<Buffer>;
+  /** What the frame last drawn shows that its picture does not say (shared/preview.ts, Inspection). */
+  inspect(): Promise<Inspection>;
   close(): void;
 }
 
@@ -41,7 +43,7 @@ const pngSize = (png: Buffer): { width: number; height: number } => ({ width: pn
  * What a review or an export needs of a stage: the film, its frames as PNGs, and closing it. The oms command's Chrome
  * stage (apps/cli/chrome.ts) is one too.
  */
-export type PhotoStage = Pick<Stage, 'film' | 'png'> & { close(): void | Promise<void> };
+export type PhotoStage = Pick<Stage, 'film' | 'png' | 'inspect'> & { close(): void | Promise<void> };
 
 /** Opens the film of build `version` for photographing. Rejects with the page's own error when it fails. */
 export async function openStage(version: number, session: Session): Promise<Stage> {
@@ -101,6 +103,7 @@ export async function openStage(version: number, session: Session): Promise<Stag
     return {
       film,
       frame: async (t, box) => toFilm(nativeImage.createFromBuffer(await shoot(t, box))),
+      inspect: async () => (await timeout(contents.executeJavaScript(inspectScript), 'Inspecting the frame')) as Inspection,
       async png(t) {
         const png = await shoot(t);
         const size = pngSize(png);

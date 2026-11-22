@@ -110,3 +110,38 @@ export type FromPreview =
  */
 export const seekScript = (t: number): string =>
   `window.__oms.seek(${Number(t)}).then(() => Promise.all([...document.images].map(image => image.decode()).concat(document.fonts.ready))).then(() => window.__omsError ?? null)`;
+
+/** What a frame shows that a picture alone does not say: text past the frame's edge, and faces that never loaded. */
+export interface Inspection {
+  /** Visible text running past an edge of the frame, by layer: the first words of it, and which edges. */
+  outside: { layer: string; text: string; edges: string[] }[];
+  /** Families text is set in, first in its stack, that the page never loaded: they draw in the machine's own fallback. */
+  unloaded: { layer: string; family: string }[];
+}
+
+/** The script that inspects a render page as it now is (after a seek), giving an Inspection. */
+export const inspectScript = `(() => {
+  const width = innerWidth, height = innerHeight;
+  const generic = new Set(['serif', 'sans-serif', 'monospace', 'cursive', 'fantasy', 'system-ui', 'ui-serif', 'ui-sans-serif', 'ui-monospace', 'ui-rounded', 'math', 'emoji', 'fangsong']);
+  const bare = (family) => family.trim().replace(/^["']|["']$/g, '').toLowerCase();
+  const loaded = new Set([...document.fonts].filter((face) => face.status === 'loaded').map((face) => bare(face.family)));
+  const outside = new Map(), unloaded = new Map();
+  for (const layer of document.querySelectorAll('[data-layer]')) {
+    const id = layer.getAttribute('data-layer');
+    const walker = document.createTreeWalker(layer, NodeFilter.SHOW_TEXT);
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+      const text = node.textContent.replace(/\\s+/g, ' ').trim();
+      const element = node.parentElement;
+      if (!text || !element || !element.checkVisibility({ opacityProperty: true, visibilityProperty: true })) continue;
+      const range = document.createRange();
+      range.selectNodeContents(node);
+      const box = range.getBoundingClientRect();
+      if (!box.width || !box.height) continue;
+      const edges = [box.left < -1 && 'left', box.top < -1 && 'top', box.right > width + 1 && 'right', box.bottom > height + 1 && 'bottom'].filter(Boolean);
+      if (edges.length) outside.set(id + '|' + text, { layer: id, text: text.slice(0, 40), edges });
+      const family = bare(getComputedStyle(element).fontFamily.split(',')[0] || '');
+      if (family && !generic.has(family) && !loaded.has(family)) unloaded.set(id + '|' + family, { layer: id, family });
+    }
+  }
+  return { outside: [...outside.values()], unloaded: [...unloaded.values()] };
+})()`;
