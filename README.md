@@ -101,3 +101,7 @@ Use the Node version in `.nvmrc`. Before a push, run the gate CI runs on all thr
 
 Licensed under the [Apache License 2.0](LICENSE). Windows releases are signed under our
 [code signing policy](docs/ops/code-signing.md): free code signing provided by SignPath.io, certificate by SignPath Foundation.
+
+## Author with Claude Code or Codex
+
+Install the OMS skill to create a native film folder from your terminal, check its scenes and capture frames. Open the same folder in Studio to refine it and export an MP4. [Installation and commands](apps/cli/README.md)
