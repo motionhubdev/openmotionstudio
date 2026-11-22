@@ -1,7 +1,6 @@
 // Scene 2: white sunlight meets a prism and leaves as a fan of colours; pins name the two ends and
 // a wave beside each shows its length (red's crests 700/450 ≈ 1.56 times as far apart as blue's).
 import {useTime, Easing} from '@motionhub/runtime';
-import {Sky} from '../motions/@iamsuosi/night-diagram/react/parts/sky.tsx';
 import {Heading} from '../motions/@iamsuosi/night-diagram/react/parts/heading.tsx';
 import {Pin} from '../motions/@iamsuosi/night-diagram/react/parts/pin.tsx';
 import {Refraction} from '../motions/@iamsuosi/night-diagram/react/parts/refraction.tsx';
@@ -9,10 +8,6 @@ import {C, Wave, ramp} from './common.tsx';
 
 const PRISM = {kind: 'prism' as const, at: [760, 520] as [number, number], side: 340};
 const CARD = {kind: 'card' as const, at: [1240, 720] as [number, number], rot: 0, w: 320};
-
-export function SpectrumSky() {
-  return <Sky land={null} stars={60} />;
-}
 
 export function Prism({pinsAt}: {pinsAt: number}) {
   const t = useTime();

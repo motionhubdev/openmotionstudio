@@ -1,18 +1,18 @@
 // Scene 4: from points all over the sky, scattered blue light comes down to one person's eye,
-// and the whole field turns blue.
+// and the whole field turns blue. A note answers the obvious next question: why not violet.
 import {useTime, seededRandom, Easing} from '@motionhub/runtime';
-import {Sky} from '../motions/@iamsuosi/night-diagram/react/parts/sky.tsx';
 import {Heading} from '../motions/@iamsuosi/night-diagram/react/parts/heading.tsx';
 import {Pin} from '../motions/@iamsuosi/night-diagram/react/parts/pin.tsx';
-import {C, Sun, Beam, Person, ramp} from './common.tsx';
+import {C, SANS, Sun, Beam, Person, Pool, Land, eyeOf, ramp} from './common.tsx';
 
 const LAND = 860;
-const EYE: [number, number] = [1262, LAND - 154];
+const PERSON = {x: 1250, y: LAND, scale: 1.1, face: -1};
+const EYE = eyeOf(PERSON.x, PERSON.y, PERSON.scale, PERSON.face);
 const SUN: [number, number] = [260, 230];
 
 export function BlueSky({fillAt}: {fillAt: number}) {
   const t = useTime();
-  return <Sky land={LAND} stars={40} glow={[960, 480, 1700]} light={0.12 + 0.6 * ramp(t, fillAt, fillAt + 2)} tone="127, 233, 255" />;
+  return <><Pool x={960} y={500} r={1900} tone="127, 233, 255" light={0.25 + 0.75 * ramp(t, fillAt, fillAt + 2)} /><Land y={LAND} /></>;
 }
 
 /** The sun's beam, and blue rays from points across the sky to the eye, one after another. */
@@ -35,9 +35,22 @@ export function ToTheEye() {
           </g>;
         })}
       </svg>
-      <Person x={1250} y={LAND} scale={1.1} />
-      <Pin at={EYE} elbow={[1420, 620]} to={1840} text="你的眼睛" note="哪个方向都有蓝光进来" t={ramp(t, 1.8, 2.6)} />
+      <Person {...PERSON} />
+      <Pin at={EYE} elbow={[1420, 640]} to={1840} text="你的眼睛" note="哪个方向都有蓝光进来" t={ramp(t, 1.8, 2.6)} />
     </>
+  );
+}
+
+/** Why not violet, on the second line: violet scatters even more, but there is little of it and eyes barely see it. */
+export function NotViolet({at}: {at: number}) {
+  const t = useTime();
+  const k = ramp(t, at, at + 0.6);
+  return (
+    <div style={{fontFamily: SANS, color: C.read, opacity: k, transform: `translateY(${(1 - k) * 12}px)`, display: 'grid', gap: 6, width: 'fit-content',
+      padding: '18px 26px', borderRadius: 14, background: 'rgba(5, 10, 32, 0.82)', border: `2px solid ${C.line}`}}>
+      <div style={{fontSize: 36, fontWeight: 700, color: C.ink}}>那为什么不是紫色？</div>
+      <div style={{fontSize: 30, lineHeight: 1.4}}>紫光散得更多，但阳光里紫光较少，<br />人眼对它也不敏感。</div>
+    </div>
   );
 }
 

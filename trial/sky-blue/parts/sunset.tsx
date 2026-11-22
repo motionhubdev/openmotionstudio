@@ -2,12 +2,10 @@
 // at sunset it runs a long way through it, loses its blue on the way, and arrives red.
 import {useId} from 'react';
 import {useTime, Easing} from '@motionhub/runtime';
-import {Sky} from '../motions/@iamsuosi/night-diagram/react/parts/sky.tsx';
 import {Heading} from '../motions/@iamsuosi/night-diagram/react/parts/heading.tsx';
 import {Pin} from '../motions/@iamsuosi/night-diagram/react/parts/pin.tsx';
 import {Reading} from '../motions/@iamsuosi/night-diagram/react/parts/reading.tsx';
-import {Motes} from '../motions/@iamsuosi/night-diagram/react/parts/motes.tsx';
-import {C, Sun, Beam, Person, ramp} from './common.tsx';
+import {C, Sun, Beam, Person, Pool, BlueLeaves, ramp} from './common.tsx';
 
 const R = 2200, AIR = 260, CX = 960, CY = 840 + R;
 const VIEWER: [number, number] = [960, 840];
@@ -15,7 +13,7 @@ const LOW_SUN: [number, number] = [70, 790];
 
 export function SunsetSky({redAt}: {redAt: number}) {
   const t = useTime();
-  return <Sky land={null} stars={60} glow={[160, 800, 1400]} light={0.7 * ramp(t, redAt, redAt + 2.4)} tone="255, 182, 92" />;
+  return <Pool x={160} y={800} r={1400} tone="255, 182, 92" light={0.75 * ramp(t, redAt, redAt + 2.4)} />;
 }
 
 /** The planet's edge and its shell of air. */
@@ -40,7 +38,6 @@ export function Paths({longAt, redAt}: {longAt: number; redAt: number}) {
       <Beam from={[960, 330]} to={[960, 790]} width={8} opacity={1 - 0.5 * ramp(t, longAt, longAt + 0.6)} />
       <Sun x={960} y={300} r={34} power={1 - 0.6 * ramp(t, longAt, longAt + 0.6)} />
       <Pin at={[960, 520]} elbow={[1060, 400]} to={1500} text="正午：穿过的空气薄" t={ramp(t, 0.3, 1.1)} />
-      <Motes n={36} from={[160, 790, 700, 20]} to={[120, 420, 760, 300]} t={ramp(t, redAt, redAt + 3, Easing.linear)} show={ramp(t, redAt, redAt + 0.4)} color={C.ice} size={10} seed={8} />
       <svg width={1920} height={1080} viewBox="0 0 1920 1080" style={{position: 'absolute', inset: 0}}>
         <defs>
           <linearGradient id={id} gradientUnits="userSpaceOnUse" x1={LOW_SUN[0]} y1={LOW_SUN[1]} x2={VIEWER[0]} y2={VIEWER[1]}>
@@ -55,15 +52,16 @@ export function Paths({longAt, redAt}: {longAt: number; redAt: number}) {
           <path d={`M${LOW_SUN[0]} ${LOW_SUN[1]}L${end[0]} ${end[1]}`} stroke={`url(#${id})`} strokeWidth={6} />
         </g>}
       </svg>
+      <BlueLeaves a={[LOW_SUN[0] + 80, LOW_SUN[1] + 3]} b={[VIEWER[0] - 120, VIEWER[1] - 36]} n={8} from={redAt} to={redAt + 3.2} reach={80} seed={8} />
       <Sun x={LOW_SUN[0]} y={LOW_SUN[1]} r={40} tint={C.ember} power={ramp(t, longAt, longAt + 0.5)} />
-      <Person x={VIEWER[0]} y={VIEWER[1]} scale={0.8} />
+      <Person x={VIEWER[0]} y={VIEWER[1]} scale={0.8} face={-1} />
     </>
   );
 }
 
 export function Thickness({at}: {at: number}) {
   const t = useTime();
-  return <Reading at={[20, 20]} label="日落时阳光穿过的空气" prefix="约" value={38} unit="倍" note="与太阳在头顶时相比 · 图为示意" source="Kasten & Young, 1989" color={C.ember} show={ramp(t, at, at + 0.5)} roll={ramp(t, at + 0.2, at + 1.4)} />;
+  return <Reading at={[20, 20]} label="日落时阳光穿过的空气" prefix="约" value={38} unit="倍" note="与太阳在头顶时相比 · 图为示意" source="地平线处 · Kasten & Young 1989" color={C.ember} show={ramp(t, at, at + 0.5)} roll={ramp(t, at + 0.2, at + 1.4)} />;
 }
 
 export function SunsetTitle() {

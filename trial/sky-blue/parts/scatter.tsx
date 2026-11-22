@@ -1,19 +1,13 @@
 // Scene 3: a beam of sunlight crosses a field of air molecules; a lens opens on one of them and shows the
 // light thrown out in every direction, blue much further than red; one reading gives the ratio.
 import {useTime, seededRandom, Easing} from '@motionhub/runtime';
-import {Sky} from '../motions/@iamsuosi/night-diagram/react/parts/sky.tsx';
 import {Heading} from '../motions/@iamsuosi/night-diagram/react/parts/heading.tsx';
 import {Lens} from '../motions/@iamsuosi/night-diagram/react/parts/lens.tsx';
 import {Reading} from '../motions/@iamsuosi/night-diagram/react/parts/reading.tsx';
-import {Motes} from '../motions/@iamsuosi/night-diagram/react/parts/motes.tsx';
-import {C, Beam, Scatter, ramp} from './common.tsx';
+import {C, Beam, Scatter, BlueLeaves, ramp} from './common.tsx';
 
 const BEAM_Y = 430;
 const PICKED: [number, number] = [860, 430];
-
-export function ScatterSky() {
-  return <Sky land={null} stars={40} />;
-}
 
 /** The air: molecules everywhere, dim; the beam runs through them on the first line. */
 export function Air({dimAt}: {dimAt: number}) {
@@ -32,7 +26,7 @@ export function Air({dimAt}: {dimAt: number}) {
   );
 }
 
-/** The lens on one molecule (second line), then the blue leaving the beam all along it (third line). */
+/** The lens on one molecule (second line), then blue leaving the beam at molecule after molecule (third line). */
 export function Closer({lensAt, ratioAt}: {lensAt: number; ratioAt: number}) {
   const t = useTime();
   const open = ramp(t, lensAt, lensAt + 0.8);
@@ -40,7 +34,7 @@ export function Closer({lensAt, ratioAt}: {lensAt: number; ratioAt: number}) {
   const red = ramp(t, lensAt + 0.7, lensAt + 2.2, Easing.outCubic);
   return (
     <>
-      <Motes n={40} from={[60, BEAM_Y - 10, 1800, 20]} to={[60, 260, 1800, 560]} t={ramp(t, ratioAt + 0.4, ratioAt + 3.2, Easing.linear)} show={ramp(t, ratioAt + 0.3, ratioAt + 0.6)} color={C.ice} size={10} seed={4} />
+      <BlueLeaves a={[80, BEAM_Y]} b={[1180, BEAM_Y]} n={8} from={ratioAt + 0.2} to={ratioAt + 3.4} reach={110} seed={4} />
       <Lens at={[1440, 470]} r={220} from={PICKED} show={open} label="一个空气分子（放大示意）">
         <g transform="translate(-1440 -470)">
           <Beam from={[1200, 470]} to={[1418, 470]} width={8} />

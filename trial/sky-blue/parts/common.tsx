@@ -1,11 +1,10 @@
 // What every scene of this film shares, on top of Night Diagram's own parts: an eased timing helper,
 // the sun, an air molecule, a person looking up, and a light wave drawn to its wavelength.
-import {useId} from 'react';
-import {interpolate, Easing} from '@motionhub/runtime';
+import {useId, type ReactNode} from 'react';
+import {interpolate, Easing, useTime, seededRandom} from '@motionhub/runtime';
 import {C, SANS} from '../motions/@iamsuosi/night-diagram/react/parts/night.ts';
 
 export {C, SANS};
-export const MOTION = '../motions/@iamsuosi/night-diagram/react/parts';
 
 /** 0 → 1 between two seconds, eased and clamped. */
 export const ramp = (t: number, a: number, b: number, easing = Easing.inOutCubic) => interpolate(t, [a, b], [0, 1], {easing, clamp: true});
@@ -44,13 +43,82 @@ export function Beam({from, to, t = 1, color = '#FFFFFF', width = 10, opacity = 
   );
 }
 
-/** A person standing on the land line, head tipped back to look at the sky. */
-export function Person({x, y, scale = 1}: {x: number; y: number; scale?: number}) {
+/** A person standing on the land line, head tipped back to look up at the sky, facing `face` (1 right, -1 left). */
+export function Person({x, y, scale = 1, face = 1}: {x: number; y: number; scale?: number; face?: number}) {
   return (
     <svg width={1920} height={1080} viewBox="0 0 1920 1080" style={{position: 'absolute', inset: 0, overflow: 'visible'}}>
-      <g transform={`translate(${x} ${y}) scale(${scale})`} fill="#0A1230" stroke={C.line} strokeWidth={2}>
-        <path d="M-20 0 L-14 -70 Q-16 -110 0 -118 Q18 -110 16 -70 L22 0 Z" />
-        <circle cx={6} cy={-140} r={20} />
+      <g transform={`translate(${x} ${y}) scale(${scale * face} ${scale})`} fill="#0A1230" stroke={C.line} strokeWidth={2} strokeLinejoin="round">
+        {/* legs, a coat to the knee, shoulders, arms at the sides */}
+        <path d="M-13 0 L-10 -44 L-4 -44 L-2 0 Z M3 0 L5 -44 L11 -44 L14 0 Z" />
+        <path d="M-22 -40 Q-24 -96 -16 -112 Q0 -124 16 -112 Q24 -96 22 -40 Z" />
+        <path d="M-17 -108 Q-26 -84 -25 -58 L-19 -58 Q-18 -84 -12 -100 Z M17 -108 Q26 -84 25 -58 L19 -58 Q18 -84 12 -100 Z" />
+        {/* the neck bent back and the head turned up */}
+        <path d="M-5 -118 L-3 -128 L7 -127 L6 -117 Z" />
+        <ellipse cx={6} cy={-146} rx={17} ry={20} transform="rotate(-28 6 -146)" />
+      </g>
+    </svg>
+  );
+}
+
+/** Where the eye of a Person drawn at (x, y, scale, face) is: lit by what reaches it. */
+export const eyeOf = (x: number, y: number, scale = 1, face = 1): [number, number] => [Math.round(x + 16 * scale * face), Math.round(y - 152 * scale)];
+
+/** A pool of light on the shared night field, in the colour of what lights it. */
+export function Pool({x, y, r, tone, light}: {x: number; y: number; r: number; tone: string; light: number}) {
+  if (light <= 0.001) return null;
+  return <div style={{position: 'absolute', inset: 0, opacity: Math.min(1, light), background: `radial-gradient(${r}px ${Math.round(r * 0.62)}px at ${x}px ${y}px, rgba(${tone}, 0.9), rgba(${tone}, 0))`}} />;
+}
+
+/** The dark land line and its low buildings, as Night Diagram's Sky draws it. */
+export function Land({y = 860}: {y?: number}) {
+  return (
+    <svg width={1920} height={1080} viewBox="0 0 1920 1080" style={{position: 'absolute', inset: 0}}>
+      <rect x={0} y={y} width={1920} height={1080 - y} fill="#0A1230" />
+      <path d={`M300 ${y}V${y - 26}H340V${y}ZM460 ${y}V${y - 46}H500V${y}ZM640 ${y}V${y - 16}H700V${y}ZM1520 ${y}V${y - 22}H1556V${y}Z`} fill="#0A1230" />
+    </svg>
+  );
+}
+
+/** A scene's layer comes up from the shared field over half a second and sinks back in its last 0.4 s;
+ *  the cover passes `cover` so its first frame, the thumbnail, is already whole. */
+export function SceneFade({dur, cover = false, children}: {dur: number; cover?: boolean; children: ReactNode}) {
+  const t = useTime();
+  const k = (cover ? 1 : ramp(t, 0, 0.5)) * (1 - ramp(t, dur - 0.4, dur, Easing.inOutSine));
+  return <div style={{position: 'absolute', inset: 0, opacity: k}}>{children}</div>;
+}
+
+/** Blue leaving a beam: at points along it, one after another between `from` and `to` seconds, short pulses of
+ *  ice light fly off sideways and fade as they go, so the beam is seen to lose its blue on the way. */
+export function BlueLeaves({a, b, n = 9, from, to, reach = 90, seed = 3}: {a: [number, number]; b: [number, number]; n?: number; from: number; to: number; reach?: number; seed?: number}) {
+  const t = useTime();
+  const id = useId().replace(/:/g, '');
+  const random = seededRandom(seed);
+  const len = Math.hypot(b[0] - a[0], b[1] - a[1]), ux = (b[0] - a[0]) / len, uy = (b[1] - a[1]) / len;
+  return (
+    <svg width={1920} height={1080} viewBox="0 0 1920 1080" style={{position: 'absolute', inset: 0}}>
+      <defs><filter id={id} x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation={4} /></filter></defs>
+      <g stroke={C.ice} strokeLinecap="round">
+        {Array.from({length: n}, (_, i) => {
+          const f = (i + 0.5) / n, px = a[0] + (b[0] - a[0]) * f, py = a[1] + (b[1] - a[1]) * f;
+          const start = from + (to - from - 1.4) * f;
+          const twist = random() * 0.5 - 0.25;
+          const k = ramp(t, start, start + 1.4, Easing.outCubic);
+          if (k <= 0.01) return null;
+          return <g key={i}>
+            <circle cx={px} cy={py} r={9} fill={C.ice} stroke="none" opacity={0.9 * (1 - 0.6 * k)} filter={`url(#${id})`} />
+            {[-1.9, -1.25, 1.25, 1.9].map((d, j) => {
+              // each pulse is a short dash flying out from the beam, dimming as it goes
+              const ang = Math.atan2(uy, ux) + d + twist, go = 14 + reach * k, tail = Math.max(14, go - 30);
+              const x1 = px + Math.cos(ang) * tail, y1 = py + Math.sin(ang) * tail, x2 = px + Math.cos(ang) * go, y2 = py + Math.sin(ang) * go;
+              const path = `M${x1.toFixed(1)} ${y1.toFixed(1)}L${x2.toFixed(1)} ${y2.toFixed(1)}`;
+              const o = 1 - 0.75 * k;
+              return <g key={j} opacity={o}>
+                <path d={path} strokeWidth={12} opacity={0.5} filter={`url(#${id})`} />
+                <path d={path} strokeWidth={4} />
+              </g>;
+            })}
+          </g>;
+        })}
       </g>
     </svg>
   );
