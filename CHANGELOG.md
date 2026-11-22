@@ -3,6 +3,14 @@
 Every key change to OpenMotionStudio, newest first, by date. What counts as key and the entry format are in
 `CLAUDE.md`, "The changelog".
 
+## 2026-11-22 — /examples shows twenty-three narrated explainers made with VisoTalk
+
+- **What:** Under "Made with VisoTalk", /examples shows 23 of VisoTalk's examples as visotalk.dev rendered them, each with its narration, a link to the original and its VisoTalk source to download (the document, its parts, media, voice and captions; it opens in VisoTalk): Liftoff, the Roadster's wind tunnel, UTMB, How a Chip Is Made, the Moon's phases, photosynthesis, the sky's colours, from URL to page, the HTTPS handshake, Fourier, the eight billion, uv, an incident review, Nook Notes, Quiet Hours, a clock's escapement, the North Wind and the Sun, 守株待兔, Sonnet 18, the Shinkansen, Japan's population, hiccups in Korean and seven probability distributions. Five made in Chinese as well play, show and offer the Chinese cut on the Chinese page. Media by others are credited on their cards and in each bundle's credits.md; the source's MIT notice is beside the files.
+- **Why:** VisoTalk's examples were the best narrated films the team had made, and the examples page is where people look for what can be made.
+- **Breaking:** None.
+- **Upgrade:** Nothing.
+- **Refs:** `site/examples.html`, `site/studio.js`, `site/studio.css`, `site/media/visotalk/`, `docs/prd/examples.md`, `docs/design.md`.
+
 ## 2026-11-21 — Three new examples: a motion study, a data story and an explainer
 
 - **What:** /examples shows three more films, each with its source to open in the Studio and the post on X that inspired it: Signal, a 15-second motion study of a radar sweep; Eight billion, 25 seconds of world population on the United Nations' figures; and Four steps, a 17-second explainer in kinetic type of describing, pointing, changing and exporting a film.
