@@ -40,8 +40,5 @@ const guide = await readFile(join(desktop, 'src/main/film/film.md'), 'utf8');
 await writeFile(join(dist, 'film-format.md'), guide.slice(guide.indexOf('# The film'), guide.indexOf('# How you work')));
 await cp(join(desktop, '../../LICENSE'), join(dist, 'LICENSE'));
 
-// The example is apps/cli/example as it is, with the Studio's own face beside its media.
-const example = join(dist, 'example');
-await cp(join(cli, 'example'), example, { recursive: true });
-for (const asset of ['Inter.woff2', 'Inter-OFL.txt'])
-  await cp(join(desktop, 'resources/fonts', asset), join(example, 'media', asset));
+// The example is apps/cli/example as it is: one film.tsx, drawn from code.
+await cp(join(cli, 'example'), join(dist, 'example'), { recursive: true });

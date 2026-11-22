@@ -1,7 +1,7 @@
 // Run against the unpacked installation, not the development workspace.
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { cp, mkdtemp, readFile, rename, rm } from 'node:fs/promises';
+import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
@@ -40,8 +40,15 @@ try {
   assert.equal(frame.readUInt32BE(16), 540);
   assert.equal(frame.readUInt32BE(20), 960);
   assert.throws(() => oms('still', project, '--at', '20', '--out', png), /Time must be/);
-  await rename(join(project, 'media/chime.wav'), join(project, 'media/missing.wav'));
-  assert.throws(() => oms('check', project, '--json'), error =>
+  const silent = join(scratch, 'Missing sound');
+  await mkdir(silent);
+  await writeFile(join(silent, 'film.tsx'), `import {Film, Scene, Sound} from '@motionhub/runtime';
+export const film = {width: 540, height: 960, fps: 24};
+export default function Main() {
+  return <Film><Scene id="only" duration={1}><Sound src="media/chime.wav" /></Scene></Film>;
+}
+`);
+  assert.throws(() => oms('check', silent, '--json'), error =>
     error.status === 1 && JSON.parse(error.stdout).issues.some(issue => issue.text.includes('media/chime.wav')));
   console.log('PASS installed skill, starter, editable example, PNG, bounds and missing audio');
 } finally {
