@@ -1,5 +1,5 @@
 // 为什么天空是蓝色的？ A 47.5-second landscape explainer, drawn in Night Diagram (@iamsuosi/night-diagram).
-import {Film, Layer, Line, Scene, MotionScope} from '@motionhub/runtime';
+import {Film, Layer, Line, Scene, MotionScope, Sound} from '@motionhub/runtime';
 import tokens from './motions/@iamsuosi/night-diagram/tokens.json';
 import {Sky} from './motions/@iamsuosi/night-diagram/react/parts/sky.tsx';
 // The motion names these faces but ships no files for them, so the film loads its own copies, subset to the
@@ -8,6 +8,8 @@ import {Sky} from './motions/@iamsuosi/night-diagram/react/parts/sky.tsx';
 import notoSansSc from './media/fonts/noto-sans-sc.woff2';
 import hankenGrotesk from './media/fonts/hanken-grotesk.woff2';
 import jetbrainsMono from './media/fonts/jetbrains-mono.woff2';
+// Sound effects: synthesized for this film with ffmpeg (sines and filtered noise, media/sfx/), no outside source.
+// Only light makes a sound, as Night Diagram asks: a beam running, light scattering, the sky filling, blue leaving, red left.
 import {SceneFade as Fade} from './parts/common.tsx';
 import {CoverSky, CoverSun, CoverTitle} from './parts/cover.tsx';
 import {Prism, Waves, SpectrumTitle} from './parts/spectrum.tsx';
@@ -42,6 +44,7 @@ export default function Main() {
         </Scene>
 
         <Scene id="spectrum" duration={8}>
+          <Sound src="media/sfx/shimmer.wav" at={0.3} volume={-12} />
           <Line id="spectrum-1" dur={3.9}>白色的阳光，其实混着彩虹的所有颜色。</Line>
           <Line id="spectrum-2" at={3.9}>红光的波长较长，蓝光的波长较短。</Line>
           <Layer id="prism-and-pins" z={1}><Fade dur={8}><Prism pinsAt={4.1} /></Fade></Layer>
@@ -50,6 +53,11 @@ export default function Main() {
         </Scene>
 
         <Scene id="scatter" duration={13}>
+          <Sound src="media/sfx/sweep-low.wav" at={0.4} volume={-14} />
+          <Sound src="media/sfx/whoosh.wav" at={4.2} volume={-12} />
+          <Sound src="media/sfx/sparkle.wav" at={4.9} volume={-10} />
+          <Sound src="media/sfx/knock.wav" at={8.7} volume={-14} />
+          <Sound src="media/sfx/leaving.wav" at={8.8} volume={-14} />
           <Line id="scatter-1" dur={4}>阳光穿过大气，会撞上无数空气分子。</Line>
           <Line id="scatter-2" at={4} dur={4.4}>分子把光弹向四面八方，这叫瑞利散射。</Line>
           <Line id="scatter-3" at={8.4}>波长越短散射越强，蓝光约是红光的六倍。</Line>
@@ -60,6 +68,7 @@ export default function Main() {
         </Scene>
 
         <Scene id="blue-sky" duration={7}>
+          <Sound src="media/sfx/swell.wav" at={3.6} volume={-12} />
           <Line id="blue-sky-1" dur={3.4}>散开的蓝光，从天空各处来到你眼前。</Line>
           <Line id="blue-sky-2" at={3.4}>所以，整片天空看起来都是蓝的。</Line>
           <Layer id="day-sky"><Fade dur={7}><BlueSky fillAt={3.6} /></Fade></Layer>
@@ -69,6 +78,10 @@ export default function Main() {
         </Scene>
 
         <Scene id="sunset" duration={9.5}>
+          <Sound src="media/sfx/sweep-low.wav" at={1.0} volume={-12} />
+          <Sound src="media/sfx/knock.wav" at={2.6} volume={-14} />
+          <Sound src="media/sfx/leaving.wav" at={4.3} volume={-10} />
+          <Sound src="media/sfx/warm.wav" at={4.5} volume={-10} />
           <Line id="sunset-1" dur={4}>傍晚，阳光要斜穿厚得多的空气。</Line>
           <Line id="sunset-2" at={4}>蓝光一路被散掉，剩下的红橙光染红了夕阳。</Line>
           <Layer id="evening-sky"><Fade dur={9.5}><SunsetSky redAt={4.3} /></Fade></Layer>
@@ -79,6 +92,7 @@ export default function Main() {
         </Scene>
 
         <Scene id="one-cause" duration={4.5}>
+          <Sound src="media/sfx/resolve.wav" at={1.0} volume={-8} />
           <Line id="one-cause-1">蓝天和晚霞，来自同一种散射。</Line>
           <Layer id="two-skies"><TwoSkies /></Layer>
           <Layer id="molecule" z={1}><OneCause /></Layer>
