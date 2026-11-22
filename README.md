@@ -104,4 +104,4 @@ Licensed under the [Apache License 2.0](LICENSE). Windows releases are signed un
 
 ## Author with Claude Code or Codex
 
-Install the OMS skill to create a native film folder from your terminal, check its scenes and capture frames. Open the same folder in Studio to refine it and export an MP4. [Installation and commands](apps/cli/README.md)
+Run `npx skills add motionhubdev/openmotionstudio --skill oms --agent claude-code codex` to install the OMS skill. Create a native film folder from your terminal, check its scenes and capture frames. Open the same folder in Studio to refine it and export an MP4. [Installation and commands](apps/cli/README.md)

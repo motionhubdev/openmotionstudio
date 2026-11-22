@@ -1,6 +1,18 @@
 # OMS for Claude Code and Codex
 
-Download the CLI tarball and run one line for your host (Node 22.12 or newer).
+## Standard skill installation
+
+With Node.js 22.12+ and npm installed, run this in your project:
+
+    npx skills add motionhubdev/openmotionstudio --skill oms --agent claude-code codex
+
+Select a single host by passing only its name. Add `-g` for user-wide installation. Start a new host session. The skill includes the film reference and a version-matched CLI archive. On first use, npm downloads the CLI dependencies to its cache. Preview downloads Electron and requires a graphical session on Linux. Install OpenMotionStudio when you want to refine or export the project.
+
+To test a checkout before it reaches the default branch, substitute the absolute path to the checkout for `motionhubdev/openmotionstudio`.
+
+## Global CLI installation
+
+Download the CLI tarball and run one line for your host:
 
     npm install -g ./open-motion-studio-skill-0.1.0.tgz && oms install claude
     npm install -g ./open-motion-studio-skill-0.1.0.tgz && oms install codex
@@ -17,3 +29,5 @@ From the repository, run pnpm install and then npm pack in apps/cli to build a d
 
 To run the installed-package regression test, pass the installed package directory to
 `node apps/cli/scripts/test-installed.mjs <installed-package-directory>` from the repository.
+
+After changing the CLI, shared player or film contract, run `npm run sync-skill` in apps/cli and commit the updated skill assets.
