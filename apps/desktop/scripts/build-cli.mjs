@@ -1,7 +1,7 @@
 // Package the same player, starter and build/review implementation as this Studio.
 import { createRequire } from 'node:module';
 import { build } from 'esbuild';
-import { cp, mkdir, readFile, writeFile } from 'node:fs/promises';
+import { cp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
 
@@ -13,6 +13,8 @@ const expected = require('../package.json').devDependencies['@motionhub/runtime'
 if (require('@motionhub/runtime/package.json').version !== expected)
   throw new Error(`Install the locked MotionHub runtime ${expected} before packing the CLI.`);
 await import('./build-preview.mjs');
+// A pack holds this build alone: nothing left from an earlier one is published.
+await rm(dist, { recursive: true, force: true });
 await mkdir(dist, { recursive: true });
 await build({
   entryPoints: [join(cli, 'worker.ts')],

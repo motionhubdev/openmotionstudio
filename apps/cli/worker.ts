@@ -8,9 +8,17 @@ import { openStage } from '../desktop/src/main/film/stage';
 import { reviewBuild } from '../desktop/src/main/film/review';
 import { soundFile } from '../desktop/src/main/film/mix';
 
-const [command, dir, scratch, at] = process.argv.slice(-4);
+function args(): [string, string, string, string] {
+  const [command, dir, scratch, at] = process.argv.slice(-4);
+  if (command && dir && scratch && at) return [command, dir, scratch, at];
+  console.error('The preview player was started without its command, folder, scratch folder and time.');
+  process.exit(2);
+}
+const [command, dir, scratch, at] = args();
 app.setPath('userData', scratch);
-app.setAppPath(__dirname);
+// Electron takes this script's own path for the app's; the Studio's preview scripts are beside it.
+// setAppPath is Electron's, though its types leave it out.
+(app as typeof app & { setAppPath(path: string): void }).setAppPath(__dirname);
 app.on('window-all-closed', () => {});
 registerPreviewScheme();
 

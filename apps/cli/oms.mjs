@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { spawn, execFileSync } from 'node:child_process';
 import { constants, existsSync } from 'node:fs';
-import { cp, copyFile, mkdir, mkdtemp, readFile, readdir, rm } from 'node:fs/promises';
+import { cp, copyFile, mkdir, mkdtemp, readFile, readdir, rm, stat } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { homedir, tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
@@ -10,6 +10,31 @@ import { parseArgs } from 'node:util';
 
 const root = dirname(fileURLToPath(import.meta.url));
 const usage = 'oms install <claude|codex> | init <folder> | check <folder> [--json] | still <folder> --at <seconds> --out <new.png>';
+
+/** Downloads Electron's binary on first use, once, even when several commands start together. */
+async function ensureElectron(electronDir) {
+  const ready = () => process.env.ELECTRON_OVERRIDE_DIST_PATH || existsSync(join(electronDir, 'path.txt'));
+  const lock = join(electronDir, 'oms-download.lock');
+  for (;;) {
+    if (ready()) return;
+    try {
+      await mkdir(lock);
+      break;
+    } catch (error) {
+      if (error.code !== 'EEXIST') throw error;
+    }
+    // A lock left by a download that died is taken over after ten minutes.
+    const since = await stat(lock).then(info => Date.now() - info.mtimeMs, () => 0);
+    if (since > 600_000) await rm(lock, { recursive: true, force: true });
+    await new Promise(done => setTimeout(done, 500));
+  }
+  try {
+    // Keep download progress off stdout so the very first --json invocation is parseable.
+    if (!ready()) execFileSync(process.execPath, [join(electronDir, 'install.js')], { stdio: ['ignore', 2, 2] });
+  } finally {
+    await rm(lock, { recursive: true, force: true });
+  }
+}
 
 async function run() {
   const [command, ...args] = process.argv.slice(2);
@@ -26,7 +51,10 @@ async function run() {
     const skills = join(homes[target], 'skills');
     const dest = join(skills, 'oms');
     await mkdir(skills, { recursive: true });
-    await mkdir(dest);
+    await mkdir(dest).catch(error => {
+      if (error.code === 'EEXIST') throw new Error(`OMS is already installed in ${dest}. To install this version, move that folder aside and run this again.`);
+      throw error;
+    });
     try {
       await cp(join(root, 'skills/oms'), dest, { recursive: true });
       await copyFile(join(root, 'dist/film-format.md'), join(dest, 'film-format.md'));
@@ -46,11 +74,7 @@ async function run() {
   if (!['still', 'check'].includes(command)) throw new Error(usage);
   if (command === 'still' && (!values.at?.trim() || !Number.isFinite(Number(values.at)) || !values.out?.toLowerCase().endsWith('.png'))) throw new Error(usage);
   const require = createRequire(import.meta.url);
-  const electronDir = dirname(require.resolve('electron/package.json'));
-  // Keep download progress off stdout so the very first --json invocation is parseable.
-  if (!process.env.ELECTRON_OVERRIDE_DIST_PATH && !existsSync(join(electronDir, 'path.txt'))) {
-    execFileSync(process.execPath, [join(electronDir, 'install.js')], { stdio: ['ignore', 2, 2] });
-  }
+  await ensureElectron(dirname(require.resolve('electron/package.json')));
   const electron = require('electron');
   const scratch = await mkdtemp(join(tmpdir(), 'oms-preview-'));
   try {

@@ -37,3 +37,4 @@ Read [positioning](prd/positioning.md) first, then [the architecture](tech/archi
 - [0013 Each window owns a project](adr/0013-each-window-owns-a-project.md) — independent tasks and preview sessions; superseded by 0014.
 - [0014 Project sessions outlive editor windows](adr/0014-project-sessions-outlive-editor-windows.md) — one tray-backed main window, movable dedicated editors, and background tasks on Home.
 - [0015 New projects live in a default workspace](adr/0015-new-projects-live-in-a-default-workspace.md) — a configurable Documents location and a fresh directory for every new film or template copy.
+- [0016 Terminal agents author films through the OMS command](adr/0016-terminal-agents-author-films-through-the-oms-command.md) — `oms` and a skill for Claude Code and Codex, on the Studio's own build and player.

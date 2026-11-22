@@ -1,6 +1,6 @@
 ---
 name: oms
-description: Create, inspect or revise editable OpenMotionStudio (OMS) motion videos from a brief and local assets. Use for requests such as 用 OMS 制作视频、生成可在 Studio 精修的工程 or updating an existing film.tsx.
+description: Create, inspect or revise editable OpenMotionStudio (OMS) motion videos from a brief and local assets. Use for requests to make a video with OMS, to create a project to refine in Studio, or to update an existing film.tsx, in any language.
 ---
 
 Read the bundled [film format](film-format.md) before authoring. Use the installed `oms` command in the user's workspace.

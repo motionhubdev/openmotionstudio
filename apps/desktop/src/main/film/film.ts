@@ -92,8 +92,8 @@ export async function startFilm(dir: string): Promise<void> {
 export const formatted = async (messages: Message[]): Promise<string[]> =>
   messages.length ? await formatMessages(messages, { kind: 'error', color: false }) : [];
 
-/** An esbuild plugin that numbers each build and reports its errors to `onBuilt`. */
-export function reporter(onBuilt: (result: BuildResult) => void, dir?: string): Plugin {
+/** An esbuild plugin that numbers each build of `dir` into `output` and reports its errors to `onBuilt`. */
+export function reporter(onBuilt: (result: BuildResult) => void, dir: string, output = buildDir(dir)): Plugin {
   let version = 0;
   return {
     name: 'report',
@@ -101,12 +101,12 @@ export function reporter(onBuilt: (result: BuildResult) => void, dir?: string): 
       build.onEnd(async (result) => {
         const errors = await formatted(result.errors);
         version++;
-        if (!errors.length && dir) {
-          await copyFile(join(buildDir(dir), 'film.js'), join(buildDir(dir), `film-${version}.js`));
+        if (!errors.length) {
+          await copyFile(join(output, 'film.js'), join(output, `film-${version}.js`));
           // The motions' faces, which the preview page loads before the film; a face that is not one is said, not loaded.
           const faces = await motionFaces(dir);
           for (const reason of faces.skipped) console.warn(`A motion's face was left out: ${reason}`);
-          await writeFile(join(buildDir(dir), FACES), faces.css);
+          await writeFile(join(output, FACES), faces.css);
         }
         onBuilt({ ok: errors.length === 0, version, errors });
       });
@@ -139,14 +139,15 @@ function filmOptions(dir: string, output: string, plugins: Plugin[] = []): Build
 
 /** A CLI invocation builds in its own directory so an open Studio keeps its current bundle. */
 export async function buildFilmOnce(dir: string, output: string): Promise<BuildResult> {
+  let built: BuildResult | undefined;
+  const failed = (error: unknown): BuildResult => ({ ok: false, version: 1, errors: [error instanceof Error ? error.message : String(error)] });
   try {
-    await build(filmOptions(dir, output));
-    await copyFile(join(output, 'film.js'), join(output, 'film-1.js'));
-    await writeFile(join(output, FACES), (await motionFaces(dir)).css);
-    return { ok: true, version: 1, errors: [] };
+    await build(filmOptions(dir, output, [reporter((result) => { built = result; }, dir, output)]));
   } catch (error) {
-    return { ok: false, version: 1, errors: [error instanceof Error ? error.message : String(error)] };
+    // esbuild rejects a failed build after the reporter heard its formatted errors; anything else failed before it.
+    return built ?? failed(error);
   }
+  return built ?? failed(new Error('The film build reported no result.'));
 }
 
 /**

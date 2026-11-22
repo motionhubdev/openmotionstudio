@@ -3,6 +3,14 @@
 Every key change to OpenMotionStudio, newest first, by date. What counts as key and the entry format are in
 `CLAUDE.md`, "The changelog".
 
+## 2026-11-22 — Claude Code and Codex can author a film from the terminal with `oms`
+
+- **What:** A new package, `apps/cli`, holds the `oms` command and an OMS skill for Claude Code and Codex. `oms install claude` or `oms install codex` puts the skill in the host's user skills directory; `oms init`, `oms check [--json]` and `oms still --at <s> --out <new.png>` start, check and draw a film with the Studio's own build and player. The folder opens in the Studio as it is. The package is built with `npm pack` and is not published yet.
+- **Why:** People who already work in a terminal agent can make a film there, then refine and export it in the Studio.
+- **Breaking:** None.
+- **Upgrade:** Nothing. To use it, follow `apps/cli/README.md`.
+- **Refs:** `apps/cli/`, `apps/desktop/scripts/build-cli.mjs`, `apps/desktop/src/main/film/stage.ts`, `apps/desktop/src/main/film/film.ts`, `docs/adr/0016-terminal-agents-author-films-through-the-oms-command.md`, `docs/tech/architecture.md`, `README.md`.
+
 ## 2026-11-22 — The website moves out of this repository
 
 - **What:** openmotion.studio's pages, media, Worker and deploy, with the docs on its design and its examples, are now kept in the private `motionhubdev/openmotionstudio-web`, and their history is taken out of this one; this repository holds the Studio alone. `pnpm dev:site` is gone. Publishing a release here now sends it to the website (`.github/workflows/site.yml`), which points its downloads at it and deploys.

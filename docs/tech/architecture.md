@@ -22,7 +22,8 @@ local materials and sampled export checks without changing the film format.
 
 ## Components
 
-One Electron app. Packages are split out only when something is published on its own.
+One Electron app, and the `oms` command beside it ([ADR 0016](../adr/0016-terminal-agents-author-films-through-the-oms-command.md)).
+Packages are split out only when something is published on its own.
 
 ```
 apps/desktop/
@@ -39,7 +40,8 @@ apps/desktop/
       film.ts          film.tsx: start one, bundle it with esbuild on every change; film.md is the agent's skill
       preview.ts       the oms-preview: scheme the film's page, the Studio's preview scripts, the film's bundle and
                        the project's own files are served on
-      capture.ts       an offscreen window that photographs the film: stills, the timeline's scene frames, and export through ffmpeg
+      stage.ts         an offscreen window that photographs the film at a time
+      capture.ts       stills, the timeline's scene frames, and export through ffmpeg, from a stage
       mix.ts           a film's sounds for the export: each <Sound>'s file found in the project, read by ffmpeg, and
                        one filter graph that mixes them (ADR 0010); and each file's waveform for the timeline
       remotion-export.ts  the film written as a Remotion project
@@ -65,6 +67,11 @@ apps/desktop/
   src/shared/          what both sides agree on: StudioApi, the preview bridge's messages, and the interface's
                        messages in Chinese (i18n.ts, translations.ts)
   src/renderer/        React UI
+apps/cli/
+  oms.mjs              the `oms` command: install the skill, init, check, still
+  worker.ts            an Electron main process that builds and draws one film with film/ (bundled by
+                       apps/desktop/scripts/build-cli.mjs)
+  skills/oms/          the skill Claude Code or Codex reads
 ```
 
 | Component | Owns | Never does |
