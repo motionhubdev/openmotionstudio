@@ -3,6 +3,14 @@
 Every key change to OpenMotionStudio, newest first, by date. What counts as key and the entry format are in
 `CLAUDE.md`, "The changelog".
 
+## 2026-11-21 — openmotion.studio/tour becomes /examples, a wall of films made in the Studio
+
+- **What:** The tutorials' list is now the examples: each card shows its finished film first, at a frame of the film itself, and plays it in place, with buttons for how it was made (the tutorial and its length) and its files (The Hollow Mountain's source; Ember's photos and prompts). The tutorials moved to /examples/launch-film and /examples/hollow-mountain, and the top bar, footer and README say Examples.
+- **Why:** The site is to show many films made in the Studio, most of them without a recorded tutorial; a list of tutorials could not hold them. The plan for the rest, including a daily agent that makes new examples, is `docs/prd/examples.md`.
+- **Breaking:** None. /tour and /tour/<name> are sent on to /examples and /examples/<name> for good (301), the query kept.
+- **Upgrade:** Nothing.
+- **Refs:** `site/examples.html`, `site/examples/`, `site/worker.js`, `site/studio.js`, `site/studio.css`, `site/index.html`, `site/media/launch-film.webp`, `site/media/crater-film.webp`, `README.md`, `docs/prd/examples.md`, `docs/README.md`, `docs/design.md`, `docs/tech/architecture.md`.
+
 ## 2026-11-21 — The Studio takes the website's colours, and cobalt shows where attention is
 
 - **What:** The Studio's paper and ink are now the website's: a cleaner, less yellow ground in light (`#F3F1EC` under `#FCFCFA` panels) and a step deeper in dark (`#0F0D0B` under `#1A1714`). Buttons are raised as on the website, and Export MP4 has Download's vermilion edge and glow. Cobalt, until now only for marks and selection, also shows what is running or playing (the agent's current phase, a task's progress on Home, Pick and Region while on, a template's play button), the keyboard's focus as a 2 px ring, and the second phrase of Home's and the first run's headline, as on the website. Failures are a rose red, no longer the vermilion of the mark and Export.

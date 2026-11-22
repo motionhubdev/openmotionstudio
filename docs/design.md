@@ -381,9 +381,10 @@ openmotion.studio (`site/`) keeps the Studio's paper, ink and rules, in its own 
 - **A paused film** shows a play button in the headlines' cobalt, its play mark in a disc, over the picture dimmed a
   little; a click anywhere on the picture plays or pauses it, and the first screen's demo returns to its first frame
   when it ends.
-- **The tutorials** (/tour) are a list, each a card: its poster in a film's frame with its length in a cobalt pill, its
-  level, interface language and agent in muted mono, its title, one sentence and what it teaches as quiet tags. A
-  tutorial (/tour/<name>) is one screen on a desktop: the top bar, the way back to the list, the title, the film beside
+- **The examples** (/examples) are a list, each its film first: in a film's frame at a frame of its own, paused
+  behind the play button with its length, and played in place, one at a time; then its kind, look and agent in muted
+  mono, its title, one sentence, and small buttons for how it was made (with the tutorial's length) and its files. A
+  tutorial (/examples/<name>) is one screen on a desktop: the top bar, the way back to the list, the title, the film beside
   its steps and the footer. The film is as large as the screen's height leaves room for, with a Full screen button
   beside its captions and speed; the steps, in a panel of the surface's tint, are as tall as the picture and scroll
   within, each a card that plays from its place wherever it is clicked, the one playing raised and brought into view,

@@ -16,13 +16,13 @@ Describe the film, point at what to change on the picture, and export an MP4.
 
 [**Download**](https://openmotion.studio/#get) ·
 [Website](https://openmotion.studio/) ·
-[Tutorials](https://openmotion.studio/tour) ·
+[Examples](https://openmotion.studio/examples) ·
 [Documentation](docs/README.md) ·
 [Changelog](CHANGELOG.md)
 
 <br />
 
-<a href="https://openmotion.studio/tour/launch-film"><img src="site/media/workspace-tour.webp" width="900" alt="The OpenMotionStudio workspace: the agent's conversation on the left, the film playing in the middle, its outline on the right and the timeline below" /></a>
+<a href="https://openmotion.studio/examples/launch-film"><img src="site/media/workspace-tour.webp" width="900" alt="The OpenMotionStudio workspace: the agent's conversation on the left, the film playing in the middle, its outline on the right and the timeline below" /></a>
 
 </div>
 
