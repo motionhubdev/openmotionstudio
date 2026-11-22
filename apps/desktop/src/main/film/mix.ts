@@ -18,9 +18,9 @@ const RATE = 48000;
 const CEILING = 0.891;
 
 /** A sound's file on disk: in the film's bundle or in the project, never outside it, in Git's or the Studio's folders. */
-export async function soundFile(dir: string, src: string): Promise<string> {
+export async function soundFile(dir: string, src: string, output = buildDir(dir)): Promise<string> {
   const place = soundPlace(src);
-  const file = place && (await safePreviewFile(place.root === 'build' ? buildDir(dir) : dir, place.path, place.root === 'project').catch(() => null));
+  const file = place && (await safePreviewFile(place.root === 'build' ? output : dir, place.path, place.root === 'project').catch(() => null));
   if (!file) throw new Error(`<Sound src="${src}">: no such file in the project. A sound's src is a path in the project, as media/music.mp3.`);
   return file;
 }
