@@ -12,7 +12,7 @@ import { copyFile, cp, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { basename, dirname, join, relative, resolve, sep } from 'node:path';
 import type { FilmInfo } from '../../shared/preview';
 import { soundPlace } from '../../shared/sound';
-import { safePreviewFile } from './preview';
+import { safePreviewFile } from './serve';
 import { STATE_DIR, ignore, requireEmpty } from '../project';
 
 /** The versions an exported project starts from: Remotion 4, and the motionhub packages whose <Film> draws in its <Sequence>s. */

@@ -10,7 +10,7 @@ import { join } from 'node:path';
 import { STATE_DIR } from '../project';
 import { DUCK, type FilmSound, decibels, soundFades, soundPlace, soundRegion, soundSpan } from '../../shared/sound';
 import { buildDir } from './film';
-import { safePreviewFile } from './preview';
+import { safePreviewFile } from './serve';
 
 /** The rate every sound is mixed at. */
 const RATE = 48000;

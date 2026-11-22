@@ -2,7 +2,8 @@ import { mkdir, mkdtemp, realpath, rm, symlink, writeFile } from 'node:fs/promis
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
-import { filmMayNavigate, safePreviewFile, within } from '../preview';
+import { filmMayNavigate } from '../preview';
+import { safePreviewFile, within } from '../serve';
 
 vi.mock('electron', () => ({ app: {}, protocol: {} }));
 

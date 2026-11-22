@@ -40,6 +40,7 @@ apps/desktop/
       film.ts          film.tsx: start one, bundle it with esbuild on every change; film.md is the agent's skill
       preview.ts       the oms-preview: scheme the film's page, the Studio's preview scripts, the film's bundle and
                        the project's own files are served on
+      serve.ts         those files and their policy, without Electron, for the scheme and for oms's Chrome
       stage.ts         an offscreen window that photographs the film at a time, through DevTools' screenshot
       capture.ts       stills, the timeline's scene frames, and export through ffmpeg, from a stage
       mix.ts           a film's sounds for the export: each <Sound>'s file found in the project, read by ffmpeg, and
@@ -69,8 +70,9 @@ apps/desktop/
   src/renderer/        React UI
 apps/cli/
   oms.mjs              the `oms` command: install the skill, init, check, still
-  worker.ts            an Electron main process that builds and draws one film with film/ (bundled by
+  worker.ts            check and still: the film built and reviewed with film/ (bundled by
                        apps/desktop/scripts/build-cli.mjs)
+  chrome.ts            the pinned chrome-headless-shell it draws in: found or downloaded, checked, driven over a pipe
   skills/oms/          the skill Claude Code or Codex reads
 ```
 

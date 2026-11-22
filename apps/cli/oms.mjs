@@ -1,7 +1,6 @@
 #!/usr/bin/env node
-import { spawn, execFileSync } from 'node:child_process';
-import { constants, existsSync } from 'node:fs';
-import { cp, copyFile, mkdir, mkdtemp, readFile, readdir, rm, stat } from 'node:fs/promises';
+import { constants } from 'node:fs';
+import { cp, copyFile, mkdir, mkdtemp, readdir, rm, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { homedir, tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
@@ -10,31 +9,6 @@ import { parseArgs } from 'node:util';
 
 const root = dirname(fileURLToPath(import.meta.url));
 const usage = 'oms install <claude|codex> | init <folder> | check <folder> [--json] | still <folder> --at <seconds> --out <new.png>';
-
-/** Downloads Electron's binary on first use, once, even when several commands start together. */
-async function ensureElectron(electronDir) {
-  const ready = () => process.env.ELECTRON_OVERRIDE_DIST_PATH || existsSync(join(electronDir, 'path.txt'));
-  const lock = join(electronDir, 'oms-download.lock');
-  for (;;) {
-    if (ready()) return;
-    try {
-      await mkdir(lock);
-      break;
-    } catch (error) {
-      if (error.code !== 'EEXIST') throw error;
-    }
-    // A lock left by a download that died is taken over after ten minutes.
-    const since = await stat(lock).then(info => Date.now() - info.mtimeMs, () => 0);
-    if (since > 600_000) await rm(lock, { recursive: true, force: true });
-    await new Promise(done => setTimeout(done, 500));
-  }
-  try {
-    // Keep download progress off stdout so the very first --json invocation is parseable.
-    if (!ready()) execFileSync(process.execPath, [join(electronDir, 'install.js')], { stdio: ['ignore', 2, 2] });
-  } finally {
-    await rm(lock, { recursive: true, force: true });
-  }
-}
 
 async function run() {
   const [command, ...args] = process.argv.slice(2);
@@ -73,29 +47,16 @@ async function run() {
   }
   if (!['still', 'check'].includes(command)) throw new Error(usage);
   if (command === 'still' && (!values.at?.trim() || !Number.isFinite(Number(values.at)) || !values.out?.toLowerCase().endsWith('.png'))) throw new Error(usage);
-  // Chromium refuses to start its sandbox, which holds the film's code, as root.
-  if (process.getuid?.() === 0) throw new Error('The preview player cannot run as root: run oms as an ordinary user.');
-  const require = createRequire(import.meta.url);
-  await ensureElectron(dirname(require.resolve('electron/package.json')));
-  const electron = require('electron');
+  // The worker builds the film with the Studio's own code and draws it in headless Chrome (worker.ts, chrome.ts).
+  const worker = createRequire(import.meta.url)(join(root, 'dist/worker.cjs'));
   const scratch = await mkdtemp(join(tmpdir(), 'oms-preview-'));
   try {
-    const env = { ...process.env };
-    delete env.ELECTRON_RUN_AS_NODE;
-    const status = await new Promise((done, fail) => {
-      // A Linux server has no display: Chromium's headless platform draws the offscreen player without one.
-      const headless = process.platform === 'linux' && !process.env.DISPLAY && !process.env.WAYLAND_DISPLAY;
-      const child = spawn(electron, [...(headless ? ['--ozone-platform=headless'] : []), join(root, 'dist/worker.cjs'), command, dir, scratch, values.at ?? '0'],
-        { stdio: ['ignore', 'inherit', 'inherit'], env });
-      child.on('error', fail);
-      child.on('exit', (code, signal) => signal ? fail(new Error('Player exited with ' + signal)) : done(code));
-    });
-    if (status !== 0) throw new Error('The preview player failed. See the diagnostic above.');
     if (command === 'still') {
-      await copyFile(join(scratch, 'frame.png'), resolve(values.out), constants.COPYFILE_EXCL);
+      const png = await worker.still(dir, scratch, Number(values.at));
+      await writeFile(resolve(values.out), png, { flag: 'wx' });
       return console.log(resolve(values.out));
     }
-    const review = JSON.parse(await readFile(join(scratch, 'review.json'), 'utf8'));
+    const review = await worker.check(dir, scratch);
     if (values.json) console.log(JSON.stringify(review));
     else {
       console.log(`Checked ${review.checkedFrames} frames${review.film ? ' of ' + review.film.seconds + 's' : ''}.`);
