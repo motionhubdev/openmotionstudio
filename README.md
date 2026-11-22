@@ -22,7 +22,7 @@ Describe the film, point at what to change on the picture, and export an MP4.
 
 <br />
 
-<a href="https://openmotion.studio/examples/launch-film"><img src="site/media/workspace-tour.webp" width="900" alt="The OpenMotionStudio workspace: the agent's conversation on the left, the film playing in the middle, its outline on the right and the timeline below" /></a>
+<a href="https://openmotion.studio/examples/launch-film"><img src="https://openmotion.studio/media/workspace-tour.webp" width="900" alt="The OpenMotionStudio workspace: the agent's conversation on the left, the film playing in the middle, its outline on the right and the timeline below" /></a>
 
 </div>
 

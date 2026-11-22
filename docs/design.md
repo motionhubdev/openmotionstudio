@@ -2,7 +2,7 @@
 
 > **Status:** Current · **Updated:** 2026-11-22
 
-The Studio's visual system: its identity, colour, type, shape, icons, the workspace's layout, the rules components follow and the website's controls.
+The Studio's visual system: its identity, colour, type, shape, icons, the workspace's layout, and the rules components follow.
 
 OpenMotionStudio is an agent video editor for AI creators with a discerning eye for visual design. Visual quality and interaction quality are the first priorities in every OMS interface decision. Review hierarchy, spacing, action placement and feedback together in the rendered interface.
 
@@ -13,8 +13,8 @@ own, apart from the catalogue's ball in flight: the **eased square**, a rounded 
 into a deep and a mid vermilion, the curve drawn light along the seam. It is animation's slow, fast, slow, and reads
 as the S of Studio. Vermilion is the mark and the one action a screen asks for; cobalt, the one cool colour, is where
 the person's attention is. The interface stays quiet so the film is loud: no colour on screen but the film's, the
-film sits on ink, and each colour has one job. The Studio and the website share one palette, by the same token names
-and values (`styles.css` and `site/studio.css`).
+film sits on ink, and each colour has one job. The Studio and its website (openmotion.studio, kept in the private
+`motionhubdev/openmotionstudio-web`) share one palette, by the same token names and values.
 
 - **Vermilion (`--accent`)** is Export, and nothing else: the one action a screen asks for, in the mark's colour, raised
   as the website's Download is (`--accent-edge`, `--accent-lift`). At most one on a screen.
@@ -30,8 +30,7 @@ and values (`styles.css` and `site/studio.css`).
 The mark is the app's icon, full bleed: `apps/desktop/resources/icon.svg` (vermilion `#8A3021`, `#EE6348` and the
 curve `#FFB4A1`, corners at 22.5 %) is its source. `icon.png` is it at 1024 px, from which electron-builder makes the
 Mac's and Linux's icons, and `icon.ico` is Windows', 16 to 256 px; both are rendered from `icon.svg` and change with
-it. The window, the tray and Home's logo (`logo.tsx`) take the same files. The website (`site/favicon.svg`) uses the
-same drawing.
+it. The window, the tray and Home's logo (`logo.tsx`) take the same files. The website's favicon uses the same drawing.
 
 The name beside the mark is one word set in two weights, split as the address openmotion.studio is: **OpenMotion** in
 weight 650 and ink, **Studio** in 400 and `--muted` (`Wordmark` in `logo.tsx`, `.brand` on the website). In running
@@ -347,57 +346,6 @@ agents and exports continue. Sessions are retained for this app run; explicit Qu
   none was selected) and synthesize the narration through the project's current agent. Generation requires a connected,
   idle agent and opens the assistant.
 
-
-## The website
-
-openmotion.studio (`site/`) keeps the Studio's paper, ink and rules, in its own tokens on `:root` in `site/studio.css`
-(light by default, dark on request). Its controls are one family, built after the Studio's and shared by both pages:
-
-- **Buttons** (`.btn`): paper raised from the page by a hairline edge, a lit top edge and a small shadow, sinking a
-  half pixel when pressed. Three sizes: 30 px (`.btn-sm`, radius 6), 34 px (radius 8) and 48 px (`.btn-lg`, radius 10).
-  `.btn-primary` is vermilion and is Download alone, in the top bar, on the first screen, on the system's row in the
-  downloads and at the end of the tour.
-- **Segmented controls** (`.seg`): options side by side in a sunk well, the chosen one raised and sliding to the
-  choice. The theme (light, dark) is one; which is chosen is read from the root's `data-theme`, set before the page
-  paints.
-- **The language** is set as on the Studio's Home: a quiet select (`.select-quiet`) showing Lucide's Languages icon and
-  the language's short name (EN, 中文), opening the languages by their own names (English, 简体中文). Another language
-  is one more option.
-- **Pages** (`.nav-link`): quiet until pointed at, when they take the well; the page one is on has an ink bar under it,
-  as the playhead marks a frame.
-- **Selects** (`.select`) are drawn by the page, not the system: a raised button with the chosen option and a chevron
-  over a floating list, the chosen option ticked; the native `<select>` stays behind it as the value, and the keys work
-  as on a native one. A control's name in running text is a keycap (`kbd`).
-- **MotionHub** is named by its own files from `motionhubdev/motionhub` (`brand/logo/`), as its `BRAND.md` asks: the
-  lockup (`media/motionhub-logo.svg`, `-dark.svg` on the dark theme) at 28 px where the looks are introduced, and its
-  icon (`media/motionhub-icon.svg`) at 16 px in the footer; never recoloured.
-- **The top bar** is frosted over the page and takes a hairline once the page scrolls under it. Narrower than 860 px it
-  drops Discord and GitHub (the footer keeps them, each with its mark, as MotionHub has its icon there), narrower than 640 px the pages, narrower than 560 px the controls go compact, and narrower than 440 px
-  the mark stands for the name.
-- **A film's frame** (`.frame`: the demo, the looks' reel, the two cuts and the walkthrough) clips the picture square, the video laid out 3px
-  past it on every side, and draws its rounded corners and hairline over the picture, the corners outside the curve
-  filled with the page's ground: Chrome on Windows otherwise draws a hair of black along a scaled video's edge, or
-  along the right and bottom of a rounded clip. Neither frame has a shadow.
-- **A paused film** shows a play button in the headlines' cobalt, its play mark in a disc, over the picture dimmed a
-  little; a click anywhere on the picture plays or pauses it, and the first screen's demo returns to its first frame
-  when it ends.
-- **The examples** (/examples) are a list, each its film first: in a film's frame at a frame of its own, paused
-  behind the play button with its length, and played in place, one at a time; then its kind, look and agent in muted
-  mono, its title, one sentence, small buttons for how it was made (with the tutorial's length) and its files, and,
-  in small muted type, the post that inspired it or a link to the original. The narrated explainers made with another
-  engine follow the Studio's under a head of their own that names no tool and says their source does not open in the
-  Studio; one made in two languages plays, shows and offers the page's language's. A
-  tutorial (/examples/<name>) is one screen on a desktop: the top bar, the way back to the list, the title, the film beside
-  its steps and the footer. The film is as large as the screen's height leaves room for, with a Full screen button
-  beside its captions and speed; the steps, in a panel of the surface's tint, are as tall as the picture and scroll
-  within, each a card that plays from its place wherever it is clicked, the one playing raised and brought into view,
-  the list fading at its foot while more lies below. Narrower than 960 px the steps follow the film and the page scrolls.
-- **The transport bar** at the foot of the front page is its timeline, frosted over the page as the top bar is: what
-  has scrolled by is a band of ink's tint running to the window's edge at the page's end, with the playhead at its edge, and each chapter is marked by its name (What it is, Styles, Precise edits, Free & private,
-  Compare, Get it; in Chinese too), cut short with its whole name in a tip where its room is
-  small.
-- **The looks' reel** has a mark for each look down its right side, as a timeline marks its scenes: dots, the current
-  one drawn long in ink; a click shows that look (the list beside it is the control a keyboard and a reader use).
 
 ## Exploration and recovery
 

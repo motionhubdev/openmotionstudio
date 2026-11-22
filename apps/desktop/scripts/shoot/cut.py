@@ -1,4 +1,4 @@
-"""Cut the website's hero loop (site/media/studio-loop.mp4) from a take of shoot.sh.
+"""Cut the website's hero loop (media/studio-loop.mp4 on openmotion.studio) from a take of shoot.sh.
 Usage: cut.py RUN_DIR [OUT.mp4]
 
 Each shot is rendered to its own short file from a seek into raw.mp4, then the shots are joined by cuts or a

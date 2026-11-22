@@ -3,6 +3,14 @@
 Every key change to OpenMotionStudio, newest first, by date. What counts as key and the entry format are in
 `CLAUDE.md`, "The changelog".
 
+## 2026-11-22 — The website moves out of this repository
+
+- **What:** openmotion.studio's pages, media, Worker and deploy, with the docs on its design and its examples, are now kept in the private `motionhubdev/openmotionstudio-web`, and their history is taken out of this one; this repository holds the Studio alone. `pnpm dev:site` is gone. Publishing a release here now sends it to the website (`.github/workflows/site.yml`), which points its downloads at it and deploys.
+- **Why:** The open repository is for the Studio's code; the website's films made every clone hundreds of megabytes heavier.
+- **Breaking:** The history was rewritten: every commit and tag has a new id, and a clone made before this has to be cloned again (or reset onto the new `main`). The releases and their downloads are unchanged.
+- **Upgrade:** Clone again. A release needs the `WEBSITE_DISPATCH_TOKEN` secret to reach the website.
+- **Refs:** `.github/workflows/site.yml`, `package.json`, `README.md`, `CLAUDE.md`, `docs/design.md`, `docs/tech/architecture.md`, `docs/README.md`.
+
 ## 2026-11-22 — The narrated explainers on /examples no longer name the tool they were made with
 
 - **What:** The 23 narrated explainers on /examples show the films alone: their head ("More films"), cards, buttons ("Download source") and labels, in English and Chinese, no longer name the tool they were made with. Each card still links its original and credits others' media; the head says their source was made with another engine and does not open in the Studio, and links the licence and credits. Every file and address is unchanged.

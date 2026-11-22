@@ -5,7 +5,6 @@ Read [positioning](prd/positioning.md) first, then [the architecture](tech/archi
 ## Product
 
 - [Positioning](prd/positioning.md) — what the Studio is, for whom, instead of what, and its non-goals.
-- [Examples](prd/examples.md) — plan: the films the website shows, their tutorials and files, and the daily agent that makes them.
 
 ## Technical
 
