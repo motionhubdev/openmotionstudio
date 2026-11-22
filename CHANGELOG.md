@@ -3,6 +3,14 @@
 Every key change to OpenMotionStudio, newest first, by date. What counts as key and the entry format are in
 `CLAUDE.md`, "The changelog".
 
+## 2026-11-22 — The OMS skill carries VisoTalk's craft, and both agents get three more rules
+
+- **What:** `oms install` now puts five references beside the skill (`craft.md`, `look.md`, `drawing.md`, `review.md`, `assets.md`) and the example film, and the skill gives an order of work: facts and script, a board per scene, the look, one scene drawn and looked at before the rest, at most three review rounds, then the render. They carry VisoTalk's tuned guidance on scripting to length, motion that means something, pacing, the cover frame, type and colour, portrait films, honest figures, licences and an independent reviewer, rewritten for `film.tsx`. The film format, which the Studio's agent reads too, adds three rules: name layers for what they show; a scene's picture is there from its first frame, eased, entering over half a second and holding before its end; four or five type sizes, clear of the caption.
+- **Why:** VisoTalk is retiring in favour of OMS; its skill text was tuned on many films.
+- **Breaking:** None.
+- **Upgrade:** Move the installed `skills/oms` folder aside and run `oms install claude` or `oms install codex` again.
+- **Refs:** `apps/cli/skills/oms/`, `apps/cli/example/film.tsx`, `apps/cli/oms.mjs`, `apps/desktop/src/main/film/film.md`.
+
 ## 2026-11-22 — Exports are faster, and `oms render` draws with several Chromes
 
 - **What:** Each exported frame costs one round trip to the page instead of four, is passed to ffmpeg as the PNG DevTools made instead of decoded and encoded again, and no longer waits two animation frames after a seek: a plain film exports about a quarter faster in the Studio and with `oms`. `oms render` also draws with several Chromes at once, one a core as memory allows: on four cores a plain 20-second film rendered in 9 s instead of 28 s, and a heavily blurred one in 19 s instead of 51 s (Linux, no GPU). The same film renders to the same frames however many Chromes draw it.

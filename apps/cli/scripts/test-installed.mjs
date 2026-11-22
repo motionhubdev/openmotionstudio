@@ -19,6 +19,8 @@ try {
     const skill = join(scratch, host, 'skills/oms');
     assert.match(await readFile(join(skill, 'SKILL.md'), 'utf8'), /^name: oms$/m);
     assert.match(await readFile(join(skill, 'film-format.md'), 'utf8'), /@motionhub\/runtime/);
+    for (const reference of ['craft', 'look', 'drawing', 'review', 'assets']) assert.match(await readFile(join(skill, `references/${reference}.md`), 'utf8'), /^# /);
+    assert.match(await readFile(join(skill, 'example/film.tsx'), 'utf8'), /export default function Main/);
   }
   const starter = join(scratch, 'New film');
   oms('init', starter);

@@ -53,6 +53,7 @@ async function run() {
     try {
       await cp(join(root, 'skills/oms'), dest, { recursive: true });
       await copyFile(join(root, 'dist/film-format.md'), join(dest, 'film-format.md'));
+      await cp(join(root, 'dist/example'), join(dest, 'example'), { recursive: true });
     } catch (error) {
       await rm(dest, { recursive: true, force: true });
       throw error;

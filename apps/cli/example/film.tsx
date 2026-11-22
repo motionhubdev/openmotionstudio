@@ -10,9 +10,10 @@ const INK = '#fff8ef';
 const ACCENT = '#ffc59d';
 const FACE = 'system-ui, sans-serif';
 
-/** A headline that rises into place over its first half second. */
-function Headline({text}: {text: string}) {
-  const t = useTime();
+/** A headline that rises into place over its first half second; the cover's is there from frame 0, the thumbnail. */
+function Headline({text, cover = false}: {text: string; cover?: boolean}) {
+  const now = useTime();
+  const t = cover ? 1 : now;
   const y = interpolate(t, [0, 0.55], [24, 0], {easing: Easing.outCubic, clamp: true});
   const opacity = interpolate(t, [0, 0.4], [0, 1], {clamp: true});
   return <div style={{font: `700 62px/1.05 ${FACE}`, letterSpacing: '-0.04em', color: INK, opacity, transform: `translateY(${y}px)`}}>{text}</div>;
@@ -68,7 +69,7 @@ export default function Main() {
       <Scene id="compose" duration={9}>
         {/* Lines are what a scene says: the script and the subtitles. `at` and `dur` time one in the scene. */}
         <Line id="compose-line">Start with a scene.</Line>
-        <Layer id="title" x={34} y={130} w={472} h={155}><Headline text="Start with a scene." /></Layer>
+        <Layer id="title" x={34} y={130} w={472} h={155}><Headline text="Start with a scene." cover /></Layer>
         <Layer id="cards" x={34} y={335} w={472} h={292}>
           <Sequence from={0.4} duration={8.6}><Card label="Intro" tint="#d9e6d3" /></Sequence>
           <Sequence from={0.8} duration={8.2}><Card label="Detail" tint="#f3dfc4" /></Sequence>
