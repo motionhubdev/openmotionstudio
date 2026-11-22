@@ -1,8 +1,8 @@
 {
-  "name": "open-motion-studio-skill",
+  "name": "@motionhub/oms",
   "version": "0.1.0",
   "private": true,
-  "description": "Author editable OpenMotionStudio films from Claude Code or Codex.",
+  "description": "Make motion videos from Claude Code or Codex: author, check, still and render OpenMotionStudio films.",
   "license": "Apache-2.0",
   "bin": { "oms": "oms.mjs" },
   "files": ["oms.mjs", "dist", "skills", "README.md"],

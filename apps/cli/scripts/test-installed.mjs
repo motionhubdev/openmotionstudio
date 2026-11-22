@@ -62,6 +62,35 @@ export default function Main() {
   oms('still', heavy, '--at', '5', '--out', join(scratch, 'heavy-5.png'));
   assert.notDeepEqual(await readFile(join(scratch, 'heavy-5.png')), await readFile(join(scratch, 'heavy-0.png')), 'the still at 5 s is the stage\'s earlier frame');
 
+  // A render: the film's picture, its sound mixed in and its lines as subtitles, beside and inside the MP4.
+  const scored = join(scratch, 'Scored');
+  await mkdir(join(scored, 'media'), { recursive: true });
+  const rate = 48000;
+  const samples = Buffer.alloc(rate * 2);
+  for (let i = 0; i < rate; i++) samples.writeInt16LE(Math.round(Math.sin((2 * Math.PI * 440 * i) / rate) * 8000), i * 2);
+  const header = Buffer.alloc(44);
+  header.write('RIFF', 0); header.writeUInt32LE(36 + samples.length, 4); header.write('WAVEfmt ', 8);
+  header.writeUInt32LE(16, 16); header.writeUInt16LE(1, 20); header.writeUInt16LE(1, 22); header.writeUInt32LE(rate, 24);
+  header.writeUInt32LE(rate * 2, 28); header.writeUInt16LE(2, 32); header.writeUInt16LE(16, 34); header.write('data', 36);
+  header.writeUInt32LE(samples.length, 40);
+  await writeFile(join(scored, 'media/tone.wav'), Buffer.concat([header, samples]));
+  await writeFile(join(scored, 'film.tsx'), `import {Film, Scene, Layer, Line, Sound, useTime} from '@motionhub/runtime';
+export const film = {width: 540, height: 960, fps: 24};
+function Count() { return <div style={{font: '700 120px sans-serif', color: '#fff'}}>{useTime().toFixed(1)}</div>; }
+export default function Main() {
+  return <Film><Sound src="media/tone.wav" volume={-12} />
+    <Scene id="one" duration={1}><Line id="one-line">One.</Line><Layer id="count"><Count /></Layer></Scene>
+    <Scene id="two" duration={1}><Line id="two-line">Two.</Line><Layer id="count"><Count /></Layer></Scene>
+  </Film>;
+}
+`);
+  const video = join(scratch, 'scored.mp4');
+  assert.equal(oms('render', scored, '--out', video).trim(), video);
+  const probe = (() => { try { return execFileSync('ffmpeg', ['-hide_banner', '-i', video], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }); } catch (error) { return error.stderr; } })();
+  for (const stream of [/Video: h264/, /540x960/, /Audio: aac/, /Subtitle: mov_text/, /Duration: 00:00:02\.0/]) assert.match(probe, stream);
+  assert.match(await readFile(join(scratch, 'scored.srt'), 'utf8'), /One\.[\s\S]*Two\./);
+  assert.throws(() => oms('render', scored, '--out', video), /is there already/);
+
   const silent = join(scratch, 'Missing sound');
   await mkdir(silent);
   await writeFile(join(silent, 'film.tsx'), `import {Film, Scene, Sound} from '@motionhub/runtime';
@@ -72,7 +101,7 @@ export default function Main() {
 `);
   assert.throws(() => oms('check', silent, '--json'), error =>
     error.status === 1 && JSON.parse(error.stdout).issues.some(issue => issue.text.includes('media/chime.wav')));
-  console.log('PASS installed skill, starter, editable example, PNG, bounds, a fresh frame and missing audio');
+  console.log('PASS installed skill, starter, editable example, PNG, bounds, a fresh frame, a render and missing audio');
 } finally {
   await rm(scratch, { recursive: true, force: true });
 }

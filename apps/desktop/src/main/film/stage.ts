@@ -32,6 +32,12 @@ export interface Stage {
   close(): void;
 }
 
+/**
+ * What a review or an export needs of a stage: the film, its frames as PNGs, and closing it. The oms command's Chrome
+ * stage (apps/cli/chrome.ts) is one too.
+ */
+export type PhotoStage = Pick<Stage, 'film'> & { frame(t: number): Promise<{ toPNG(): Buffer }>; close(): void | Promise<void> };
+
 /** Opens the film of build `version` for photographing. Rejects with the page's own error when it fails. */
 export async function openStage(version: number, session: Session): Promise<Stage> {
   const window = new BrowserWindow({

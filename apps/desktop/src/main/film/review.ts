@@ -1,13 +1,10 @@
 import type { BuildResult, FilmReview } from '../../shared/api';
-import type { Stage } from './capture';
-
-/** What a review needs of a stage: the film, and a frame drawn at a time (the oms command's Chrome stage is one too). */
-export type ReviewStage = Pick<Stage, 'film' | 'close'> & { frame(t: number): Promise<unknown> };
+import type { PhotoStage } from './stage';
 
 /** Checks a fixed bundle. Sampling catches rendering failures, not every possible visual defect. */
 export async function reviewBuild(
   build: BuildResult | null,
-  open: (version: number) => Promise<ReviewStage>,
+  open: (version: number) => Promise<PhotoStage>,
   signal?: AbortSignal,
 ): Promise<FilmReview> {
   const review: FilmReview = { version: build?.version ?? 0, checkedFrames: 0, issues: [] };
@@ -20,7 +17,7 @@ export async function reviewBuild(
     }));
     return review;
   }
-  let stage: ReviewStage | undefined;
+  let stage: PhotoStage | undefined;
   try {
     signal?.throwIfAborted();
     stage = await open(build.version);
@@ -68,7 +65,7 @@ export async function reviewBuild(
     if (signal?.aborted) throw error;
     review.issues.push({ id: 'preview', kind: 'runtime', severity: 'error', text: error instanceof Error ? error.message : String(error) });
   } finally {
-    stage?.close();
+    await stage?.close();
   }
   return review;
 }

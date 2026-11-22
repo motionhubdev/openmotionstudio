@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { constants } from 'node:fs';
+import { constants, existsSync } from 'node:fs';
 import { cp, copyFile, mkdir, mkdtemp, readdir, rm, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { homedir, tmpdir } from 'node:os';
@@ -8,12 +8,13 @@ import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 
 const root = dirname(fileURLToPath(import.meta.url));
-const usage = 'oms install <claude|codex> | init <folder> | check <folder> [--json] | still <folder> --at <seconds> --out <new.png>';
+const usage = 'oms install <claude|codex> | init <folder> | check <folder> [--json] | still <folder> --at <seconds> --out <new.png> | render <folder> --out <new.mp4>';
 
 async function run() {
   const [command, ...args] = process.argv.slice(2);
   if (!command || command === '--help') return console.log(usage);
   const options = command === 'still' ? { at: { type: 'string' }, out: { type: 'string' } }
+    : command === 'render' ? { out: { type: 'string' } }
     : command === 'check' ? { json: { type: 'boolean' } } : {};
   const { values, positionals } = parseArgs({ args, options, allowPositionals: true });
   if (positionals.length !== 1) throw new Error(usage);
@@ -45,12 +46,27 @@ async function run() {
     await copyFile(join(root, 'dist/starter.tsx'), join(dir, 'film.tsx'), constants.COPYFILE_EXCL);
     return console.log(dir);
   }
-  if (!['still', 'check'].includes(command)) throw new Error(usage);
+  if (!['still', 'check', 'render'].includes(command)) throw new Error(usage);
+  if (command === 'render') {
+    if (!values.out?.toLowerCase().endsWith('.mp4')) throw new Error(usage);
+    // A render is moved into place whole; it never replaces a video, or the subtitles beside it.
+    const subtitles = resolve(values.out).replace(/\.mp4$/i, '') + '.srt';
+    for (const file of [resolve(values.out), subtitles]) if (existsSync(file)) throw new Error(`${file} is there already: name a new file.`);
+  }
   if (command === 'still' && (!values.at?.trim() || !Number.isFinite(Number(values.at)) || !values.out?.toLowerCase().endsWith('.png'))) throw new Error(usage);
   // The worker builds the film with the Studio's own code and draws it in headless Chrome (worker.ts, chrome.ts).
   const worker = createRequire(import.meta.url)(join(root, 'dist/worker.cjs'));
   const scratch = await mkdtemp(join(tmpdir(), 'oms-preview-'));
   try {
+    if (command === 'render') {
+      let shown = -1;
+      await worker.render(dir, scratch, resolve(values.out), (done) => {
+        const percent = Math.floor(done * 100);
+        if (percent !== shown && process.stderr.isTTY) process.stderr.write(`\rRendering ${(shown = percent)}%`);
+      });
+      if (process.stderr.isTTY) process.stderr.write('\n');
+      return console.log(resolve(values.out));
+    }
     if (command === 'still') {
       const png = await worker.still(dir, scratch, Number(values.at));
       await writeFile(resolve(values.out), png, { flag: 'wx' });

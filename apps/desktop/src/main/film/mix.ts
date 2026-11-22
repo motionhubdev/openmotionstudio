@@ -144,10 +144,10 @@ export async function soundPeaks(dir: string, ffmpeg: string, src: string): Prom
 }
 
 /** `sounds` with their files and those files' lengths, for soundMix. */
-export async function soundInputs(dir: string, ffmpeg: string, sounds: FilmSound[]) {
+export async function soundInputs(dir: string, ffmpeg: string, sounds: FilmSound[], output = buildDir(dir)) {
   return Promise.all(
     sounds.map(async (sound) => {
-      const file = await soundFile(dir, sound.src);
+      const file = await soundFile(dir, sound.src, output);
       return { sound, file, fileSeconds: await mediaSeconds(ffmpeg, file) };
     }),
   );

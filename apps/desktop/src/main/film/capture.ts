@@ -4,14 +4,12 @@
 // ahead of the frames), which any phone plays, with the film's sounds mixed beside them
 // as AAC (mix.ts). Nothing in the film runs on a clock, so a time always draws the same frame.
 
-import { app } from 'electron';
 import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { mkdir, readFile, readdir, rename, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import ffmpegStatic from 'ffmpeg-static';
-import type { Stage } from './stage';
-export { openStage, type Stage } from './stage';
+import type { PhotoStage, Stage } from './stage';
+export type { Stage } from './stage';
 import type { SceneStills } from '../../shared/api';
 import { COVER, STATE_DIR } from '../project';
 import { buildDir } from './film';
@@ -41,12 +39,6 @@ const VIDEO = [
   '-level:v',
   '4.1',
 ];
-
-/** The ffmpeg shipped with the app; inside a package it is unpacked beside the archive. */
-export function ffmpegPath(): string {
-  if (!ffmpegStatic) throw new Error('No ffmpeg is available for this platform.');
-  return app.isPackaged ? ffmpegStatic.replace('app.asar', 'app.asar.unpacked') : ffmpegStatic;
-}
 
 /** How many frames each scene is shown by on the timeline, evenly through it. */
 export const SCENE_STILLS = 6;
@@ -159,9 +151,9 @@ const write = (stream: NodeJS.WritableStream, chunk: Buffer) =>
 export const subtitlesFile = (file: string): string => `${file.replace(/\.mp4$/i, '')}.srt`;
 
 /**
- * Renders build `version` of the film in `dir` to `file` as an MP4, its sounds mixed in and its lines as a soft
- * subtitle track, reporting the share done (0 to 1); the lines are written beside it as SubRip too
- * (subtitlesFile). Each is written beside its place and moved there only when the video is whole, so a failed or
+ * Renders build `version` of the film in `dir` to `file` as an MP4 with the `ffmpeg` at that path, its sounds mixed in
+ * and its lines as a soft subtitle track, reporting the share done (0 to 1); the lines are written beside it as SubRip
+ * too (subtitlesFile). The film's bundle, which its imported sounds sit beside, is in `output`. Each is written beside its place and moved there only when the video is whole, so a failed or
  * cancelled export leaves whatever was there untouched.
  */
 export async function exportFrames(
@@ -170,7 +162,9 @@ export async function exportFrames(
   file: string,
   onProgress: (done: number) => void,
   signal: AbortSignal,
-  open: (version: number) => Promise<Stage>,
+  open: (version: number) => Promise<PhotoStage>,
+  ffmpeg: string,
+  output = buildDir(dir),
 ): Promise<void> {
   const stage = await open(version);
   const partial = `${file}.partial.mp4`;
@@ -179,7 +173,7 @@ export async function exportFrames(
     const { film } = stage;
     const frames = Math.round(film.seconds * film.fps);
     // The sounds come after the picture's input (0), then the subtitles; a film with neither is picture only.
-    const mix = soundMix(await soundInputs(dir, ffmpegPath(), [...film.sounds, ...film.narration.map(spokenSound)]), frames / film.fps, 1, film.narration);
+    const mix = soundMix(await soundInputs(dir, ffmpeg, [...film.sounds, ...film.narration.map(spokenSound)], output), frames / film.fps, 1, film.narration);
     const subtitles = srt(film);
     if (subtitles) await writeFile(partialSubtitles, subtitles);
     const subtitleInput = 1 + (mix ? mix.inputs.length / 2 : 0);
@@ -190,8 +184,8 @@ export async function exportFrames(
       ...(mix ? ['-map', '[aout]', '-c:a', 'aac', '-b:a', '192k'] : []),
       ...(subtitles ? ['-map', `${subtitleInput}:s`, '-c:s', 'mov_text', '-metadata:s:s:0', 'language=und'] : []),
     ];
-    const ffmpeg = spawn(
-      ffmpegPath(),
+    const encoder = spawn(
+      ffmpeg,
       [
         '-y',
         '-loglevel',
@@ -219,13 +213,13 @@ export async function exportFrames(
       { stdio: ['pipe', 'ignore', 'pipe'] },
     );
     let stderr = '';
-    ffmpeg.stderr.on('data', (data) => {
+    encoder.stderr.on('data', (data) => {
       stderr = (stderr + data).slice(-4000);
     });
-    ffmpeg.stdin.on('error', () => {});
+    encoder.stdin.on('error', () => {});
     const finished = new Promise<void>((done, fail) => {
-      ffmpeg.on('error', fail);
-      ffmpeg.on('close', (code) =>
+      encoder.on('error', fail);
+      encoder.on('close', (code) =>
         code === 0 ? done() : fail(new Error(`ffmpeg exited ${code}: ${stderr.trim().split('\n').slice(-3).join(' / ')}`)),
       );
     });
@@ -233,12 +227,12 @@ export async function exportFrames(
     try {
       for (let i = 0; i < frames; i++) {
         if (signal.aborted) throw new Error('The export was cancelled.');
-        await write(ffmpeg.stdin, (await stage.frame(i / film.fps)).toPNG());
+        await write(encoder.stdin, (await stage.frame(i / film.fps)).toPNG());
         onProgress((i + 1) / frames);
       }
-      ffmpeg.stdin.end();
+      encoder.stdin.end();
     } catch (error) {
-      ffmpeg.kill('SIGKILL');
+      encoder.kill('SIGKILL');
       await finished.catch(() => {});
       throw error;
     }
@@ -246,7 +240,7 @@ export async function exportFrames(
     await rename(partial, file);
     if (subtitles) await rename(partialSubtitles, subtitlesFile(file));
   } finally {
-    stage.close();
+    await stage.close();
     await rm(partial, { force: true });
     await rm(partialSubtitles, { force: true });
   }

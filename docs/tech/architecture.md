@@ -69,10 +69,11 @@ apps/desktop/
                        messages in Chinese (i18n.ts, translations.ts)
   src/renderer/        React UI
 apps/cli/
-  oms.mjs              the `oms` command: install the skill, init, check, still
-  worker.ts            check and still: the film built and reviewed with film/ (bundled by
+  oms.mjs              the `oms` command (`@motionhub/oms`): install the skill, init, check, still, render
+  worker.ts            check, still and render: the film built, reviewed and exported with film/ (bundled by
                        apps/desktop/scripts/build-cli.mjs)
   chrome.ts            the pinned chrome-headless-shell it draws in: found or downloaded, checked, driven over a pipe
+  ffmpeg.ts            the person's ffmpeg it renders with, checked for what an export uses
   skills/oms/          the skill Claude Code or Codex reads
 ```
 

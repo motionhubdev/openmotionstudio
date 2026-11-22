@@ -13,6 +13,7 @@ import { basename, dirname, join, resolve } from 'node:path';
 import type { Readable, Writable } from 'node:stream';
 import { filmFile, filmPolicy } from '../desktop/src/main/film/serve';
 import type { FilmInfo } from '../desktop/src/shared/preview';
+import type { PhotoStage } from '../desktop/src/main/film/stage';
 
 /**
  * The chrome-headless-shell build HyperFrames pins, so either tool can use the other's download: Chrome 158, or on macOS 12
@@ -319,14 +320,6 @@ function timeout<T>(promise: Promise<T>, what: string): Promise<T> {
   ]).finally(() => clearTimeout(timer));
 }
 
-/** A film opened in headless Chrome, ready to be photographed at any time; close() when done. */
-export interface ChromeStage {
-  film: FilmInfo;
-  /** The frame at `t`, as a PNG. */
-  frame(t: number): Promise<Buffer>;
-  close(): Promise<void>;
-}
-
 /** The film's origin: `.invalid` never resolves, so the page exists only as Chrome is answered from the film's files. */
 const ORIGIN = 'https://film.invalid';
 
@@ -334,7 +327,7 @@ const ORIGIN = 'https://film.invalid';
  * Opens the film in `dir`, built into `output`, with the Studio's preview scripts from `studio`, in Chrome at `binary`
  * with its profile in `profile`. Rejects with the page's own error when it fails.
  */
-export async function openChromeStage(binary: string, dir: string, output: string, studio: string, profile: string): Promise<ChromeStage> {
+export async function openChromeStage(binary: string, dir: string, output: string, studio: string, profile: string): Promise<PhotoStage> {
   let sandbox = sandboxWanted();
   let started: { child: ChildProcess; pipe: Pipe };
   try {
@@ -426,7 +419,8 @@ export async function openChromeStage(binary: string, dir: string, output: strin
           pipe.send<{ data: string }>('Page.captureScreenshot', { format: 'png', optimizeForSpeed: true }, sessionId),
           `Photographing the frame at ${t.toFixed(2)} s`,
         );
-        return Buffer.from(shot.data, 'base64');
+        const png = Buffer.from(shot.data, 'base64');
+        return { toPNG: () => png };
       },
       close,
     };

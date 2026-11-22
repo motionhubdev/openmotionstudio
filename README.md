@@ -102,6 +102,6 @@ Use the Node version in `.nvmrc`. Before a push, run the gate CI runs on all thr
 Licensed under the [Apache License 2.0](LICENSE). Windows releases are signed under our
 [code signing policy](docs/ops/code-signing.md): free code signing provided by SignPath.io, certificate by SignPath Foundation.
 
-## Author with Claude Code or Codex
+## Make films with Claude Code or Codex
 
-Install the OMS skill to create a native film folder from your terminal, check its scenes and capture frames. Open the same folder in Studio to refine it and export an MP4. [Installation and commands](apps/cli/README.md)
+`oms` and its skill let an agent in your terminal, or on a server, make a film end to end: write it, check it, capture frames and render an MP4 with your own ffmpeg. The folder opens in the Studio as it is, if you want to refine it there. [Installation and commands](apps/cli/README.md)

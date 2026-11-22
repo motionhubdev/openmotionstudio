@@ -11,9 +11,9 @@ Every key change to OpenMotionStudio, newest first, by date. What counts as key 
 - **Upgrade:** Nothing. Export a heavy film again to replace one made before.
 - **Refs:** `apps/desktop/src/main/film/stage.ts`, `apps/desktop/src/main/index.ts`, `apps/cli/worker.ts`, `apps/cli/scripts/test-installed.mjs`, `docs/tech/architecture.md`, `docs/tech/creator-workflow.md`.
 
-## 2026-11-22 — Claude Code and Codex can author a film from the terminal with `oms`
+## 2026-11-22 — Claude Code and Codex make films end to end with `oms`
 
-- **What:** A new package, `apps/cli`, holds the `oms` command and an OMS skill for Claude Code and Codex. `oms install claude` or `oms install codex` puts the skill in the host's user skills directory; `oms init`, `oms check [--json]` and `oms still --at <s> --out <new.png>` start, check and draw a film with the Studio's own build and preview core, in the chrome-headless-shell build HyperFrames pins: one HyperFrames or Puppeteer already downloaded, else downloaded once into `~/.cache/puppeteer`. It needs no display, and runs Chrome without its sandbox, with a warning, as root or in a container. The folder opens in the Studio as it is. The package is built with `npm pack` and is not published yet.
+- **What:** A new package, `apps/cli` (`@motionhub/oms`), holds the `oms` command and an OMS skill for Claude Code and Codex, which make a film end to end. `oms install claude` or `oms install codex` puts the skill in the host's user skills directory; `oms init`, `oms check [--json]`, `oms still --at <s> --out <new.png>` and `oms render --out <new.mp4>` start, check, draw and render a film (the MP4 with the person's own ffmpeg) with the Studio's own build and preview core, in the chrome-headless-shell build HyperFrames pins: one HyperFrames or Puppeteer already downloaded, else downloaded once into `~/.cache/puppeteer`. It needs no display, and runs Chrome without its sandbox, with a warning, as root or in a container. The folder opens in the Studio as it is. The package is built with `npm pack` and is not published yet.
 - **Why:** People who already work in a terminal agent can make a film there, then refine and export it in the Studio.
 - **Breaking:** None.
 - **Upgrade:** Nothing. To use it, follow `apps/cli/README.md`.

@@ -1,6 +1,6 @@
 ---
 name: oms
-description: Create, inspect or revise editable OpenMotionStudio (OMS) motion videos from a brief and local assets. Use for requests to make a video with OMS, to create a project to refine in Studio, or to update an existing film.tsx, in any language.
+description: Make, inspect, revise or render OpenMotionStudio (OMS) motion videos from a brief and local assets, end to end to an MP4. Use for requests to make a video with OMS, to render or update an existing film.tsx, or to create a project to refine in Studio, in any language.
 ---
 
 Read the bundled [film format](film-format.md) before authoring. Use the installed `oms` command in the user's workspace.
@@ -9,4 +9,4 @@ Read the bundled [film format](film-format.md) before authoring. Use the install
 2. Plan the duration, frame size, scene beats and their lines from the brief. Copy supplied assets into the project and reference them by relative path. Use existing local motions when available. The reference describes Studio tools; use local files and OMS CLI in this host. Leave online motion acquisition and voice synthesis to Studio when needed.
 3. Write the root film.tsx. Keep meaningful objects in individually named Layer elements. Assign stable scene and line IDs. Use the supplied runtime and deterministic scene time. Keep imported components, fonts and media together with the project.
 4. Run `oms check "<folder>" --json`. Read diagnostics, correct errors, then inspect PNGs from `oms still "<folder>" --at 1.5 --out "<new path>.png"` at the busiest moment of each scene and near transitions. Use times strictly before the film's end. Open the images with the host's image viewer and fix framing, legibility and unintended overlaps.
-5. Return the project folder, duration and a preview path. Open that folder with Studio's Open Project action to refine layers, captions and timing or export an MP4. On subsequent turns reread the on-disk source before making a scoped edit.
+5. When the person wants the video, run `oms render "<folder>" --out "<new path>.mp4"` (it needs their ffmpeg; if it says ffmpeg is missing or incomplete, pass on its install command). Return the MP4, the project folder and the duration. The folder also opens in Studio, with its Open Project action, for refining layers, captions and timing by hand. On subsequent turns reread the on-disk source before making a scoped edit.

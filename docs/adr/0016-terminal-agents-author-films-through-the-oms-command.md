@@ -2,19 +2,20 @@
 
 > **Status:** Accepted · **Date:** 2026-11-22
 
-Whether, and how, Claude Code or Codex in the person's own terminal, or on a server, can make a film the Studio opens.
+Whether, and how, Claude Code or Codex in the person's own terminal, or on a server, can make a finished film, in the format the Studio opens.
 
 ## Decision
 
-A second package, `apps/cli`, holds the `oms` command and a skill for Claude Code and Codex. `oms install <claude|codex>`
+A second package, `apps/cli` (`@motionhub/oms`), holds the `oms` command and a skill for Claude Code and Codex. It makes a
+film end to end, as Remotion's or HyperFrames' command line does; opening it in the Studio is optional. `oms install <claude|codex>`
 copies the skill and the film format (the film section of `film.md`) into the host's user skills directory
 (`CLAUDE_CONFIG_DIR` or `~/.claude`, `CODEX_HOME` or `~/.codex`) and refuses to replace one already there. `oms init`
 writes the Studio's starter `film.tsx` into an empty or new folder; `oms check` and `oms still` build the film and draw
-it.
+it; `oms render` exports it as an MP4.
 
-`check` and `still` run the Studio's own build, review and sound lookup, not a copy: `apps/desktop/scripts/build-cli.mjs`
+`check`, `still` and `render` run the Studio's own build, review, sound lookup and export, not a copy: `apps/desktop/scripts/build-cli.mjs`
 bundles `apps/cli/worker.ts` against `film.ts` (`buildFilmOnce`, the Studio's esbuild options and reporter), `serve.ts`,
-`review.ts` and `mix.ts`, with the preview core from the same build. The film is drawn in **chrome-headless-shell**,
+`review.ts`, `mix.ts` and `capture.ts` (`exportFrames`), with the preview core from the same build. The film is drawn in **chrome-headless-shell**,
 not in Electron (`apps/cli/chrome.ts`):
 
 - **Which Chrome**: the build HyperFrames pins (158.0.8127.36; 150.0.7871.124 on macOS 12 and older, which Chrome
@@ -36,8 +37,14 @@ not in Electron (`apps/cli/chrome.ts`):
   fails to start is retried without it. Without it `oms` warns once, and the film keeps its page's policy and the
   interception but not the operating system's isolation. `OMS_CHROME_SANDBOX=1` requires the sandbox, `=0` turns it off.
 
-`oms` writes nothing into the project: a Studio watching the same folder keeps its bundle. `still` writes only a new
-PNG and never overwrites one. The package depends on `@puppeteer/browsers`, esbuild and three.js. It is built with
+**ffmpeg is the person's**, as HyperFrames and VisoTalk use it: `OMS_FFMPEG`, else the first on the `PATH`
+(`apps/cli/ffmpeg.ts`). Before a frame is drawn, `render` checks that it has every encoder, decoder and filter the
+Studio's export uses (libx264, AAC, mov_text, PNG, and the mix's filters) and otherwise says how to install a full
+build. The Studio keeps shipping its own (`ffmpeg-static`).
+
+`oms` writes nothing into the project: a Studio watching the same folder keeps its bundle. `still` and `render` write
+only new files (a PNG; an MP4 and its SubRip beside it) and never overwrite one. The package depends on
+`@puppeteer/browsers`, esbuild and three.js. It is built with
 `npm pack`; publishing it, on npm or with a release, is a separate decision.
 
 ## Reason
@@ -51,6 +58,8 @@ three.js film (at most one level apart in 0.001% of the pixels of the blurred on
 
 ## Cost
 
+- A render's encoding is the person's ffmpeg's: its x264 may not be the Studio's, so an MP4 from `oms` can differ in
+  bits, not in picture, from one the Studio exports; an ffmpeg without x264 (as some distributions ship) cannot render.
 - Two Chromiums draw a film: the Studio's Electron (Chrome 156) and the pinned shell (Chrome 158). They agreed where
   measured; on a GPU, or another platform, a frame from `oms` may differ slightly from the Studio's export.
 - The pin follows HyperFrames' release: moving it means its new build's digests, or `oms` downloads its own copy.
