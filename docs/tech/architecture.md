@@ -43,8 +43,8 @@ apps/desktop/
       serve.ts         those files and their policy, without Electron, for the scheme and for oms's Chrome
       stage.ts         an offscreen window that photographs the film at a time, through DevTools' screenshot
       capture.ts       stills, the timeline's scene frames, and export through ffmpeg, from a stage
-      mix.ts           a film's sounds for the export: each <Sound>'s file found in the project, read by ffmpeg, and
-                       one filter graph that mixes them (ADR 0010); and each file's waveform for the timeline
+      mix.ts           a film's sounds for the export: each <Sound>'s file found in the project, decoded by ffmpeg
+                       and mixed in blocks (ADR 0010, 0017); and each file's waveform for the timeline
       remotion-export.ts  the film written as a Remotion project
     voice.ts           a line spoken through Azure, ElevenLabs, MiniMax or OpenAI, with its words' times, and the
                        voices each offers (ADR 0012)
@@ -188,7 +188,8 @@ One engine, the Studio's own ([ADR 0005](../adr/0005-the-studio-has-one-engine-i
   DevTools' `Page.captureScreenshot`, which waits for a frame drawn from the page as it is (`capturePage` returned the
   last painted frame, a frame behind while a heavy one was still rasterizing), passing its PNG on as it is, and
   export pipes the frames to ffmpeg (shipped with the app) as H.264 High at level 4.1, BT.709, a key frame every two
-  seconds, faststart.
+  seconds, faststart, in segments joined as they are, with the sound mixed in blocks and added after
+  ([ADR 0017](../adr/0017-an-export-is-encoded-in-segments-and-mixed-in-blocks.md)).
 - **Sound** ([ADR 0010](../adr/0010-a-films-sound-is-sound-elements-mixed-on-export.md)): `<Film>` reports each
   `<Sound>` with the scenes, in the film's seconds (`FilmInfo.sounds`); `shared/sound.ts` says, once for the preview, the
   export and the timeline, where its file is (a path in the project, or a file the film imported, under `build/`), how

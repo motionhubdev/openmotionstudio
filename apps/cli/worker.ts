@@ -1,7 +1,9 @@
 // oms's check, still and render: the Studio's own build, review, sound lookup and export, with the film drawn in
 // headless Chrome (chrome.ts) and encoded by the person's ffmpeg (ffmpeg.ts). Bundled into dist/worker.cjs beside the
 // Studio's preview scripts (resources/preview/).
-import { availableParallelism, freemem } from 'node:os';
+import { createHash } from 'node:crypto';
+import { readdir, rm, stat } from 'node:fs/promises';
+import { availableParallelism, freemem, homedir } from 'node:os';
 import { join } from 'node:path';
 import type { FilmReview } from '../desktop/src/shared/api';
 import { buildFilmOnce } from '../desktop/src/main/film/film';
@@ -45,15 +47,28 @@ export async function check(dir: string, scratch: string): Promise<FilmReview> {
   return review;
 }
 
+/** Where a render keeps its finished segments until its video is whole, so the same render started again resumes. */
+const RENDERS = join(homedir(), '.cache', 'oms', 'renders');
+/** Segments of a render not touched for this long are a render nobody came back to, and are removed. */
+const KEPT_MS = 7 * 24 * 3600_000;
+
 /**
  * The film as an MP4 at `file`, with its sounds, narration and lines as the Studio exports them (and the lines beside it
- * as SubRip), reporting the share done (0 to 1). Nothing is drawn before ffmpeg is known to have what the render needs.
+ * as SubRip), reporting the share done (0 to 1); stopped, it keeps its finished segments, and the same render started
+ * again draws only the rest. Nothing is drawn before ffmpeg is known to have what the render needs.
  */
-export async function render(dir: string, scratch: string, file: string, onProgress: (done: number) => void): Promise<void> {
+export async function render(dir: string, scratch: string, file: string, onProgress: (done: number) => void, signal: AbortSignal): Promise<void> {
   const { build, output, open } = await opener(dir, scratch);
   if (!build.ok) throw new Error(build.errors.join('\n'));
   const ffmpeg = await findFfmpeg();
-  await exportFrames(dir, build.version, file, onProgress, new AbortController().signal, open, ffmpeg, output, renderStages());
+  // Kept by the Chrome that drew them: another one may draw other pixels.
+  const resume = join(RENDERS, createHash('sha256').update(await findChrome()).digest('hex').slice(0, 12));
+  for (const chrome of await readdir(RENDERS).catch(() => [] as string[]))
+    for (const kept of await readdir(join(RENDERS, chrome)).catch(() => [] as string[])) {
+      const at = join(RENDERS, chrome, kept);
+      if (Date.now() - (await stat(at)).mtimeMs > KEPT_MS) await rm(at, { recursive: true, force: true });
+    }
+  await exportFrames(dir, build.version, file, onProgress, signal, open, ffmpeg, { output, stages: renderStages(), resume });
 }
 
 /** The frame at `seconds`, as a PNG. */

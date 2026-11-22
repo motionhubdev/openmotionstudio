@@ -14,7 +14,7 @@ import type { SceneStills } from '../../shared/api';
 import { COVER, STATE_DIR } from '../project';
 import { buildDir } from './film';
 import { srt } from './captions';
-import { soundInputs, soundMix } from './mix';
+import { MIX_FORMAT, mixFinish, mixSounds, soundInputs } from './mix';
 import { spokenSound } from '../../shared/sound';
 
 const VIDEO = [
@@ -150,16 +150,59 @@ const write = (stream: NodeJS.WritableStream, chunk: Buffer) =>
 /** Where an export's subtitles are written: beside the video, under its name. */
 export const subtitlesFile = (file: string): string => `${file.replace(/\.mp4$/i, '')}.srt`;
 
+/** Frames in a segment of an export: 100 s at 30 fps, so an export that resumes draws at most that much again. */
+export const SEGMENT_FRAMES = 3000;
+
+/** How an export is drawn and kept while it is made. */
+export interface ExportOptions {
+  /** The folder of the film's bundle, which its imported sounds sit beside. */
+  output?: string;
+  /** How many stages draw at once: stage c the frames c, c + stages, c + 2 stages… of each segment. */
+  stages?: number;
+  /**
+   * A folder that keeps this export's finished segments until the video is whole, under a name made of everything
+   * that makes their pixels (the build's files, the film's size and rate, the encoder's settings): an export of the
+   * same build started again after an interruption draws only the segments that are missing. Without it the segments
+   * are kept beside the file and removed however the export ends.
+   */
+  resume?: string;
+  /** Frames a segment, SEGMENT_FRAMES unless a test asks for fewer. */
+  segmentFrames?: number;
+}
+
+/** What a segment's pixels depend on: the build's files, the film's size, rate and length, and the encoder. */
+async function segmentsName(output: string, version: number, film: { width: number; height: number; fps: number }, frames: number): Promise<string> {
+  const hash = createHash('sha256').update(JSON.stringify([VIDEO, film.width, film.height, film.fps, frames]));
+  // film-<n>.js are the builds a watch kept: only this export's counts, under one name.
+  const files = (await readdir(output, { withFileTypes: true }))
+    .filter((entry) => entry.isFile() && (!/^film-\d+\.js$/.test(entry.name) || entry.name === `film-${version}.js`))
+    .map((entry) => entry.name)
+    .sort();
+  for (const name of files) hash.update(`${name === `film-${version}.js` ? 'film-n.js' : name}\0`).update(await readFile(join(output, name)));
+  return hash.digest('hex').slice(0, 16);
+}
+
+/** Runs ffmpeg to its end; rejects with the last of what it said. */
+const run = (ffmpeg: string, args: string[]) =>
+  new Promise<void>((done, fail) => {
+    const child = spawn(ffmpeg, ['-y', '-loglevel', 'error', ...args], { stdio: ['ignore', 'ignore', 'pipe'] });
+    let said = '';
+    child.stderr.on('data', (data) => (said = (said + data).slice(-4000)));
+    child.on('error', fail);
+    child.on('close', (code) => (code === 0 ? done() : fail(new Error(`ffmpeg exited ${code}: ${said.trim().split('\n').slice(-3).join(' / ')}`))));
+  });
+
 /**
  * Renders build `version` of the film in `dir` to `file` as an MP4 with the `ffmpeg` at that path, its sounds mixed in
  * and its lines as a soft subtitle track, reporting the share done (0 to 1); the lines are written beside it as SubRip
- * too (subtitlesFile). The film's bundle, which its imported sounds sit beside, is in `output`. Each is written beside
- * its place and moved there only when the video is whole, so a failed or cancelled export leaves whatever was there
- * untouched.
+ * too (subtitlesFile). Each is written beside its place and moved there only when the video is whole, so a failed or
+ * cancelled export leaves whatever was there untouched.
  *
- * With `stages` above one, that many stages draw at once, stage c the frames c, c + stages, c + 2 stages…, each
- * written to the encoder in its turn; a stage holds at most the one frame it waits to write. A frame is a function of
- * its time alone, so the video is the same however many draw it.
+ * The picture is encoded in segments of SEGMENT_FRAMES frames, each moved into place once it is whole and starting on
+ * a key frame of its own, then joined as they are; the sound is mixed once for the whole film (mix.ts) and added with
+ * the subtitles, the picture copied. With several `stages`, each segment's frames are drawn at once and written to its
+ * encoder in turn, a stage holding at most the one frame it waits to write: a frame is a function of its time alone,
+ * so the video is the same however many draw it.
  */
 export async function exportFrames(
   dir: string,
@@ -169,119 +212,153 @@ export async function exportFrames(
   signal: AbortSignal,
   open: (version: number) => Promise<PhotoStage>,
   ffmpeg: string,
-  output = buildDir(dir),
-  stages = 1,
+  { output = buildDir(dir), stages = 1, resume, segmentFrames = SEGMENT_FRAMES }: ExportOptions = {},
 ): Promise<void> {
   const stage = await open(version);
   const others: PhotoStage[] = [];
   const partial = `${file}.partial.mp4`;
   const partialSubtitles = `${file}.partial.srt`;
+  const { film } = stage;
+  const frames = Math.round(film.seconds * film.fps);
+  const work = resume ? join(resume, await segmentsName(output, version, film, frames)) : `${file}.partial-segments`;
+  let whole = false;
   try {
-    const { film } = stage;
-    const frames = Math.round(film.seconds * film.fps);
-    // The sounds come after the picture's input (0), then the subtitles; a film with neither is picture only.
-    const mix = soundMix(await soundInputs(dir, ffmpeg, [...film.sounds, ...film.narration.map(spokenSound)], output), frames / film.fps, 1, film.narration);
+    await mkdir(work, { recursive: true });
+    const plan: [number, number][] = [];
+    for (let s = 0; s < frames; s += segmentFrames) plan.push([s, Math.min(frames, s + segmentFrames)]);
+    const segment = ([s, e]: [number, number]) => join(work, `${String(s).padStart(7, '0')}-${String(e).padStart(7, '0')}.mp4`);
+    const kept = new Set(await readdir(work));
+    let done = 0;
+    for (const [s, e] of plan) {
+      if (signal.aborted) throw new Error('The export was cancelled.');
+      const name = segment([s, e]);
+      if (!kept.has(name.slice(work.length + 1))) {
+        // Every stage, opened for the first segment drawn; one that fails to open fails the export.
+        const wanted = Math.min(stages, e - s) - 1 - others.length;
+        if (wanted > 0) {
+          const opening = await Promise.allSettled(Array.from({ length: wanted }, () => open(version)));
+          for (const opened of opening) if (opened.status === 'fulfilled') others.push(opened.value);
+          const refused = opening.find((opened) => opened.status === 'rejected');
+          if (refused) throw refused.reason;
+        }
+        await drawSegment([stage, ...others].slice(0, Math.max(1, Math.min(stages, e - s))), film, s, e, `${name}.partial.mp4`, ffmpeg, signal, (n) =>
+          onProgress((done + n) / frames),
+        );
+        await rename(`${name}.partial.mp4`, name);
+      }
+      done += e - s;
+      onProgress(done / frames);
+    }
+    // The segments as they are, one after another; one segment is the picture itself.
+    let picture = segment(plan[0]!);
+    if (plan.length > 1) {
+      const list = join(work, 'segments.txt');
+      await writeFile(list, plan.map((range) => `file '${segment(range).slice(work.length + 1)}'\n`).join(''));
+      picture = join(work, 'picture.mp4');
+      await run(ffmpeg, ['-f', 'concat', '-safe', '0', '-i', list, '-c', 'copy', picture]);
+    }
+    const seconds = frames / film.fps;
+    const sounds = await soundInputs(dir, ffmpeg, [...film.sounds, ...film.narration.map(spokenSound)], output);
+    const mix = await mixSounds(sounds, seconds, ffmpeg, work, film.narration);
     const subtitles = srt(film);
     if (subtitles) await writeFile(partialSubtitles, subtitles);
-    const subtitleInput = 1 + (mix ? mix.inputs.length / 2 : 0);
-    const streams = [
-      ...(mix ? [...mix.inputs, '-filter_complex', mix.graph] : []),
+    const subtitleInput = 1 + (mix ? 1 : 0);
+    await run(ffmpeg, [
+      '-i',
+      picture,
+      ...(mix ? [...MIX_FORMAT, '-i', mix] : []),
       ...(subtitles ? ['-i', partialSubtitles] : []),
-      ...(mix || subtitles ? ['-map', '0:v'] : []),
-      ...(mix ? ['-map', '[aout]', '-c:a', 'aac', '-b:a', '192k'] : []),
+      '-map',
+      '0:v',
+      '-c:v',
+      'copy',
+      ...(mix ? ['-filter_complex', `[1:a]${mixFinish(seconds)}[aout]`, '-map', '[aout]', '-c:a', 'aac', '-b:a', '192k'] : []),
       ...(subtitles ? ['-map', `${subtitleInput}:s`, '-c:s', 'mov_text', '-metadata:s:s:0', 'language=und'] : []),
-    ];
-    const encoder = spawn(
-      ffmpeg,
-      [
-        '-y',
-        '-loglevel',
-        'error',
-        '-f',
-        'image2pipe',
-        '-framerate',
-        String(film.fps),
-        '-c:v',
-        'png',
-        '-i',
-        '-',
-        ...streams,
-        ...VIDEO,
-        '-g',
-        String(film.fps * 2),
-        '-r',
-        String(film.fps),
-        '-frames:v',
-        String(frames),
-        '-movflags',
-        '+faststart',
-        partial,
-      ],
-      { stdio: ['pipe', 'ignore', 'pipe'] },
-    );
-    let stderr = '';
-    encoder.stderr.on('data', (data) => {
-      stderr = (stderr + data).slice(-4000);
-    });
-    encoder.stdin.on('error', () => {});
-    const finished = new Promise<void>((done, fail) => {
-      encoder.on('error', fail);
-      encoder.on('close', (code) =>
-        code === 0 ? done() : fail(new Error(`ffmpeg exited ${code}: ${stderr.trim().split('\n').slice(-3).join(' / ')}`)),
-      );
-    });
-    finished.catch(() => {});
-    try {
-      // Every stage, opened before a frame is drawn; one that fails to open fails the export.
-      const opening = await Promise.allSettled(Array.from({ length: Math.min(stages, frames) - 1 }, () => open(version)));
-      for (const opened of opening) if (opened.status === 'fulfilled') others.push(opened.value);
-      const refused = opening.find((opened) => opened.status === 'rejected');
-      if (refused) throw refused.reason;
-      const drawing = [stage, ...others];
-      // Frame i goes to the encoder when frame i - 1 has: a stage that drew ahead waits for its turn.
-      let next = 0;
-      let broken: unknown = null;
-      const waiting = new Map<number, { go: () => void; stop: (error: unknown) => void }>();
-      const turn = (i: number) =>
-        broken ? Promise.reject(broken) : i === next ? Promise.resolve() : new Promise<void>((go, stop) => waiting.set(i, { go, stop }));
-      const draw = async (photographer: PhotoStage, first: number) => {
-        for (let i = first; i < frames; i += drawing.length) {
-          if (broken) throw broken;
-          if (signal.aborted) throw new Error('The export was cancelled.');
-          const png = await photographer.png(i / film.fps);
-          await turn(i);
-          if (broken) throw broken;
-          await write(encoder.stdin, png);
-          onProgress((i + 1) / frames);
-          next = i + 1;
-          waiting.get(next)?.go();
-          waiting.delete(next);
-        }
-      };
-      const drawn = await Promise.allSettled(
-        drawing.map((photographer, c) =>
-          draw(photographer, c).catch((error) => {
-            // The first failure stops every stage: those waiting for a turn, and those drawing, at their next frame.
-            if (!broken) broken = error;
-            for (const waiter of waiting.values()) waiter.stop(broken);
-            waiting.clear();
-            throw error;
-          }),
-        ),
-      );
-      if (broken || drawn.some((result) => result.status === 'rejected')) throw broken;
-      encoder.stdin.end();
-    } catch (error) {
-      encoder.kill('SIGKILL');
-      await finished.catch(() => {});
-      throw error;
-    }
-    await finished;
+      '-movflags',
+      '+faststart',
+      partial,
+    ]);
     await rename(partial, file);
     if (subtitles) await rename(partialSubtitles, subtitlesFile(file));
+    whole = true;
   } finally {
     await Promise.allSettled([stage, ...others].map((photographer) => photographer.close()));
     await rm(partial, { force: true });
     await rm(partialSubtitles, { force: true });
+    // Kept to resume only while the video is not whole; the mix and the joined picture are made again each time.
+    if (resume && !whole) {
+      for (const name of await readdir(work).catch(() => [] as string[])) if (!/^\d{7}-\d{7}\.mp4$/.test(name)) await rm(join(work, name), { force: true });
+    } else await rm(work, { recursive: true, force: true });
   }
+}
+
+/**
+ * Draws frames [s, e) of the film with `stages` into an H.264 file at `file`: stage c draws frames s + c, s + c + n…,
+ * and frame i goes to the encoder when frame i - 1 has. The first failure, or a cancel, stops every stage.
+ */
+async function drawSegment(
+  drawing: PhotoStage[],
+  film: { fps: number },
+  s: number,
+  e: number,
+  file: string,
+  ffmpeg: string,
+  signal: AbortSignal,
+  onDrawn: (frames: number) => void,
+): Promise<void> {
+  const encoder = spawn(
+    ffmpeg,
+    ['-y', '-loglevel', 'error', '-f', 'image2pipe', '-framerate', String(film.fps), '-c:v', 'png', '-i', '-', ...VIDEO, '-g', String(film.fps * 2), '-r', String(film.fps), '-frames:v', String(e - s), file],
+    { stdio: ['pipe', 'ignore', 'pipe'] },
+  );
+  let stderr = '';
+  encoder.stderr.on('data', (data) => {
+    stderr = (stderr + data).slice(-4000);
+  });
+  encoder.stdin.on('error', () => {});
+  const finished = new Promise<void>((done, fail) => {
+    encoder.on('error', fail);
+    encoder.on('close', (code) => (code === 0 ? done() : fail(new Error(`ffmpeg exited ${code}: ${stderr.trim().split('\n').slice(-3).join(' / ')}`))));
+  });
+  finished.catch(() => {});
+  try {
+    let next = s;
+    let broken: unknown = null;
+    const waiting = new Map<number, { go: () => void; stop: (error: unknown) => void }>();
+    const turn = (i: number) =>
+      broken ? Promise.reject(broken) : i === next ? Promise.resolve() : new Promise<void>((go, stop) => waiting.set(i, { go, stop }));
+    const draw = async (photographer: PhotoStage, first: number) => {
+      for (let i = first; i < e; i += drawing.length) {
+        if (broken) throw broken;
+        if (signal.aborted) throw new Error('The export was cancelled.');
+        const png = await photographer.png(i / film.fps);
+        await turn(i);
+        if (broken) throw broken;
+        await write(encoder.stdin, png);
+        onDrawn(i + 1 - s);
+        next = i + 1;
+        waiting.get(next)?.go();
+        waiting.delete(next);
+      }
+    };
+    const drawn = await Promise.allSettled(
+      drawing.map((photographer, c) =>
+        draw(photographer, s + c).catch((error) => {
+          // The first failure stops every stage: those waiting for a turn, and those drawing, at their next frame.
+          if (!broken) broken = error;
+          for (const waiter of waiting.values()) waiter.stop(broken);
+          waiting.clear();
+          throw error;
+        }),
+      ),
+    );
+    if (broken || drawn.some((result) => result.status === 'rejected')) throw broken;
+    encoder.stdin.end();
+  } catch (error) {
+    encoder.kill('SIGKILL');
+    await finished.catch(() => {});
+    await rm(file, { force: true });
+    throw error;
+  }
+  await finished;
 }

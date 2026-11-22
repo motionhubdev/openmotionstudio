@@ -3,6 +3,14 @@
 Every key change to OpenMotionStudio, newest first, by date. What counts as key and the entry format are in
 `CLAUDE.md`, "The changelog".
 
+## 2026-11-22 — `oms` draws on demand, renders resume, and sounds mix in blocks
+
+- **What:** On Linux, `oms` drives its headless Chrome frame by frame (`HeadlessExperimental.beginFrame`): a plain 20-second film renders in 7.7 s with one Chrome instead of 21.6 s, with the same frames. Every export, the Studio's and `oms render`'s, now encodes its picture in segments of 3,000 frames joined as they are, and mixes its sounds in JavaScript, 30 seconds at a time, instead of one ffmpeg filter graph: five minutes with 151 sounds mix in 1.0 s instead of 7.8 s, to the same sound within the AAC's own error. `oms render` keeps its finished segments in `~/.cache/oms/renders` until the video is whole, so the same render started again after Ctrl-C or a crash draws only what is missing; Ctrl-C now stops a render cleanly.
+- **Why:** VisoTalk's exporter, which oms takes over from, works this way; long renders on servers need to survive an interruption.
+- **Breaking:** None. A sound under the narration is now ducked sample by sample, by the curve the preview plays, instead of once an audio frame.
+- **Upgrade:** Nothing. `oms` may keep up to a week of an unfinished render's segments in `~/.cache/oms/renders`.
+- **Refs:** `apps/desktop/src/main/film/capture.ts`, `apps/desktop/src/main/film/mix.ts`, `apps/cli/chrome.ts`, `apps/cli/worker.ts`, `apps/cli/oms.mjs`, `docs/adr/0017-an-export-is-encoded-in-segments-and-mixed-in-blocks.md`, `docs/adr/0010-a-films-sound-is-sound-elements-mixed-on-export.md`.
+
 ## 2026-11-22 — The OMS skill carries VisoTalk's craft, and both agents get three more rules
 
 - **What:** `oms install` now puts five references beside the skill (`craft.md`, `look.md`, `drawing.md`, `review.md`, `assets.md`) and the example film, and the skill gives an order of work: facts and script, a board per scene, the look, one scene drawn and looked at before the rest, at most three review rounds, then the render. They carry VisoTalk's tuned guidance on scripting to length, motion that means something, pacing, the cover frame, type and colour, portrait films, honest figures, licences and an independent reviewer, rewritten for `film.tsx`. The film format, which the Studio's agent reads too, adds three rules: name layers for what they show; a scene's picture is there from its first frame, eased, entering over half a second and holding before its end; four or five type sizes, clear of the caption.

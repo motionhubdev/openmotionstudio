@@ -192,9 +192,9 @@ describe('an export drawn by several stages', () => {
 
   it('writes the same video however many stages draw it, and closes every one', async () => {
     const one = stages();
-    await exportFrames(dir, 1, join(dir, 'one.mp4'), () => {}, new AbortController().signal, one.open, ffmpeg, dir, 1);
+    await exportFrames(dir, 1, join(dir, 'one.mp4'), () => {}, new AbortController().signal, one.open, ffmpeg, { output: dir, stages: 1 });
     const three = stages();
-    await exportFrames(dir, 1, join(dir, 'three.mp4'), () => {}, new AbortController().signal, three.open, ffmpeg, dir, 3);
+    await exportFrames(dir, 1, join(dir, 'three.mp4'), () => {}, new AbortController().signal, three.open, ffmpeg, { output: dir, stages: 3 });
     expect(three.open).toHaveBeenCalledTimes(3);
     expect(three.opened.every((stage) => stage.close.mock.calls.length === 1)).toBe(true);
     expect(frames(join(dir, 'three.mp4'))).toEqual(frames(join(dir, 'one.mp4')));
@@ -204,16 +204,52 @@ describe('an export drawn by several stages', () => {
   it('stops every stage at the first failure, and leaves no video', async () => {
     const failing = stages(7);
     const file = join(dir, 'failed.mp4');
-    await expect(exportFrames(dir, 1, file, () => {}, new AbortController().signal, failing.open, ffmpeg, dir, 3)).rejects.toThrow('No frame 7');
+    await expect(exportFrames(dir, 1, file, () => {}, new AbortController().signal, failing.open, ffmpeg, { output: dir, stages: 3 })).rejects.toThrow('No frame 7');
     expect(failing.opened.every((stage) => stage.close.mock.calls.length === 1)).toBe(true);
     expect((await readdir(dir)).filter((name) => name.startsWith('failed'))).toEqual([]);
   }, 30_000);
+
+  it('joins its segments as they are, and resumes from the ones a stopped export finished', async () => {
+    const resume = join(dir, 'resume');
+    const file = join(dir, 'resumed.mp4');
+    const output = join(dir, 'bundle');
+    await mkdir(output);
+    await writeFile(join(output, 'film-1.js'), 'the film');
+    const failing = stages(25);
+    await expect(
+      exportFrames(dir, 1, file, () => {}, new AbortController().signal, failing.open, ffmpeg, { output, stages: 2, resume, segmentFrames: 10 }),
+    ).rejects.toThrow('No frame 25');
+    const [kept] = await readdir(resume);
+    expect((await readdir(join(resume, kept!))).sort()).toEqual(['0000000-0000010.mp4', '0000010-0000020.mp4']);
+    expect((await readdir(dir)).filter((name) => name.startsWith('resumed'))).toEqual([]);
+
+    const drawn: number[] = [];
+    const counting = stages();
+    const open = vi.fn(async (version: number) => {
+      const stage = await counting.open();
+      return { ...stage, png: async (t: number) => (drawn.push(Math.round(t * small.fps)), stage.png(t)) };
+    });
+    await exportFrames(dir, 1, file, () => {}, new AbortController().signal, open, ffmpeg, { output, stages: 2, resume, segmentFrames: 10 });
+    expect(Math.min(...drawn)).toBe(20);
+    expect(drawn).toHaveLength(10);
+    expect(frames(file)).toHaveLength(small.seconds * small.fps);
+    expect(await readdir(resume)).toEqual([]);
+  }, 60_000);
+
+  it('makes the same length of video in segments as in one', async () => {
+    const many = stages();
+    await exportFrames(dir, 1, join(dir, 'many.mp4'), () => {}, new AbortController().signal, many.open, ffmpeg, { output: dir, stages: 3, segmentFrames: 7 });
+    expect(frames(join(dir, 'many.mp4'))).toHaveLength(small.seconds * small.fps);
+    const probe = (() => { try { return execFileSync(ffmpeg, ['-hide_banner', '-i', join(dir, 'many.mp4')], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }); } catch (error) { return String((error as { stderr: string }).stderr); } })();
+    expect(probe).toMatch(/Duration: 00:00:03\.0/);
+    expect((await readdir(dir)).filter((name) => name.includes('partial'))).toEqual([]);
+  }, 60_000);
 
   it('is cancelled between frames', async () => {
     const cancel = new AbortController();
     const drawn = stages();
     const file = join(dir, 'cancelled.mp4');
-    const done = exportFrames(dir, 1, file, (share) => share > 0.3 && cancel.abort(), cancel.signal, drawn.open, ffmpeg, dir, 2);
+    const done = exportFrames(dir, 1, file, (share) => share > 0.3 && cancel.abort(), cancel.signal, drawn.open, ffmpeg, { output: dir, stages: 2 });
     await expect(done).rejects.toThrow('cancelled');
     expect(drawn.opened.every((stage) => stage.close.mock.calls.length === 1)).toBe(true);
     expect((await readdir(dir)).filter((name) => name.startsWith('cancelled'))).toEqual([]);

@@ -81,10 +81,13 @@ async function run() {
   try {
     if (command === 'render') {
       let shown = -1;
+      // Ctrl-C stops the render cleanly: its Chromes closed, its finished segments kept for the next run.
+      const stop = new AbortController();
+      process.once('SIGINT', () => stop.abort());
       await worker.render(dir, scratch, resolve(values.out), (done) => {
         const percent = Math.floor(done * 100);
         if (percent !== shown && process.stderr.isTTY) process.stderr.write(`\rRendering ${(shown = percent)}%`);
-      });
+      }, stop.signal);
       if (process.stderr.isTTY) process.stderr.write('\n');
       return console.log(resolve(values.out));
     }

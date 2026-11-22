@@ -1,14 +1,16 @@
 // A film's sounds mixed for its MP4 (ADR 0010): each <Sound>'s file found in the project, its length read by ffmpeg,
-// and one filter graph that cuts, loops, levels, fades and places every sound, sums them without normalising, holds
-// the sum under -1 dBFS and makes it as long as the film. The exporter (capture.ts) adds the graph to the ffmpeg that
-// encodes the picture.
+// decoded once to raw samples, and summed here in blocks, each sound cut, looped, levelled, faded, placed and ducked by
+// the same curves the preview plays (shared/sound.ts). The exporter (capture.ts) then has ffmpeg hold the sum under
+// -1 dBFS and make it as long as the film (mixFinish). Mixing in an ffmpeg filter graph padded every sound to the
+// whole film; VisoTalk measured fifteen minutes for a five-minute film with 150 sounds that way.
 
 import { execFile } from 'node:child_process';
+import { closeSync, fstatSync, openSync, readSync, writeSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { mkdir, readFile, rename, stat, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { STATE_DIR } from '../project';
-import { DUCK, type FilmSound, decibels, soundFades, soundPlace, soundRegion, soundSpan } from '../../shared/sound';
+import { type FilmSound, decibels, ducked, soundFades, soundPlace, soundRegion, soundSpan } from '../../shared/sound';
 import { buildDir } from './film';
 import { safePreviewFile } from './serve';
 
@@ -39,61 +41,105 @@ export function mediaSeconds(ffmpeg: string, file: string): Promise<number> {
 
 const n = (value: number) => Number(value.toFixed(6)).toString();
 
-/**
- * The ffmpeg inputs and filter graph that mix `sounds` (each with its file and that file's length) into `[aout]`, a
- * stereo track exactly `seconds` long. `first` is the input index of the first sound (the picture comes before them).
- * Null when nothing is heard.
- */
-export function soundMix(
-  sounds: { sound: FilmSound; file: string; fileSeconds: number }[],
-  seconds: number,
-  first: number,
-  narration: { at: number; until: number }[] = [],
-): { inputs: string[]; graph: string } | null {
-  const heard = sounds.filter(({ sound, fileSeconds }) => soundSpan(sound, fileSeconds) > 0 && sound.at < seconds);
-  if (!heard.length) return null;
-  const inputs: string[] = [];
-  const chains = heard.map(({ sound, file, fileSeconds }, i) => {
-    inputs.push('-i', file);
-    const span = soundSpan(sound, fileSeconds);
-    const region = soundRegion(sound, fileSeconds);
-    const { fadeIn, fadeOut } = soundFades(sound, span);
-    const steps = [
-      `aresample=${RATE}`,
-      'aformat=sample_fmts=fltp:channel_layouts=stereo',
-      `atrim=start=${n(sound.trim)}:end=${n(sound.trim + region)}`,
-      'asetpts=PTS-STARTPTS',
-      // Looped: the region again and again, as many samples as it holds.
-      ...(sound.loop ? [`aloop=loop=-1:size=${Math.max(1, Math.round(region * RATE))}`] : []),
-      `atrim=end=${n(span)}`,
-      'asetpts=PTS-STARTPTS',
-      `volume=${n(sound.volume)}dB`,
-      ...(fadeIn > 0 ? [`afade=t=in:st=0:d=${n(fadeIn)}`] : []),
-      ...(fadeOut > 0 ? [`afade=t=out:st=${n(span - fadeOut)}:d=${n(fadeOut)}`] : []),
-      `adelay=${n(sound.at * 1000)}:all=1`,
-      // Down by its duck while the narration is heard, in the film's time: the curve the preview ducks by (shared/sound.ts).
-      ...(sound.duck && narration.length ? [`volume='${duckExpression(sound.duck, narration)}':eval=frame`] : []),
-    ];
-    return `[${first + i}:a]${steps.join(',')}[s${i}]`;
-  });
-  const sum = `${heard.map((_, i) => `[s${i}]`).join('')}amix=inputs=${heard.length}:normalize=0:duration=longest`;
-  const finish = `alimiter=limit=${CEILING}:level=false:latency=true,apad,atrim=end=${n(seconds)},asetpts=PTS-STARTPTS[aout]`;
-  return { inputs, graph: [...chains, `${sum},${finish}`].join(';') };
-}
+/** A mix's raw samples as ffmpeg reads and writes them: 32-bit float, stereo, interleaved, at RATE. */
+export const MIX_FORMAT = ['-f', 'f32le', '-ar', String(RATE), '-ac', '2'];
+
+/** What every mix ends with, as an ffmpeg filter on its summed track: held under -1 dBFS, exactly `seconds` long. */
+export const mixFinish = (seconds: number): string =>
+  `alimiter=limit=${CEILING}:level=false:latency=true,apad,atrim=end=${n(seconds)},asetpts=PTS-STARTPTS`;
+
+const run = (ffmpeg: string, args: string[]) =>
+  new Promise<void>((done, fail) =>
+    execFile(ffmpeg, ['-hide_banner', '-loglevel', 'error', ...args], { timeout: 600_000, windowsHide: true, maxBuffer: 16 * 1024 * 1024 }, (error, _out, stderr) =>
+      error ? fail(new Error(`ffmpeg could not decode a sound: ${String(stderr).trim().split('\n').slice(-2).join(' / ') || error.message}`)) : done(),
+    ),
+  );
+
+/** Seconds of the film mixed at a time: a sound is read only where it plays, and never whole into memory. */
+const BLOCK_SECONDS = 30;
 
 /**
- * ffmpeg's expression for a sound's gain under the narration at its time `t`: 1, down to -`duck` dB while a line is said,
- * ramped over DUCK.attack before it and DUCK.release after, as `ducked` gives it.
+ * Mixes `sounds` (each with its file and that file's length) into `work`/mix.f32 as MIX_FORMAT samples, `seconds`
+ * long, and gives its path; null when nothing is heard. Each file is decoded once, as the graph mix converted it
+ * (resampled to RATE, then to stereo as ffmpeg makes it). A sound plays from `at` for its span: its region from
+ * `trim`, again and again when it loops; it is levelled and faded by `soundGain`'s curve and, with `duck`, down by it
+ * while a line of `narration` is said, by `ducked`'s curve, sample by sample. The sum is not normalised or limited
+ * here (mixFinish does that).
  */
-export function duckExpression(duck: number, spans: { at: number; until: number }[]): string {
-  const level = spans
-    .map(({ at, until }) => {
-      const rise = `min(1,max(0,(t-${n(at - DUCK.attack)})/${n(DUCK.attack)}))`;
-      const fall = `min(1,max(0,(${n(until + DUCK.release)}-t)/${n(DUCK.release)}))`;
-      return `min(${rise},${fall})`;
-    })
-    .reduce((all, one) => `max(${all},${one})`);
-  return `1-${n(1 - decibels(-duck))}*${level}`;
+export async function mixSounds(
+  sounds: { sound: FilmSound; file: string; fileSeconds: number }[],
+  seconds: number,
+  ffmpeg: string,
+  work: string,
+  narration: { at: number; until: number }[] = [],
+): Promise<string | null> {
+  const heard = sounds.filter(({ sound, fileSeconds }) => soundSpan(sound, fileSeconds) > 0 && sound.at < seconds);
+  if (!heard.length) return null;
+  const decoded = new Map<string, string>();
+  for (const { file } of heard) {
+    if (decoded.has(file)) continue;
+    const raw = join(work, `sound-${decoded.size}.f32`);
+    await run(ffmpeg, ['-y', '-i', file, '-af', `aresample=${RATE},aformat=sample_fmts=fltp:channel_layouts=stereo`, ...MIX_FORMAT, raw]);
+    decoded.set(file, raw);
+  }
+  const total = Math.round(seconds * RATE);
+  const out = join(work, 'mix.f32');
+  const handles: number[] = [];
+  try {
+    const opened = new Map([...decoded].map(([file, raw]) => {
+      const fd = openSync(raw, 'r');
+      handles.push(fd);
+      return [file, { fd, frames: Math.floor(fstatSync(fd).size / 8) }];
+    }));
+    const placed = heard.map(({ sound, file, fileSeconds }) => {
+      const span = soundSpan(sound, fileSeconds);
+      const { fadeIn, fadeOut } = soundFades(sound, span);
+      const source = opened.get(file)!;
+      const trim = Math.round(sound.trim * RATE);
+      const region = Math.max(1, Math.min(Math.round(soundRegion(sound, fileSeconds) * RATE), source.frames - trim));
+      const at = Math.round(sound.at * RATE);
+      return { sound, span, fadeIn, fadeOut, level: decibels(sound.volume), ...source, trim, region, at, end: Math.min(total, at + Math.round(span * RATE)) };
+    });
+    const target = openSync(out, 'w');
+    handles.push(target);
+    const block = BLOCK_SECONDS * RATE;
+    for (let start = 0; start < total; start += block) {
+      const count = Math.min(block, total - start);
+      const mix = new Float32Array(count * 2);
+      for (const p of placed) {
+        const from = Math.max(start, p.at);
+        const to = Math.min(start + count, p.end);
+        if (to <= from || p.frames <= p.trim) continue;
+        // The sound's own samples for [from, to): its region from trim, wrapped round when it loops.
+        const samples = new Float32Array((to - from) * 2);
+        const bytes = new Uint8Array(samples.buffer);
+        for (let i = from; i < to; ) {
+          const k = i - p.at;
+          const offset = p.sound.loop ? k % p.region : k;
+          if (offset >= p.region) break; // past its region, once: silence
+          const frames = Math.min(to - i, p.region - offset);
+          readSync(p.fd, bytes, (i - from) * 8, frames * 8, (p.trim + offset) * 8);
+          i += frames;
+        }
+        const duck = p.sound.duck && narration.length ? 1 - decibels(-p.sound.duck) : 0;
+        for (let i = from; i < to; i++) {
+          const u = (i - p.at) / RATE;
+          const rise = p.fadeIn > 0 ? Math.min(1, u / p.fadeIn) : 1;
+          const fall = p.fadeOut > 0 ? Math.min(1, (p.span - u) / p.fadeOut) : 1;
+          let gain = p.level * Math.max(0, Math.min(rise, fall));
+          if (duck) gain *= 1 - duck * ducked(narration, i / RATE);
+          const j = 2 * (i - from);
+          const d = 2 * (i - start);
+          mix[d] = mix[d]! + samples[j]! * gain;
+          mix[d + 1] = mix[d + 1]! + samples[j + 1]! * gain;
+        }
+      }
+      writeSync(target, new Uint8Array(mix.buffer));
+    }
+  } finally {
+    for (const fd of handles) closeSync(fd);
+  }
+  return out;
 }
 
 /** How many peaks a second a waveform keeps. */
