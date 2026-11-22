@@ -17,14 +17,18 @@ are made by a scheduled agent, one a day, and land as a pull request that a pers
 - **A tutorial**, when there is one: a page at /examples/<name> with the session that made the film, its steps beside it
   and its exact prompts. The two first examples have recorded, narrated tutorials.
 - **Its files**, when there are any: a zip a person opens in the Studio. The source is the project as the Studio keeps
-  it (`film.tsx`, `motions/` and `motions.lock.json`, its media and a `PROMPTS.md`), without `.motion-studio/`.
-  The launch film offers its photos and prompts only, and says so.
+  it (`film.tsx`, `motions/` and `motions.lock.json`, its media, and a `README.md` with its brief and what to ask
+  for), without `.motion-studio/`. The launch film offers its photos and prompts only, and says so.
 
 ## Built (stage 0)
 
 - /tour became /examples, and each tutorial moved from /tour/<name> to /examples/<name>. The site's Worker sends the
   old addresses on for good (301), the query kept.
 - The two tutorials became the first two examples: Ember's launch film and The Hollow Mountain.
+- Three more were made the way the daily agent will make them, by hand this once: an agent wrote each as a project,
+  the built Studio exported it with no window (the template export's way, opening a folder), and its frames were
+  checked before it was kept. Signal (a motion study), Eight billion (a data story on the UN's figures) and Four
+  steps (an explainer in kinetic type) each offer their source and name the post that inspired them.
 
 ## Planned
 

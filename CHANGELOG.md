@@ -3,6 +3,14 @@
 Every key change to OpenMotionStudio, newest first, by date. What counts as key and the entry format are in
 `CLAUDE.md`, "The changelog".
 
+## 2026-11-21 — Three new examples: a motion study, a data story and an explainer
+
+- **What:** /examples shows three more films, each with its source to open in the Studio and the post on X that inspired it: Signal, a 15-second motion study of a radar sweep; Eight billion, 25 seconds of world population on the United Nations' figures; and Four steps, a 17-second explainer in kinetic type of describing, pointing, changing and exporting a film.
+- **Why:** Two films with tutorials did not show the range of what the Studio makes; these are the first made the way the planned daily agent will make them.
+- **Breaking:** None.
+- **Upgrade:** Nothing.
+- **Refs:** `site/examples.html`, `site/studio.css`, `site/media/signal*`, `site/media/eight-billion*`, `site/media/four-steps*`, `docs/prd/examples.md`, `docs/design.md`.
+
 ## 2026-11-21 — openmotion.studio/tour becomes /examples, a wall of films made in the Studio
 
 - **What:** The tutorials' list is now the examples: each card shows its finished film first, at a frame of the film itself, and plays it in place, with buttons for how it was made (the tutorial and its length) and its files (The Hollow Mountain's source; Ember's photos and prompts). The tutorials moved to /examples/launch-film and /examples/hollow-mountain, and the top bar, footer and README say Examples.
