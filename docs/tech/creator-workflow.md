@@ -1,6 +1,6 @@
 # The creator's workflow
 
-> **Status:** Current · **Updated:** 2026-11-17
+> **Status:** Current · **Updated:** 2026-11-22
 
 How a creator explores a film, points at a change, checks the result and returns to earlier source.
 
@@ -127,4 +127,4 @@ picture annotations, in both system themes.
 
 OpenMotionStudio captures film frames in an offscreen Electron window. The desktop app normally lets Chromium choose its graphics backend. To explicitly request GPU rasterization, launch a new Studio process with `OMS_RENDER_GPU=1`. The setting selects ANGLE with D3D11 on Windows, Metal on macOS, or EGL on Linux and applies to the entire Studio process.
 
-The local `graphics.status` log records Chromium's compositing, rasterization, and WebGL status. Chromium can use software rendering when hardware acceleration is unavailable. MP4 export encodes the captured frames with FFmpeg's `libx264`.
+The local `graphics.status` log records Chromium's compositing, rasterization, and WebGL status. Chromium can use software rendering when hardware acceleration is unavailable; for WebGL (a three.js film) the Studio and `oms` turn on SwiftShader, Chromium's software renderer, which Chromium no longer falls back to by itself (`allowSoftwareWebGL` in `film/stage.ts`). MP4 export encodes the captured frames with FFmpeg's `libx264`.

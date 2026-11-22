@@ -9,6 +9,7 @@ import { mkdir, realpath, open as openFile, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { CHANNELS, EVENTS, MAX_BRIEF, type Project, type ProjectTask } from '../shared/api';
 import { keepFilmsInPlace, registerPreviewScheme, SCHEME, servePreview } from './film/preview';
+import { allowSoftwareWebGL } from './film/stage';
 import { startFilm } from './film/film';
 import { openExample } from './examples';
 import { createInWorkspace, duplicateProject, filmName, forgetProject, inLibrary, openProject, projectAt, projectLibrary, rememberProject, renameProject } from './project';
@@ -384,6 +385,7 @@ async function shutdown(exit: () => void): Promise<void> {
 }
 
 registerPreviewScheme();
+allowSoftwareWebGL();
 const primary = app.requestSingleInstanceLock();
 if (!primary) app.quit();
 else {

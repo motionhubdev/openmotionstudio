@@ -3,6 +3,14 @@
 Every key change to OpenMotionStudio, newest first, by date. What counts as key and the entry format are in
 `CLAUDE.md`, "The changelog".
 
+## 2026-11-22 — Every still and exported frame is the frame at its time, and three.js films draw without a GPU
+
+- **What:** Stills, the timeline's frames, checks and MP4 exports photograph each frame through DevTools' screenshot instead of the offscreen window's last painted frame. A film heavy to draw (large blurs, backdrop filters, many blended layers) was photographed a frame behind, or at the previous seek's time, and could fail with `UnknownVizError` on its first frame. The Studio and `oms` also let Chromium draw WebGL with SwiftShader where no GPU can, so a three.js film no longer fails to start on a virtual machine, in CI or over a remote desktop.
+- **Why:** An export must show what the timeline shows at each time.
+- **Breaking:** None. An export takes longer per frame: about 40 ms more for a plain 540×960 film and about 80 ms more for a 1080p three.js film in software rendering, measured on Linux without a GPU.
+- **Upgrade:** Nothing. Export a heavy film again to replace one made before.
+- **Refs:** `apps/desktop/src/main/film/stage.ts`, `apps/desktop/src/main/index.ts`, `apps/cli/worker.ts`, `apps/cli/scripts/test-installed.mjs`, `docs/tech/architecture.md`, `docs/tech/creator-workflow.md`.
+
 ## 2026-11-22 — Claude Code and Codex can author a film from the terminal with `oms`
 
 - **What:** A new package, `apps/cli`, holds the `oms` command and an OMS skill for Claude Code and Codex. `oms install claude` or `oms install codex` puts the skill in the host's user skills directory; `oms init`, `oms check [--json]` and `oms still --at <s> --out <new.png>` start, check and draw a film with the Studio's own build and player. The folder opens in the Studio as it is. The package is built with `npm pack` and is not published yet.

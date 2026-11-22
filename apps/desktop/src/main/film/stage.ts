@@ -1,8 +1,18 @@
-import { BrowserWindow, type Session, type NativeImage } from 'electron';
+import { BrowserWindow, app, nativeImage, type Session, type NativeImage } from 'electron';
 import type { Box, FilmInfo } from '../../shared/preview';
 import { keepFilmsInPlace, PREVIEW_URL } from './preview';
 
 const FRAME_MS = 60_000;
+
+/**
+ * Lets Chromium draw WebGL with SwiftShader, its software renderer, where no GPU can: a virtual machine, CI, a remote
+ * desktop. Chromium no longer falls back to it by itself, so a three.js film there fails to start. "Unsafe" because
+ * SwiftShader compiles shaders in a less hardened process; a film reaches it only from its sandboxed frame (ADR 0004),
+ * and only on a machine without a usable GPU. Must run before the app is ready.
+ */
+export function allowSoftwareWebGL(): void {
+  app.commandLine.appendSwitch('enable-unsafe-swiftshader');
+}
 
 function timeout<T>(promise: Promise<T>, what: string): Promise<T> {
   let timer: NodeJS.Timeout;
@@ -33,6 +43,10 @@ export async function openStage(version: number, session: Session): Promise<Stag
   const contents = window.webContents;
   contents.setWindowOpenHandler(() => ({ action: 'deny' }));
   keepFilmsInPlace(contents);
+  // Frames are taken through DevTools' screenshot, which waits for a frame drawn from the page as it is now.
+  // capturePage returns the window's last painted frame, which lags a seek while a heavy frame is still being
+  // rasterized, and fails with UnknownVizError while the window is first resized to the film.
+  contents.debugger.attach('1.3');
   const failed = async (): Promise<string | null> => (await contents.executeJavaScript('window.__omsError ?? null')) as string | null;
   try {
     await timeout(contents.loadURL(`${PREVIEW_URL}?render=1&v=${version}`), 'Loading the film');
@@ -67,7 +81,11 @@ export async function openStage(version: number, session: Session): Promise<Stag
           await contents.executeJavaScript(`window.__omsMark?.(${JSON.stringify(box)})`);
           await contents.executeJavaScript('new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))');
         }
-        const image = await contents.capturePage();
+        const shot = (await timeout(
+          contents.debugger.sendCommand('Page.captureScreenshot', { format: 'png', optimizeForSpeed: true }),
+          `Photographing the frame at ${t.toFixed(2)} s`,
+        )) as { data: string };
+        const image = nativeImage.createFromBuffer(Buffer.from(shot.data, 'base64'));
         if (box) await contents.executeJavaScript('window.__omsMark?.(null)');
         const size = image.getSize();
         return size.width === film.width && size.height === film.height ? image : image.resize({ width: film.width, height: film.height });

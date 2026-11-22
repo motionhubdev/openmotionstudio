@@ -40,6 +40,28 @@ try {
   assert.equal(frame.readUInt32BE(16), 540);
   assert.equal(frame.readUInt32BE(20), 960);
   assert.throws(() => oms('still', project, '--at', '20', '--out', png), /Time must be/);
+  // A frame slow to raster: a still must show its own time, not the frame the stage held before the seek.
+  const heavy = join(scratch, 'Heavy');
+  await mkdir(heavy);
+  await writeFile(join(heavy, 'film.tsx'), `import {Film, Scene, Layer, useTime} from '@motionhub/runtime';
+export const film = {width: 1920, height: 1080, fps: 30};
+function Glow() {
+  const t = useTime();
+  return <div style={{position: 'absolute', inset: 0, background: '#0d0f12'}}>
+    {Array.from({length: 40}, (_, i) => <div key={i} style={{position: 'absolute', left: (i * 211) % 1700 + Math.sin(t + i) * 120,
+      top: (i * 137) % 900 + Math.cos(t + i) * 90, width: 360, height: 360, borderRadius: '50%', background: \`hsl(\${i * 37} 80% 60%)\`,
+      filter: 'blur(40px)', mixBlendMode: 'screen'}} />)}
+    <div style={{position: 'absolute', left: 360, top: 240, width: 1200, height: 600, backdropFilter: 'blur(30px)', font: '700 120px sans-serif', color: '#fff'}}>{t.toFixed(1)}</div>
+  </div>;
+}
+export default function Main() {
+  return <Film><Scene id="glow" duration={10}><Layer id="glow"><Glow /></Layer></Scene></Film>;
+}
+`);
+  oms('still', heavy, '--at', '0', '--out', join(scratch, 'heavy-0.png'));
+  oms('still', heavy, '--at', '5', '--out', join(scratch, 'heavy-5.png'));
+  assert.notDeepEqual(await readFile(join(scratch, 'heavy-5.png')), await readFile(join(scratch, 'heavy-0.png')), 'the still at 5 s is the stage\'s earlier frame');
+
   const silent = join(scratch, 'Missing sound');
   await mkdir(silent);
   await writeFile(join(silent, 'film.tsx'), `import {Film, Scene, Sound} from '@motionhub/runtime';
@@ -50,7 +72,7 @@ export default function Main() {
 `);
   assert.throws(() => oms('check', silent, '--json'), error =>
     error.status === 1 && JSON.parse(error.stdout).issues.some(issue => issue.text.includes('media/chime.wav')));
-  console.log('PASS installed skill, starter, editable example, PNG, bounds and missing audio');
+  console.log('PASS installed skill, starter, editable example, PNG, bounds, a fresh frame and missing audio');
 } finally {
   await rm(scratch, { recursive: true, force: true });
 }

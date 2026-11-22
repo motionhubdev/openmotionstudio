@@ -4,7 +4,7 @@ import { writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { buildFilmOnce } from '../desktop/src/main/film/film';
 import { registerPreviewScheme, servePreview } from '../desktop/src/main/film/preview';
-import { openStage } from '../desktop/src/main/film/stage';
+import { allowSoftwareWebGL, openStage } from '../desktop/src/main/film/stage';
 import { reviewBuild } from '../desktop/src/main/film/review';
 import { soundFile } from '../desktop/src/main/film/mix';
 
@@ -21,6 +21,7 @@ app.setPath('userData', scratch);
 (app as typeof app & { setAppPath(path: string): void }).setAppPath(__dirname);
 app.on('window-all-closed', () => {});
 registerPreviewScheme();
+allowSoftwareWebGL();
 
 async function run() {
   await app.whenReady();
