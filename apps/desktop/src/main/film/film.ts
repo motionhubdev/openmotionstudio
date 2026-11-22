@@ -9,7 +9,7 @@
 // the runtime to the preview core (src/preview/core.tsx) and bundling three.js from its own copy,
 // and plays, stills and exports it from there; the faces of the project's motions go beside it in fonts.css.
 
-import type { BuildContext, Message, Plugin } from 'esbuild';
+import type { BuildContext, BuildOptions, Message, Plugin } from 'esbuild';
 import { createRequire } from 'node:module';
 import { existsSync } from 'node:fs';
 import { copyFile, writeFile } from 'node:fs/promises';
@@ -17,6 +17,7 @@ import { dirname, join } from 'node:path';
 import type { BuildResult } from '../../shared/api';
 import { motionFaces } from '../motions';
 import { STATE_DIR } from '../project';
+import STARTER from './starter.tsx.txt?raw';
 import SKILL from './film.md?raw';
 import { log, logFailure } from '../log';
 
@@ -25,7 +26,7 @@ import { log, logFailure } from '../log';
 const require = createRequire(__filename);
 const bundlerEntry = require.resolve('esbuild').replace(/([/\\])app\.asar([/\\])/, '$1app.asar.unpacked$2');
 log('bundler.load', { entry: bundlerEntry });
-const { context, formatMessages } = require(bundlerEntry) as typeof import('esbuild');
+const { build, context, formatMessages } = require(bundlerEntry) as typeof import('esbuild');
 
 /** What the agent is told about making a film (film.md). */
 export const FILM_SKILL: string = SKILL;
@@ -80,42 +81,6 @@ const ASSETS = [
 /** Whether a folder holds a film. */
 export const hasFilm = (dir: string): boolean => existsSync(join(dir, FILM));
 
-const STARTER = `import {Film, Layer, Line, Scene, interpolate, useTime} from '@motionhub/runtime';
-
-/** The film's size and rate; its scenes decide its length. */
-export const film = {width: 1920, height: 1080, fps: 30};
-
-function Title({children}: {children: string}) {
-  const t = useTime();
-  const opacity = interpolate(t, [0.3, 1.2], [0, 1], {clamp: true});
-  return (
-    <h1 style={{margin: 0, height: '100%', display: 'grid', placeItems: 'center', fontFamily: 'system-ui, sans-serif', fontSize: 120, color: '#fafafa', opacity}}>
-      {children}
-    </h1>
-  );
-}
-
-export default function Main() {
-  return (
-    <Film>
-      <Layer id="ground">
-        <div style={{width: '100%', height: '100%', background: '#111'}} />
-      </Layer>
-      <Scene id="opening" duration={3}>
-        <Line id="opening-line">A new film.</Line>
-        <Layer id="title" y={340} h={400}>
-          <Title>A new film</Title>
-        </Layer>
-      </Scene>
-      <Scene id="next" duration={3}>
-        <Layer id="title" y={340} h={400}>
-          <Title>Ask the agent for the rest</Title>
-        </Layer>
-      </Scene>
-    </Film>
-  );
-}
-`;
 
 /** Starts a film in the project: writes film.tsx unless there is one. */
 export async function startFilm(dir: string): Promise<void> {
@@ -152,6 +117,38 @@ export function reporter(onBuilt: (result: BuildResult) => void, dir?: string): 
 /** Files a film may import, served beside its bundle. */
 export const ASSET_LOADERS = Object.fromEntries(ASSETS.map((ext) => [ext, 'file' as const]));
 
+function filmOptions(dir: string, output: string, plugins: Plugin[] = []): BuildOptions {
+  return {
+    absWorkingDir: dir,
+    entryPoints: [FILM],
+    outfile: join(output, 'film.js'),
+    bundle: true,
+    format: 'iife',
+    globalName: '__omsFilm',
+    platform: 'browser',
+    target: 'chrome130',
+    jsx: 'automatic',
+    external: PROVIDED,
+    loader: ASSET_LOADERS,
+    publicPath: 'build',
+    sourcemap: 'inline',
+    logLevel: 'silent',
+    plugins: [studioThree, ...plugins],
+  };
+}
+
+/** A CLI invocation builds in its own directory so an open Studio keeps its current bundle. */
+export async function buildFilmOnce(dir: string, output: string): Promise<BuildResult> {
+  try {
+    await build(filmOptions(dir, output));
+    await copyFile(join(output, 'film.js'), join(output, 'film-1.js'));
+    await writeFile(join(output, FACES), (await motionFaces(dir)).css);
+    return { ok: true, version: 1, errors: [] };
+  } catch (error) {
+    return { ok: false, version: 1, errors: [error instanceof Error ? error.message : String(error)] };
+  }
+}
+
 /**
  * Bundles film.tsx and keeps it bundled: every change to a file it imports rebuilds it,
  * and `onBuilt` hears each result. Returns the context, to dispose when the project closes.
@@ -159,23 +156,7 @@ export const ASSET_LOADERS = Object.fromEntries(ASSETS.map((ext) => [ext, 'file'
 export async function watchFilm(dir: string, onBuilt: (result: BuildResult) => void): Promise<BuildContext> {
   log('film.build-start', { projectPath: dir });
   try {
-    const ctx = await context({
-      absWorkingDir: dir,
-      entryPoints: [FILM],
-      outfile: join(buildDir(dir), 'film.js'),
-      bundle: true,
-      format: 'iife',
-      globalName: '__omsFilm',
-      platform: 'browser',
-      target: 'chrome130',
-      jsx: 'automatic',
-      external: PROVIDED,
-      loader: ASSET_LOADERS,
-      publicPath: 'build',
-      sourcemap: 'inline',
-      logLevel: 'silent',
-      plugins: [studioThree, reporter(onBuilt, dir)],
-    });
+    const ctx = await context(filmOptions(dir, buildDir(dir), [reporter(onBuilt, dir)]));
     await ctx.watch();
     return ctx;
   } catch (error) {

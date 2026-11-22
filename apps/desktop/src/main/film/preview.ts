@@ -141,7 +141,7 @@ function respond(body: string | Buffer, type: string, policy = POLICY): Response
 }
 
 /** Serves the film in the folder `film()` names (none while no film is open) on `session`'s oms-preview: scheme. */
-export function servePreview(session: Session, film: () => string | null): void {
+export function servePreview(session: Session, film: () => string | null, output?: string): void {
   session.protocol.handle(SCHEME, async (request) => {
     const url = new URL(request.url);
     const dir = film();
@@ -159,7 +159,7 @@ export function servePreview(session: Session, film: () => string | null): void 
       if (url.pathname === '/' || url.pathname === '/index.html') return respond(PAGE, 'text/html');
       const roots = [
         ['/studio/', studioScripts()],
-        ['/build/', buildDir(dir)],
+        ['/build/', output ?? buildDir(dir)],
         ['/reels/', join(dir, STATE_DIR, 'reels')],
         ['/project/', dir],
       ] as const;
