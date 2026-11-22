@@ -55,7 +55,7 @@ downloads Electron.
 pnpm dev              # the desktop app with hot reload (electron-vite)
 pnpm typecheck        # the gate, in CI's order: typecheck → test → build
 pnpm test
-pnpm test:ui          # a build, then Home, Settings, the select and both languages driven in hidden Electron windows
+pnpm test:ui          # a build, then Home, Settings, the select, both languages and a frame-exact export in hidden Electron windows
 pnpm templates        # a build, then each template exported again into src/renderer/src/templates/ (after changing one)
 pnpm build            # the preview core into resources/preview/, then main, preload and renderer into out/
 pnpm package          # an installer for this platform into apps/desktop/dist/ (unsigned without signing secrets)

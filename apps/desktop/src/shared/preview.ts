@@ -62,6 +62,25 @@ export interface Box {
   h: number;
 }
 
+/**
+ * A render's stamp: a strip of STAMP_ROWS rows below the frame showing a number in STAMP_BITS black and white cells,
+ * lowest bit on the left. The window is that much taller than the film (the frame stays centred, so STAMP_ROWS more
+ * rows are above it), and a capture is the frame asked for only when its strip shows the number stamped after the
+ * frame was drawn: the compositor can hand back a picture a frame or more behind the page.
+ */
+export const STAMP_ROWS = 4;
+export const STAMP_BITS = 16;
+
+/** The number a stamp row shows, from 4 bytes a pixel (RGBA or BGRA): a cell is 1 when it is light. */
+export function readStamp(row: Uint8Array, width: number): number {
+  let n = 0;
+  for (let bit = 0; bit < STAMP_BITS; bit++) {
+    const at = Math.floor(((bit + 0.5) / STAMP_BITS) * width) * 4;
+    if (row[at]! + row[at + 1]! + row[at + 2]! > 384) n |= 1 << bit;
+  }
+  return n;
+}
+
 /** The element drawn at a point the person picked, as the page describes it. */
 export interface PickedElement {
   /** Its place among its ancestors: `div#root > h1#title.clip`. */

@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { COVER_SIDE, SCENE_STILLS, type Stage, jpegSize, sceneStills, stillsDir } from '../capture';
 import { buildDir } from '../film';
-import type { FilmInfo } from '../../../shared/preview';
+import { type FilmInfo, STAMP_BITS, readStamp } from '../../../shared/preview';
 
 vi.mock('electron', () => ({}));
 
@@ -130,5 +130,29 @@ describe('the scenes photographed for the timeline', () => {
     expect(stage.close).toHaveBeenCalled();
     await expect(readdir(stillsDir(dir))).rejects.toThrow();
     await expect(readFile(join(dir, '.motion-studio', 'cover.jpg'))).rejects.toThrow();
+  });
+});
+
+describe('the stamp a capture is told by', () => {
+  /** A row of the strip as the render page draws it: STAMP_BITS cells as wide as each other, white for one. */
+  function row(n: number, width: number, order: 'rgba' | 'bgra' = 'rgba'): Uint8Array {
+    const pixels = new Uint8Array(width * 4);
+    for (let x = 0; x < width; x++) {
+      const on = (n >> Math.floor((x * STAMP_BITS) / width)) & 1;
+      pixels.set(order === 'rgba' ? [on ? 255 : 0, on ? 255 : 0, on ? 255 : 0, 255] : [on ? 250 : 5, on ? 250 : 5, on ? 250 : 5, 255], x * 4);
+    }
+    return pixels;
+  }
+
+  it('reads the number back, lowest bit on the left, at any width and in either byte order', () => {
+    for (const n of [1, 2, 0x8000, 0xffff, 12345])
+      for (const width of [1920, 1080, 3840, 1000]) {
+        expect(readStamp(row(n, width), width)).toBe(n);
+        expect(readStamp(row(n, width, 'bgra'), width)).toBe(n);
+      }
+  });
+
+  it('reads a strip not stamped yet as no number the Studio stamps', () => {
+    expect(readStamp(row(0, 1920), 1920)).toBe(0);
   });
 });

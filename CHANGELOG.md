@@ -3,6 +3,14 @@
 Every key change to OpenMotionStudio, newest first, by date. What counts as key and the entry format are in
 `CLAUDE.md`, "The changelog".
 
+## 2026-11-22 — Stills, scene frames, check and export are always the frame asked for
+
+- **What:** A frame the Studio photographs (a still, the timeline's scene frames, the cover, `check`, every frame of an MP4) is now always the picture of the film at its time. Before, a film the compositor is slow to draw (large blurs, blend modes, a frosted `backdrop-filter` panel) was photographed a frame late, so an export could lag the timeline by a frame and show the previous frame's words. The render page now shows a number in a strip below the frame once it has drawn it, and the Studio keeps the first picture that shows it. A film light to draw also exports faster (about 50 ms a frame instead of 85 in a software-drawn test); one heavy to draw takes as long as its frames take to draw.
+- **Why:** An MP4 a frame behind its preview is a wrong export, and the agent's `check` was reading frames that were not the ones it asked for.
+- **Breaking:** None. Exports of heavy films change: each frame is now the right one. A film sized in `vh` sees a viewport eight pixels taller than the film while it is photographed.
+- **Upgrade:** Nothing.
+- **Refs:** `apps/desktop/src/main/film/capture.ts`, `apps/desktop/src/preview/core.tsx`, `apps/desktop/src/shared/preview.ts`, `apps/desktop/scripts/test-frames.mjs`, `docs/tech/architecture.md`.
+
 ## 2026-11-22 — The website moves out of this repository
 
 - **What:** openmotion.studio's pages, media, Worker and deploy, with the docs on its design and its examples, are now kept in the private `motionhubdev/openmotionstudio-web`, and their history is taken out of this one; this repository holds the Studio alone. `pnpm dev:site` is gone. Publishing a release here now sends it to the website (`.github/workflows/site.yml`), which points its downloads at it and deploys.

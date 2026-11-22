@@ -174,8 +174,12 @@ One engine, the Studio's own ([ADR 0005](../adr/0005-the-studio-has-one-engine-i
   scheme alone, and answers with `access-control-allow-origin: *`, since a sandboxed frame's origin is null and its fonts
   are CORS requests.
 - **Playing, stills and export**: the Studio plays the film on the core's own clock; a still or an export opens the page
-  with `?render=1` in an offscreen window, moves it to each frame's time (`window.__oms.seek`) and photographs it, and
-  export pipes the frames to ffmpeg (shipped with the app) as H.264 High at level 4.1, BT.709, a key frame every two
+  with `?render=1` in an offscreen window, moves it to each frame's time (`window.__oms.seek`) and photographs it. The
+  window is eight rows taller than the film: once the frame is in the page, the Studio stamps a number in the strip
+  below it (`window.__omsStamp`, `STAMP_ROWS` in `shared/preview.ts`) and takes the first of the window's paints that
+  shows that number, cut to the film, since the compositor can hand back a picture a frame or more behind the page
+  (`scripts/test-frames.mjs` exports a film slow to draw and reads each frame's own number back).
+  Export pipes the frames to ffmpeg (shipped with the app) as H.264 High at level 4.1, BT.709, a key frame every two
   seconds, faststart.
 - **Sound** ([ADR 0010](../adr/0010-a-films-sound-is-sound-elements-mixed-on-export.md)): `<Film>` reports each
   `<Sound>` with the scenes, in the film's seconds (`FilmInfo.sounds`); `shared/sound.ts` says, once for the preview, the

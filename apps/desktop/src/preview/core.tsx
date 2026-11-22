@@ -6,7 +6,8 @@
 //
 //   - In the Studio's preview it plays on its own clock and obeys play, pause and seek.
 //   - With ?render=1 it holds still and exposes window.__oms.seek(t) for the exporter and
-//     for stills, which resolves once the frame at t is painted.
+//     for stills, which resolves once the frame at t is in the page, and window.__omsStamp(n),
+//     which shows n in the strip below the frame, so a capture can be told to be of the page as it is.
 //
 // Built by scripts/build-preview.mjs into resources/preview/core.js.
 
@@ -17,13 +18,15 @@ import { type ComponentType, useEffect, useMemo, useRef, useState } from 'react'
 import * as jsxRuntime from 'react/jsx-runtime';
 import { flushSync } from 'react-dom';
 import { createRoot } from 'react-dom/client';
-import type { FilmInfo, FromPreview, ToPreview } from '../shared/preview';
+import { type FilmInfo, type FromPreview, STAMP_BITS, STAMP_ROWS, type ToPreview } from '../shared/preview';
 import { FilmAudio } from './sound';
 
 declare global {
   interface Window {
-    /** In a render (?render=1): the film's size and length, and seek(t), resolved once the frame at t is painted. */
+    /** In a render (?render=1): the film's size and length, and seek(t), resolved once the frame at t is in the page. */
     __oms?: FilmInfo & { seek(t: number): Promise<number> };
+    /** In a render: shows n in the stamp below the frame (shared/preview.ts STAMP_ROWS). */
+    __omsStamp?: (n: number) => void;
     /** In a render: the first error the page met, for the main process to report. */
     __omsError?: string;
     /** The film's size, for studio/pick.js. */
@@ -271,24 +274,50 @@ function Player({ Film, film }: { Film: ComponentType; film: FilmInfo }) {
 
 function Still({ Film, film }: { Film: ComponentType; film: FilmInfo }) {
   const [at, setAt] = useState({ t: 0, n: 0 });
-  const painted = useRef<((t: number) => void) | null>(null);
+  // A seek resolves once its frame is in the page; whether it is in the picture yet is the stamp's to tell (stamp()).
+  const seeking = useRef<((t: number) => void) | null>(null);
   useEffect(() => {
     window.__oms = {
       ...film,
       seek: (t) =>
         new Promise((done) => {
-          painted.current = done;
+          seeking.current = done;
           setAt((a) => ({ t, n: a.n + 1 }));
         }),
     };
   }, [film]);
   useEffect(() => {
-    const done = painted.current;
+    const done = seeking.current;
     if (!done) return;
-    painted.current = null;
-    requestAnimationFrame(() => requestAnimationFrame(() => done(at.t)));
+    seeking.current = null;
+    // Laid out now, so a face the frame uses has started loading before the exporter waits on document.fonts.
+    document.documentElement.getBoundingClientRect();
+    done(at.t);
   }, [at]);
   return <Frame Film={Film} film={film} t={at.t} scale={1} />;
+}
+
+/** A render's stamp: the strip below the frame, black until stamped. */
+function stamp(): (n: number) => void {
+  const strip = document.createElement('div');
+  Object.assign(strip.style, {
+    position: 'fixed',
+    left: '0',
+    bottom: '0',
+    width: '100%',
+    height: `${STAMP_ROWS}px`,
+    display: 'flex',
+    background: '#000',
+    zIndex: '2147483647',
+    pointerEvents: 'none',
+  });
+  const cells = Array.from({ length: STAMP_BITS }, () => {
+    const cell = strip.appendChild(document.createElement('div'));
+    cell.style.flex = '1';
+    return cell;
+  });
+  document.body.appendChild(strip);
+  return (n) => cells.forEach((cell, bit) => (cell.style.background = (n >> bit) & 1 ? '#fff' : '#000'));
 }
 
 function load(src: string): Promise<void> {
@@ -337,6 +366,7 @@ async function start(): Promise<void> {
     const module = (globalThis as { __omsFilm?: FilmModule }).__omsFilm;
     if (!module) throw new Error('The film did not load.');
     const film = info(module, await spoken());
+    if (render) window.__omsStamp = stamp();
     const root = createRoot(document.getElementById('root')!);
     // Drawn at once, so the faces its first frame declares are in the page, and loaded before anyone asks for a frame.
     flushSync(() => root.render(render ? <Still Film={module.default} film={film} /> : <Player Film={module.default} film={film} />));

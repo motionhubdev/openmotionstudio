@@ -11,7 +11,7 @@ import { mkdir, readFile, readdir, rename, rm, writeFile } from 'node:fs/promise
 import { join } from 'node:path';
 import ffmpegStatic from 'ffmpeg-static';
 import { keepFilmsInPlace, PREVIEW_URL } from './preview';
-import type { Box, FilmInfo } from '../../shared/preview';
+import { type Box, type FilmInfo, STAMP_ROWS, readStamp } from '../../shared/preview';
 import type { SceneStills } from '../../shared/api';
 import { COVER, STATE_DIR } from '../project';
 import { buildDir } from './film';
@@ -98,8 +98,32 @@ export async function openStage(version: number, session: Session): Promise<Stag
       })(),
       'Starting the film',
     );
-    window.setContentSize(film.width, film.height);
+    // The frame centred with its stamp's rows below it and as many above (shared/preview.ts STAMP_ROWS).
+    window.setContentSize(film.width, film.height + 2 * STAMP_ROWS);
     await contents.executeJavaScript('document.fonts.ready.then(() => true)');
+    // A capture is taken from the window's paints, each the whole picture as the compositor drew it, and is the one
+    // whose stamp shows the number stamped once the frame was in the page: capturePage() can hand back a picture a
+    // frame or more behind it (shared/preview.ts STAMP_ROWS).
+    let stamped = 0;
+    let painted: ((image: NativeImage) => void) | null = null;
+    contents.on('paint', (_event, _dirty, image) => {
+      const { width, height } = image.getSize();
+      if (!painted || !width) return;
+      const scale = height / (film.height + 2 * STAMP_ROWS);
+      const row = image.crop({ x: 0, y: Math.floor(height - (STAMP_ROWS * scale) / 2), width, height: 1 }).toBitmap();
+      if (readStamp(row, width) === stamped)
+        painted(image.crop({ x: 0, y: Math.round(STAMP_ROWS * scale), width, height: Math.round(film.height * scale) }));
+    });
+    const capture = async (what: string): Promise<NativeImage> => {
+      stamped = (stamped % 0xffff) + 1;
+      const picture = new Promise<NativeImage>((done) => (painted = done));
+      try {
+        await contents.executeJavaScript(`window.__omsStamp(${stamped})`);
+        return await timeout(picture, what);
+      } finally {
+        painted = null;
+      }
+    };
     return {
       film,
       async frame(t, box) {
@@ -110,11 +134,8 @@ export async function openStage(version: number, session: Session): Promise<Stag
         );
         const error = await failed();
         if (error) throw new Error(error);
-        if (box) {
-          await contents.executeJavaScript(`window.__omsMark?.(${JSON.stringify(box)})`);
-          await contents.executeJavaScript('new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))');
-        }
-        const image = await contents.capturePage();
+        if (box) await contents.executeJavaScript(`window.__omsMark?.(${JSON.stringify(box)})`);
+        const image = await capture(`Drawing the frame at ${t.toFixed(2)} s`);
         if (box) await contents.executeJavaScript('window.__omsMark?.(null)');
         const size = image.getSize();
         return size.width === film.width && size.height === film.height ? image : image.resize({ width: film.width, height: film.height });
