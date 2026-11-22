@@ -38,12 +38,8 @@ const guide = await readFile(join(desktop, 'src/main/film/film.md'), 'utf8');
 await writeFile(join(dist, 'film-format.md'), guide.slice(guide.indexOf('# The film'), guide.indexOf('# How you work')));
 await cp(join(desktop, '../../LICENSE'), join(dist, 'LICENSE'));
 
+// The example is apps/cli/example as it is, with the Studio's own face beside its media.
 const example = join(dist, 'example');
-const media = join(example, 'media');
-await mkdir(media, { recursive: true });
-await cp(join(cli, 'example/film.tsx'), join(example, 'film.tsx'));
-await cp(join(cli, 'example/chime.wav'), join(media, 'chime.wav'));
-for (const asset of ['workspace-tour.webp', 'crater-workshop.webp', 'studio-loop.webp'])
-  await cp(join(desktop, '../../site/media', asset), join(media, asset));
+await cp(join(cli, 'example'), example, { recursive: true });
 for (const asset of ['Inter.woff2', 'Inter-OFL.txt'])
-  await cp(join(desktop, 'resources/fonts', asset), join(media, asset));
+  await cp(join(desktop, 'resources/fonts', asset), join(example, 'media', asset));
