@@ -73,6 +73,8 @@ async function run() {
   }
   if (!['still', 'check'].includes(command)) throw new Error(usage);
   if (command === 'still' && (!values.at?.trim() || !Number.isFinite(Number(values.at)) || !values.out?.toLowerCase().endsWith('.png'))) throw new Error(usage);
+  // Chromium refuses to start its sandbox, which holds the film's code, as root.
+  if (process.getuid?.() === 0) throw new Error('The preview player cannot run as root: run oms as an ordinary user.');
   const require = createRequire(import.meta.url);
   await ensureElectron(dirname(require.resolve('electron/package.json')));
   const electron = require('electron');
@@ -81,7 +83,9 @@ async function run() {
     const env = { ...process.env };
     delete env.ELECTRON_RUN_AS_NODE;
     const status = await new Promise((done, fail) => {
-      const child = spawn(electron, [join(root, 'dist/worker.cjs'), command, dir, scratch, values.at ?? '0'],
+      // A Linux server has no display: Chromium's headless platform draws the offscreen player without one.
+      const headless = process.platform === 'linux' && !process.env.DISPLAY && !process.env.WAYLAND_DISPLAY;
+      const child = spawn(electron, [...(headless ? ['--ozone-platform=headless'] : []), join(root, 'dist/worker.cjs'), command, dir, scratch, values.at ?? '0'],
         { stdio: ['ignore', 'inherit', 'inherit'], env });
       child.on('error', fail);
       child.on('exit', (code, signal) => signal ? fail(new Error('Player exited with ' + signal)) : done(code));

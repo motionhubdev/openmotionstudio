@@ -35,6 +35,8 @@ what `check` passes and `still` draws is what the Studio plays and exports.
 - The worker reaches into `apps/desktop/src/main/film/`, so a change there can break the CLI: `worker.ts` is in the
   desktop's typecheck, but `scripts/test-installed.mjs` runs by hand against an installed tarball.
 - A tarball pins the Studio it was packed from; a project made with an older one may need the Studio's format.
-- Each person gets a second Electron (about 100 MB) on first use, and Linux needs a display.
+- Each person gets a second Electron (about 120 MB to download) on first use. On Linux without a display the worker
+  runs on Chromium's headless platform (`--ozone-platform=headless`), so a server needs no X server; it cannot run as
+  root, since Chromium's sandbox, which holds the film's code, refuses root, and `oms` does not turn the sandbox off.
 - The worker sets its app path with Electron's `app.setAppPath`, which Electron's types leave out.
 - A terminal agent's writes are not the Studio's agent's: they get no checkpoints ([ADR 0007](0007-local-checkpoints-track-agent-source-writes.md)).
