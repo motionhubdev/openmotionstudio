@@ -17,11 +17,15 @@ bundles `apps/cli/worker.ts` against `film.ts` (`buildFilmOnce`, the Studio's es
 `review.ts` and `mix.ts`, with the preview core from the same build. The film is drawn in **chrome-headless-shell**,
 not in Electron (`apps/cli/chrome.ts`):
 
-- **Which Chrome**: the build HyperFrames pins (158.0.8127.36), so either tool can use the other's download. `oms` takes
+- **Which Chrome**: the build HyperFrames pins (158.0.8127.36; 150.0.7871.124 on macOS 12 and older, which Chrome
+  left after 150), so either tool can use the other's download. `oms` takes
   `OMS_CHROME` when it is set; otherwise that build from HyperFrames' cache (`~/.cache/hyperframes/chrome`, or
   `HYPERFRAMES_CACHE_DIR`) or Puppeteer's shared cache (`~/.cache/puppeteer`); otherwise it downloads it once into
   Puppeteer's cache with `@puppeteer/browsers`, under a lock. A Chrome found on disk is used only when its files hash
   to one of that build's digests, computed as HyperFrames computes them, so a changed or other build is never run.
+  Linux on Arm has no headless shell: there `oms` uses the system's Chromium (`/usr/bin/chromium` and the like), only
+  when root owns it and no one else can change it, and says how to install one when there is none; it does not run the
+  package manager itself, as HyperFrames does.
 - **How it is driven**: over the DevTools protocol on a pipe, with its own temporary profile. The page is served by
   request interception from the same files and under the same policy as the Studio's `oms-preview:` scheme
   (`serve.ts`, [ADR 0004](0004-a-films-code-runs-in-a-sandboxed-frame-on-its-own-scheme.md)); every other request is
@@ -50,6 +54,7 @@ three.js film (at most one level apart in 0.001% of the pixels of the blurred on
 - Two Chromiums draw a film: the Studio's Electron (Chrome 156) and the pinned shell (Chrome 158). They agreed where
   measured; on a GPU, or another platform, a frame from `oms` may differ slightly from the Studio's export.
 - The pin follows HyperFrames' release: moving it means its new build's digests, or `oms` downloads its own copy.
+- On Linux on Arm the Chromium is the distribution's, of any version: its frames may differ more from the Studio's.
 - `oms` runs a browser it did not ship when another tool downloaded it, trusted only by its digests.
 - The worker reaches into `apps/desktop/src/main/film/`, so a change there can break the CLI: `worker.ts` and
   `chrome.ts` are in the desktop's typecheck, but `scripts/test-installed.mjs` runs by hand against an installed tarball.

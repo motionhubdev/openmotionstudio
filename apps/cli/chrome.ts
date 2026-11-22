@@ -6,30 +6,41 @@
 import { install, Browser, detectBrowserPlatform } from '@puppeteer/browsers';
 import { spawn, type ChildProcess } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { existsSync, lstatSync, readdirSync, readFileSync } from 'node:fs';
+import { existsSync, lstatSync, readdirSync, readFileSync, realpathSync, statSync } from 'node:fs';
 import { mkdir, rm, stat } from 'node:fs/promises';
-import { homedir } from 'node:os';
-import { dirname, join, resolve } from 'node:path';
+import { homedir, release as osRelease } from 'node:os';
+import { basename, dirname, join, resolve } from 'node:path';
 import type { Readable, Writable } from 'node:stream';
 import { filmFile, filmPolicy } from '../desktop/src/main/film/serve';
 import type { FilmInfo } from '../desktop/src/shared/preview';
 
-/** The chrome-headless-shell build HyperFrames pins, so either tool can use the other's download. */
-export const CHROME_BUILD = '158.0.8127.36';
+/**
+ * The chrome-headless-shell build HyperFrames pins, so either tool can use the other's download: Chrome 158, or on macOS 12
+ * and older (Darwin 21), which Chrome left after 150, the build HyperFrames pins there.
+ */
+export function chromeBuild(platform: NodeJS.Platform = process.platform, release = osRelease()): string {
+  return platform === 'darwin' && Number.parseInt(release, 10) < 22 ? '150.0.7871.124' : '158.0.8127.36';
+}
 
 /**
- * The digests of that build, one per platform, as HyperFrames' `headlessShellDigest` computes them over an unpacked
- * install (heygen-com/hyperframes, Apache-2.0): a Chrome found on disk is used only when it is exactly one of them.
+ * The digests of each build, one per platform it has, as HyperFrames' `headlessShellDigest` computes them over an
+ * unpacked install (heygen-com/hyperframes, Apache-2.0): a Chrome found on disk is used only when it is exactly one.
  */
-const DIGESTS = [
-  '564ba9876826b3a3ce71f862a37c85ee7938191975afad9f427918db6b073e13',
-  '32499804ce68213b7a3d5f622c8c94004522b02ed35bab7913495e6c8986c904',
-  '2ba780aa9f4afc4f79f4d6c1b32eb0fb9c0217faaa88ac56b5c82facfb31742d',
-  'ca7a3db192eb40cf690d8c338e5e15b62ebaaee4b02e0996521e22f6081c6db3',
-  'dee5819f7bd47d82915bc0598a80288b7f09b9b3f819eef4008fdc208dc6f345',
-];
+const DIGESTS: Record<string, string[]> = {
+  '158.0.8127.36': [
+    '564ba9876826b3a3ce71f862a37c85ee7938191975afad9f427918db6b073e13',
+    '32499804ce68213b7a3d5f622c8c94004522b02ed35bab7913495e6c8986c904',
+    '2ba780aa9f4afc4f79f4d6c1b32eb0fb9c0217faaa88ac56b5c82facfb31742d',
+    'ca7a3db192eb40cf690d8c338e5e15b62ebaaee4b02e0996521e22f6081c6db3',
+    'dee5819f7bd47d82915bc0598a80288b7f09b9b3f819eef4008fdc208dc6f345',
+  ],
+  '150.0.7871.124': [
+    '8c1c8a8f68f53b66b2ca340bcf0d6b3f50f9961b3042b759cefdecc7d2eacd4b',
+    'fc5a7041fc62b0740093077cb476cae232853a0b4272c6851add5f60ce11d1c6',
+  ],
+};
 
-/** Where the executable sits in an unpacked install, per platform and CPU. */
+/** Where the executable sits in an unpacked install, per platform and CPU; Chrome for Testing has no Linux on Arm. */
 const EXECUTABLE: Record<string, [string, string]> = {
   'darwin/arm64': ['chrome-headless-shell-mac-arm64', 'chrome-headless-shell'],
   'darwin/x64': ['chrome-headless-shell-mac-x64', 'chrome-headless-shell'],
@@ -61,28 +72,53 @@ function filesUnder(folder: string, prefix = ''): string[] | undefined {
   return names;
 }
 
-/** Whether `binary` is a file in an install of exactly the pinned build. */
-function pinned(binary: string): boolean {
+/** sha256 over each file's path and sha256, in path order, as HyperFrames computes it; none for a folder holding a link. */
+export function headlessShellDigest(folder: string): string | undefined {
+  const names = filesUnder(folder)?.filter((name) => !RUNNING_WRITES.includes(name)).sort();
+  if (!names) return undefined;
+  const lines = names.map((name) => `${name}\0${createHash('sha256').update(readFileSync(join(folder, name))).digest('hex')}\n`);
+  return createHash('sha256').update(lines.join('')).digest('hex');
+}
+
+/** Whether `binary` is a file in an install whose digest is one of `digests`. */
+function pinned(binary: string, digests: string[]): boolean {
   try {
     if (!lstatSync(binary).isFile()) return false;
-    const folder = dirname(binary);
-    const names = filesUnder(folder)?.filter((name) => !RUNNING_WRITES.includes(name)).sort();
-    if (!names) return false;
-    const lines = names.map((name) => `${name}\0${createHash('sha256').update(readFileSync(join(folder, name))).digest('hex')}\n`);
-    return DIGESTS.includes(createHash('sha256').update(lines.join('')).digest('hex'));
+    const digest = headlessShellDigest(dirname(binary));
+    return digest !== undefined && digests.includes(digest);
   } catch {
     return false;
   }
 }
 
-/** The pinned build in a @puppeteer/browsers cache, when it is there and intact. */
-function inCache(cacheDir: string): string | undefined {
-  const executable = EXECUTABLE[`${process.platform}/${process.arch}`];
+/** The `build` of chrome-headless-shell in a @puppeteer/browsers cache, when it is there and its digest one of `digests`. */
+export function inCache(cacheDir: string, build: string, digests = DIGESTS[build] ?? [], platform = `${process.platform}/${process.arch}`): string | undefined {
+  const executable = EXECUTABLE[platform];
   const base = join(cacheDir, 'chrome-headless-shell');
   if (!executable || !existsSync(base)) return undefined;
-  const version = readdirSync(base).find((name) => name.slice(name.indexOf('-') + 1) === CHROME_BUILD);
+  const version = readdirSync(base).find((name) => name.slice(name.indexOf('-') + 1) === build);
   const binary = version && join(base, version, ...executable);
-  return binary && pinned(binary) ? binary : undefined;
+  return binary && pinned(binary, digests) ? binary : undefined;
+}
+
+/** Where a Linux distribution's package manager puts Chromium or Chrome. */
+const SYSTEM_CHROMIUM = ['/usr/bin/chromium', '/usr/bin/chromium-browser', '/usr/bin/google-chrome', '/usr/bin/google-chrome-stable'];
+
+/**
+ * The system's Chromium, for Linux on Arm, which has no chrome-headless-shell: no digest can pin a distribution's
+ * build, so only one root owns and no one else can change (as a package manager installs it), through every link.
+ */
+export function systemChromium(paths = SYSTEM_CHROMIUM): string | undefined {
+  for (const path of paths) {
+    try {
+      const real = realpathSync(path);
+      const owned = (file: string) => { const info = statSync(file); return info.uid === 0 && (info.mode & 0o022) === 0; };
+      if (statSync(real).isFile() && owned(real) && owned(dirname(real))) return real;
+    } catch {
+      continue;
+    }
+  }
+  return undefined;
 }
 
 /** Waits while another oms command downloads; a lock left by one that died is taken over after ten minutes. */
@@ -107,8 +143,9 @@ async function locked<T>(lock: string, work: () => Promise<T>): Promise<T> {
 }
 
 /**
- * The Chrome to draw in: OMS_CHROME when set, else the pinned build from HyperFrames' cache or Puppeteer's, else that
- * build downloaded into Puppeteer's cache once (about 100 MB), with its progress on stderr.
+ * The Chrome to draw in: OMS_CHROME when set; on Linux on Arm, the system's Chromium; else the pinned build from
+ * HyperFrames' cache or Puppeteer's, else that build downloaded into Puppeteer's cache once (about 100 MB), with its
+ * progress on stderr.
  */
 export async function findChrome(): Promise<string> {
   const named = process.env.OMS_CHROME;
@@ -116,38 +153,60 @@ export async function findChrome(): Promise<string> {
     if (!existsSync(named)) throw new Error(`OMS_CHROME names ${named}, which is not there.`);
     return named;
   }
-  const found = inCache(hyperframesCache()) ?? inCache(PUPPETEER_CACHE);
+  if (process.platform === 'linux' && process.arch === 'arm64') {
+    const system = systemChromium();
+    if (system) return system;
+    throw new Error('Chrome has no headless build for Linux on Arm. Install Chromium with the system package manager (for example `sudo apt-get install chromium`), or name a Chrome in OMS_CHROME.');
+  }
+  const build = chromeBuild();
+  const found = inCache(hyperframesCache(), build) ?? inCache(PUPPETEER_CACHE, build);
   if (found) return found;
   const platform = detectBrowserPlatform();
-  if (!platform || !EXECUTABLE[`${process.platform}/${process.arch}`]) throw new Error(`No Chrome ${CHROME_BUILD} for ${process.platform} ${process.arch}.`);
+  if (!platform || !EXECUTABLE[`${process.platform}/${process.arch}`]) throw new Error(`No Chrome ${build} for ${process.platform} ${process.arch}.`);
   return locked(join(PUPPETEER_CACHE, 'oms-download.lock'), async () => {
-    const again = inCache(PUPPETEER_CACHE);
+    const again = inCache(PUPPETEER_CACHE, build);
     if (again) return again;
-    console.error(`Downloading Chrome ${CHROME_BUILD} (about 100 MB) into ${PUPPETEER_CACHE}, once.`);
-    const installed = await install({ browser: Browser.CHROMEHEADLESSSHELL, buildId: CHROME_BUILD, cacheDir: PUPPETEER_CACHE, platform });
-    if (!pinned(installed.executablePath)) throw new Error(`The downloaded Chrome is not the build oms pins (${CHROME_BUILD}).`);
+    console.error(`Downloading Chrome ${build} (about 100 MB) into ${PUPPETEER_CACHE}, once.`);
+    const installed = await install({ browser: Browser.CHROMEHEADLESSSHELL, buildId: build, cacheDir: PUPPETEER_CACHE, platform });
+    if (!pinned(installed.executablePath, DIGESTS[build] ?? [])) throw new Error(`The downloaded Chrome is not the build oms pins (${build}).`);
     return installed.executablePath;
   });
 }
 
 const NO_SANDBOX = ['--no-sandbox', '--disable-setuid-sandbox', '--no-zygote'];
 
+/** What the sandbox decision reads of the host. */
+export interface Host {
+  platform: NodeJS.Platform;
+  env: NodeJS.ProcessEnv;
+  uid: number | undefined;
+  exists(path: string): boolean;
+  read(path: string): string | undefined;
+}
+
+const thisHost = (): Host => ({
+  platform: process.platform,
+  env: process.env,
+  uid: process.getuid?.(),
+  exists: existsSync,
+  read: (path) => { try { return readFileSync(path, 'utf8').trim(); } catch { return undefined; } },
+});
+
 /**
  * Whether to start Chrome's sandbox, as HyperFrames decides: OMS_CHROME_SANDBOX=1 or 0 when set; otherwise always but
  * on Linux as root, in a container, a serverless or orchestrated host, or where unprivileged user namespaces are off,
  * where it cannot start. Without it the film's code keeps its page's policy and interception, not the OS's isolation.
  */
-function sandboxWanted(): boolean {
-  const named = process.env.OMS_CHROME_SANDBOX;
+export function sandboxWanted(host = thisHost()): boolean {
+  const named = host.env.OMS_CHROME_SANDBOX;
   if (named === '0' || named === '1') return named === '1';
-  if (process.platform !== 'linux') return true;
-  const read = (path: string) => { try { return readFileSync(path, 'utf8').trim(); } catch { return undefined; } };
+  if (host.platform !== 'linux') return true;
   return !(
-    process.getuid?.() === 0 ||
-    ['AWS_LAMBDA_FUNCTION_NAME', 'AWS_EXECUTION_ENV', 'K_SERVICE', 'CLOUD_RUN_JOB', 'KUBERNETES_SERVICE_HOST'].some((name) => process.env[name]) ||
-    ['/.dockerenv', '/run/.containerenv'].some((path) => existsSync(path)) ||
-    read('/proc/sys/kernel/apparmor_restrict_unprivileged_userns') === '1' ||
-    read('/proc/sys/kernel/unprivileged_userns_clone') === '0'
+    host.uid === 0 ||
+    ['AWS_LAMBDA_FUNCTION_NAME', 'AWS_EXECUTION_ENV', 'K_SERVICE', 'CLOUD_RUN_JOB', 'KUBERNETES_SERVICE_HOST'].some((name) => host.env[name]) ||
+    ['/.dockerenv', '/run/.containerenv'].some((path) => host.exists(path)) ||
+    host.read('/proc/sys/kernel/apparmor_restrict_unprivileged_userns') === '1' ||
+    host.read('/proc/sys/kernel/unprivileged_userns_clone') === '0'
   );
 }
 
@@ -161,7 +220,7 @@ function warnUnsandboxed(): void {
 type Message = { id?: number; method?: string; params?: Record<string, unknown>; sessionId?: string; result?: unknown; error?: { message: string } };
 
 /** The DevTools protocol over Chrome's pipe: NUL-terminated JSON each way. */
-class Pipe {
+export class Pipe {
   private next = 0;
   private readonly pending = new Map<number, { method: string; done: (value: never) => void; fail: (error: Error) => void }>();
   private readonly listeners = new Set<(message: Message) => void>();
@@ -216,6 +275,7 @@ class Pipe {
 /** Starts Chrome on a pipe; rejects with what it printed when it exits before it answers. */
 async function start(binary: string, profile: string, sandbox: boolean): Promise<{ child: ChildProcess; pipe: Pipe }> {
   const args = [
+    ...(basename(binary).startsWith('chrome-headless-shell') ? [] : ['--headless']),
     ...(sandbox ? [] : NO_SANDBOX),
     '--remote-debugging-pipe',
     `--user-data-dir=${profile}`,
