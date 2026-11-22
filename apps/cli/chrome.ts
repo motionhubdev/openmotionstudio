@@ -274,8 +274,10 @@ export class Pipe {
 }
 
 /** Starts Chrome on a pipe; rejects with what it printed when it exits before it answers. */
-async function start(binary: string, profile: string, sandbox: boolean): Promise<{ child: ChildProcess; pipe: Pipe }> {
+async function start(binary: string, profile: string, sandbox: boolean, driven: boolean): Promise<{ child: ChildProcess; pipe: Pipe }> {
   const args = [
+    // Driven: a page's compositor draws a frame only when HeadlessExperimental.beginFrame asks for one.
+    ...(driven ? ['--deterministic-mode'] : []),
     ...(basename(binary).startsWith('chrome-headless-shell') ? [] : ['--headless']),
     ...(sandbox ? [] : NO_SANDBOX),
     '--remote-debugging-pipe',
@@ -326,20 +328,43 @@ function timeout<T>(promise: Promise<T>, what: string): Promise<T> {
 /** The film's origin: `.invalid` never resolves, so the page exists only as Chrome is answered from the film's files. */
 const ORIGIN = 'https://film.invalid';
 
+/** Whether frames are drawn on demand: chrome-headless-shell on Linux, as HyperFrames drives it; elsewhere screenshots. */
+export const drivable = (binary: string, platform: NodeJS.Platform = process.platform): boolean =>
+  platform === 'linux' && basename(binary).startsWith('chrome-headless-shell');
+
+let undriven = false;
+
 /**
  * Opens the film in `dir`, built into `output`, with the Studio's preview scripts from `studio`, in Chrome at `binary`
  * with its profile in `profile`. Rejects with the page's own error when it fails.
+ *
+ * Where it can, the page is driven: its compositor draws one frame when asked (HeadlessExperimental.beginFrame) and
+ * gives it back with that frame, so a frame is never waited for, nor ever an earlier one. A Chrome that cannot be
+ * driven so is opened again for screenshots, and oms says so once.
  */
 export async function openChromeStage(binary: string, dir: string, output: string, studio: string, profile: string): Promise<PhotoStage> {
+  if (!drivable(binary) || undriven) return openIn(binary, dir, output, studio, profile, false);
+  try {
+    return await openIn(binary, dir, output, studio, profile, true);
+  } catch (driving) {
+    // Opened for screenshots instead; when that fails too, the film's own error is the one to give.
+    const stage = await openIn(binary, dir, output, studio, `${profile}-screenshots`, false);
+    undriven = true;
+    console.error(`oms: Chrome could not draw frames on demand here (${String(driving).split('\n')[0]}); it takes screenshots instead.`);
+    return stage;
+  }
+}
+
+async function openIn(binary: string, dir: string, output: string, studio: string, profile: string, driven: boolean): Promise<PhotoStage> {
   let sandbox = sandboxWanted();
   let started: { child: ChildProcess; pipe: Pipe };
   try {
-    started = await start(binary, profile, sandbox);
+    started = await start(binary, profile, sandbox, driven);
   } catch (error) {
     // The sandbox needs kernel features a host may not have; HyperFrames retries without it the same way.
     if (!sandbox || process.env.OMS_CHROME_SANDBOX === '1' || !/sandbox|namespace/i.test(String(error))) throw error;
     sandbox = false;
-    started = await start(binary, profile, sandbox);
+    started = await start(binary, profile, sandbox, driven);
   }
   if (!sandbox) warnUnsandboxed();
   const { child, pipe } = started;
@@ -352,7 +377,7 @@ export async function openChromeStage(binary: string, dir: string, output: strin
     }
   };
   try {
-    const { targetId } = await pipe.send<{ targetId: string }>('Target.createTarget', { url: 'about:blank' });
+    const { targetId } = await pipe.send<{ targetId: string }>('Target.createTarget', { url: 'about:blank', ...(driven ? { enableBeginFrameControl: true } : {}) });
     const { sessionId } = await pipe.send<{ sessionId: string }>('Target.attachToTarget', { targetId, flatten: true });
     // A window the film opens is closed as it appears: it would not be held to the film's files.
     await pipe.send('Target.setDiscoverTargets', { discover: true });
@@ -407,12 +432,39 @@ export async function openChromeStage(binary: string, dir: string, output: strin
     );
     await pipe.send('Emulation.setDeviceMetricsOverride', { width: film.width, height: film.height, deviceScaleFactor: 1, mobile: false }, sessionId);
     await evaluate('document.fonts.ready.then(() => true)');
+    // Driven, each frame is one begin frame at the film's rate, in the browser's clock (CLOCK_MONOTONIC, as Node's
+    // hrtime): a frame that changed nothing comes back without a picture, and is asked for again.
+    let ticks = Number(process.hrtime.bigint() / 1_000_000n);
+    const interval = 1000 / film.fps;
+    const beginFrame = async (screenshot: boolean): Promise<Buffer | null> => {
+      for (let attempt = 0; attempt < 5; attempt++) {
+        ticks += interval;
+        const drawn = await pipe.send<{ screenshotData?: string }>('HeadlessExperimental.beginFrame', {
+          frameTimeTicks: ticks,
+          interval,
+          ...(screenshot ? { screenshot: { format: 'png', optimizeForSpeed: true } } : {}),
+        }, sessionId);
+        if (!screenshot) return null;
+        if (drawn.screenshotData) return Buffer.from(drawn.screenshotData, 'base64');
+      }
+      throw new Error('Chrome drew no frame in five begin frames.');
+    };
+    if (driven) {
+      // Warmed up: the page's load drawn and let go, then one frame of the film itself, also let go. Without the second,
+      // the first frame asked for came back as the page was before its seek.
+      await timeout(beginFrame(false), 'Drawing the first frame');
+      const error = await timeout(evaluate<string | null>(seekScript(0)), 'The frame at 0 s');
+      if (error) throw new Error(error);
+      await timeout(beginFrame(true), 'Drawing the first frame');
+    }
     return {
       film,
       async png(t) {
         const error = await timeout(evaluate<string | null>(seekScript(t)), `The frame at ${t.toFixed(2)} s`);
         if (error) throw new Error(error);
-        // DevTools' screenshot waits for a frame drawn from the page as it is now (stage.ts says why that matters).
+        // Driven, the frame comes back with the begin frame that draws it; otherwise DevTools' screenshot waits for a
+        // frame drawn from the page as it is now (stage.ts says why that matters).
+        if (driven) return (await timeout(beginFrame(true), `Photographing the frame at ${t.toFixed(2)} s`))!;
         const shot = await timeout(
           pipe.send<{ data: string }>('Page.captureScreenshot', { format: 'png', optimizeForSpeed: true }, sessionId),
           `Photographing the frame at ${t.toFixed(2)} s`,

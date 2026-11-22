@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { PassThrough } from 'node:stream';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { chromeBuild, headlessShellDigest, inCache, Pipe, sandboxWanted, systemChromium, type Host } from '../chrome';
+import { chromeBuild, drivable, headlessShellDigest, inCache, Pipe, sandboxWanted, systemChromium, type Host } from '../chrome';
 
 let scratch: string;
 beforeEach(async () => {
@@ -28,6 +28,14 @@ describe('chromeBuild', () => {
     expect(chromeBuild('win32', '10.0.22631')).toBe('158.0.8127.36');
     expect(chromeBuild('darwin', '22.1.0')).toBe('158.0.8127.36');
     expect(chromeBuild('darwin', '21.6.0')).toBe('150.0.7871.124');
+  });
+});
+
+describe('drivable', () => {
+  it('draws frames on demand only in chrome-headless-shell on Linux', () => {
+    expect(drivable('/c/chrome-headless-shell-linux64/chrome-headless-shell', 'linux')).toBe(true);
+    expect(drivable('/c/chrome-headless-shell-mac-arm64/chrome-headless-shell', 'darwin')).toBe(false);
+    expect(drivable('/usr/bin/chromium', 'linux')).toBe(false);
   });
 });
 

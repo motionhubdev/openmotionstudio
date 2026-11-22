@@ -33,7 +33,11 @@ not in Electron (`apps/cli/chrome.ts`):
   request interception from the same files and under the same policy as the Studio's `oms-preview:` scheme
   (`serve.ts`, [ADR 0004](0004-a-films-code-runs-in-a-sandboxed-frame-on-its-own-scheme.md)); every other request is
   refused, names do not resolve and anything else goes to a proxy that is not there; a window the film opens is
-  closed. Frames are taken with `Page.captureScreenshot`, as the Studio's stage takes them.
+  closed. On Linux the headless shell is driven, as HyperFrames and VisoTalk drive it (`--deterministic-mode`): its
+  compositor draws a frame only when `HeadlessExperimental.beginFrame` asks, and gives the frame back with it, so a
+  frame is never waited for nor ever an earlier one; it is warmed up with one frame of the film before the first is
+  taken. Elsewhere, or where driving fails to start, frames are taken with `Page.captureScreenshot`, as the Studio's
+  stage takes them. Both draw the same pixels.
 - **A render draws with several Chromes at once**, one a core as memory allows (about 1.5 GB each, at most eight), each
   drawing every n-th frame into the Studio's own ordered writer (`exportFrames`'s `stages`). Each Chrome rasters every
   frame whole (`--disable-partial-raster`): rastering only what changed left a frame's pixels depending on the frame
