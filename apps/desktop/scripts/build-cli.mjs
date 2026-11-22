@@ -34,8 +34,6 @@ await build({
 await cp(join(desktop, 'resources/preview/core.js'), join(dist, 'resources/preview/core.js'));
 await cp(join(desktop, 'resources/preview/pick.js'), join(dist, 'resources/preview/pick.js'));
 await cp(join(desktop, 'src/main/film/starter.tsx.txt'), join(dist, 'starter.tsx'));
-const guide = await readFile(join(desktop, 'src/main/film/film.md'), 'utf8');
-await writeFile(join(dist, 'film-format.md'), guide.slice(guide.indexOf('# The film'), guide.indexOf('# How you work')));
 await cp(join(desktop, '../../LICENSE'), join(dist, 'LICENSE'));
 
 const example = join(dist, 'example');
@@ -47,3 +45,5 @@ for (const asset of ['workspace-tour.webp', 'crater-workshop.webp', 'studio-loop
   await cp(join(desktop, '../../site/media', asset), join(media, asset));
 for (const asset of ['Inter.woff2', 'Inter-OFL.txt'])
   await cp(join(desktop, 'resources/fonts', asset), join(media, asset));
+
+await cp(join(desktop, '../../skills/oms'), join(dist, 'skill'), { recursive: true });

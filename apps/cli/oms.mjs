@@ -28,8 +28,7 @@ async function run() {
     await mkdir(skills, { recursive: true });
     await mkdir(dest);
     try {
-      await cp(join(root, 'skills/oms'), dest, { recursive: true });
-      await copyFile(join(root, 'dist/film-format.md'), join(dest, 'film-format.md'));
+      await cp(join(root, 'dist/skill'), dest, { recursive: true });
     } catch (error) {
       await rm(dest, { recursive: true, force: true });
       throw error;
