@@ -55,13 +55,24 @@ const run = (ffmpeg: string, args: string[]) =>
     ),
   );
 
+/** Whether a file's first sound is mono, as ffmpeg reads it. */
+function mono(ffmpeg: string, file: string): Promise<boolean> {
+  return new Promise((done) =>
+    // ffmpeg with an input and no output says what the input is, and exits 1.
+    execFile(ffmpeg, ['-hide_banner', '-i', file], { timeout: 30_000, windowsHide: true }, (_error, _stdout, stderr) =>
+      done(/Audio: [^\n]*?, (mono|1 channels)\b/.test(String(stderr))),
+    ),
+  );
+}
+
 /** Seconds of the film mixed at a time: a sound is read only where it plays, and never whole into memory. */
 const BLOCK_SECONDS = 30;
 
 /**
  * Mixes `sounds` (each with its file and that file's length) into `work`/mix.f32 as MIX_FORMAT samples, `seconds`
- * long, and gives its path; null when nothing is heard. Each file is decoded once, as the graph mix converted it
- * (resampled to RATE, then to stereo as ffmpeg makes it). A sound plays from `at` for its span: its region from
+ * long, and gives its path; null when nothing is heard. Each file is decoded once, resampled to RATE and in stereo:
+ * a mono file in both channels at its own level, as the preview's Web Audio plays it (ffmpeg's own conversion takes
+ * 3 dB off each), and more channels down to two as ffmpeg makes them. A sound plays from `at` for its span: its region from
  * `trim`, again and again when it loops; it is levelled and faded by `soundGain`'s curve and, with `duck`, down by it
  * while a line of `narration` is said, by `ducked`'s curve, sample by sample. The sum is not normalised or limited
  * here (mixFinish does that).
@@ -79,7 +90,8 @@ export async function mixSounds(
   for (const { file } of heard) {
     if (decoded.has(file)) continue;
     const raw = join(work, `sound-${decoded.size}.f32`);
-    await run(ffmpeg, ['-y', '-i', file, '-af', `aresample=${RATE},aformat=sample_fmts=fltp:channel_layouts=stereo`, ...MIX_FORMAT, raw]);
+    const stereo = (await mono(ffmpeg, file)) ? 'pan=stereo|c0=c0|c1=c0' : 'aformat=sample_fmts=fltp:channel_layouts=stereo';
+    await run(ffmpeg, ['-y', '-i', file, '-af', `aresample=${RATE},${stereo}`, ...MIX_FORMAT, raw]);
     decoded.set(file, raw);
   }
   const total = Math.round(seconds * RATE);

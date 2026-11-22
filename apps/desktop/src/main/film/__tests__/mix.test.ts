@@ -99,6 +99,14 @@ describe('the export\'s mix', () => {
     expect(at(pcm, 3.7)).toBeCloseTo(0.5, 4); // the loop stops at its until
   }, 60_000);
 
+  it('plays a mono file at its own level in both channels, as the preview does', async () => {
+    const file = join(dir, 'media', 'mono.wav');
+    await run(['-y', '-loglevel', 'error', '-f', 'lavfi', '-i', 'aevalsrc=0.5:s=48000:d=1', '-c:a', 'pcm_f32le', file]);
+    const pcm = (await mixed([{ sound: sound({ src: 'media/mono.wav' }), file, fileSeconds: 1 }], 1))!;
+    expect(pcm[2 * 24000]).toBeCloseTo(0.5, 5);
+    expect(pcm[2 * 24000 + 1]).toBeCloseTo(0.5, 5);
+  }, 60_000);
+
   it('fades in and out on straight lines, and ducks under the narration by its duck, and comes back', async () => {
     const faded = (await mixed([{ sound: sound({ src: 'media/flat.wav', loop: true, until: 4, fadeIn: 1, fadeOut: 2 }), ...(await flat()) }], 4))!;
     expect(at(faded, 0.5)).toBeCloseTo(0.25, 3);

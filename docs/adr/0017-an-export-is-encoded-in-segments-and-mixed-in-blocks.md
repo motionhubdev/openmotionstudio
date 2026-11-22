@@ -17,7 +17,8 @@ How the Studio and `oms` turn a film's frames and sounds into its MP4, and what 
   missing. A render that ends whole removes them; one not come back to for seven days is removed by the next. The
   Studio keeps its segments beside the file and removes them however the export ends.
 - **The sound mixed in blocks** (`mixSounds`, `mix.ts`), amending [ADR 0010](0010-a-films-sound-is-sound-elements-mixed-on-export.md)'s
-  filter graph: each sound's file is decoded once to raw samples as the graph converted it (48 kHz, stereo), and the
+  filter graph: each sound's file is decoded once to raw samples at 48 kHz in stereo (a mono file in both channels
+  at its own level, as the preview's Web Audio plays it; the graph's conversion took 3 dB off each), and the
   sum is made 30 s of film at a time, each sound read only where it plays, cut, looped, levelled, faded and ducked
   sample by sample by the curves the preview plays (`soundGain`, `ducked` in `shared/sound.ts`). ffmpeg then holds
   the sum under −1 dBTP with the same `alimiter`, pads or cuts it to the film's length, and encodes it AAC beside the
@@ -36,5 +37,5 @@ fifteen minutes on its own films), and it ducked once an audio frame where the p
 - A video joined from segments is not the bytes one encoder would have written across a boundary (each segment opens
   on a key frame); the pictures are the same.
 - `oms`'s kept segments use disk under `~/.cache/oms` until the render ends or a week passes.
-- Mono sounds are still converted to stereo as ffmpeg converts them (3 dB down in each channel), as the graph did,
-  while the preview plays them at their own level: kept so exports do not change; a change would be its own decision.
+- A mono sound, a synthesized narration among them, is 3 dB louder in an export than before this decision, as loud
+  as the preview always played it: a film exported again sounds louder in those parts than its earlier export.

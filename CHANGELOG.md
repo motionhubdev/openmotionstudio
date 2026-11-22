@@ -3,6 +3,14 @@
 Every key change to OpenMotionStudio, newest first, by date. What counts as key and the entry format are in
 `CLAUDE.md`, "The changelog".
 
+## 2026-11-22 — A mono sound exports as loud as the preview plays it
+
+- **What:** An export puts a mono sound in both channels at its own level, as the preview's Web Audio plays it. ffmpeg's conversion to stereo had taken 3 dB off each channel, so mono music, effects and narration were quieter in the MP4 than in the preview.
+- **Why:** What the person hears in the preview is what the MP4 holds.
+- **Breaking:** A film with mono sounds or a synthesized narration, exported again, is 3 dB louder in those parts than its earlier export.
+- **Upgrade:** Export again to match the preview; lower a mono sound's `volume` by 3 dB to keep an earlier export's balance.
+- **Refs:** `apps/desktop/src/main/film/mix.ts`, `docs/adr/0017-an-export-is-encoded-in-segments-and-mixed-in-blocks.md`.
+
 ## 2026-11-22 — `oms` draws on demand, renders resume, and sounds mix in blocks
 
 - **What:** On Linux, `oms` drives its headless Chrome frame by frame (`HeadlessExperimental.beginFrame`): a plain 20-second film renders in 7.7 s with one Chrome instead of 21.6 s, with the same frames. Every export, the Studio's and `oms render`'s, now encodes its picture in segments of 3,000 frames joined as they are, and mixes its sounds in JavaScript, 30 seconds at a time, instead of one ffmpeg filter graph: five minutes with 151 sounds mix in 1.0 s instead of 7.8 s, to the same sound within the AAC's own error. `oms render` keeps its finished segments in `~/.cache/oms/renders` until the video is whole, so the same render started again after Ctrl-C or a crash draws only what is missing; Ctrl-C now stops a render cleanly.
