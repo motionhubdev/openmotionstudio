@@ -8,6 +8,18 @@ importers:
 
   .: {}
 
+  apps/cli:
+    dependencies:
+      electron:
+        specifier: 45.2.3
+        version: 45.2.3
+      esbuild:
+        specifier: 0.28.2
+        version: 0.28.2
+      three:
+        specifier: 0.187.0
+        version: 0.187.0
+
   apps/desktop:
     dependencies:
       '@anthropic-ai/sdk':
