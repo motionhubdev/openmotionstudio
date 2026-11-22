@@ -10,6 +10,9 @@ import { exportFrames } from '../desktop/src/main/film/capture';
 import { findFfmpeg } from './ffmpeg';
 import { findChrome, openChromeStage } from './chrome';
 
+// Motions come from motionhub when a film asks for one, taken into the project as the Studio and @motionhub/cli take them.
+export { searchMotions, useMotion } from '../desktop/src/main/motions';
+
 const studio = join(__dirname, 'resources', 'preview');
 
 /** Builds the film in `dir` into `scratch`, which also holds Chrome's profile; Chrome is found only to open a built film. */

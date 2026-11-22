@@ -8,6 +8,6 @@
   "files": ["oms.mjs", "dist", "skills", "README.md"],
   "engines": { "node": ">=22.12.0" },
   "scripts": { "prepack": "node ../desktop/scripts/build-cli.mjs" },
-  "dependencies": { "@puppeteer/browsers": "3.2.7", "esbuild": "0.28.2", "three": "0.187.0" },
+  "dependencies": { "@motionhub/cli": "0.8.1", "@puppeteer/browsers": "3.2.7", "esbuild": "0.28.2", "three": "0.187.0" },
   "devDependencies": { "vitest": "5.1.0" }
 }

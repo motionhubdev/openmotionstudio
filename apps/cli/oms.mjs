@@ -8,11 +8,31 @@ import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 
 const root = dirname(fileURLToPath(import.meta.url));
-const usage = 'oms install <claude|codex> | init <folder> | check <folder> [--json] | still <folder> --at <seconds> --out <new.png> | render <folder> --out <new.mp4>';
+const usage = 'oms install <claude|codex> | init <folder> | check <folder> [--json] | still <folder> --at <seconds> --out <new.png> | render <folder> --out <new.mp4> | motion search <words…> [--json] | motion use <@scope/slug> <folder>';
+
+/** `oms motion search <words…> [--json]` and `oms motion use <@scope/slug> <folder>`: motions from motionhub, on demand. */
+async function motion(args) {
+  const { values, positionals } = parseArgs({ args, options: { json: { type: 'boolean' } }, allowPositionals: true });
+  const [action, ...rest] = positionals;
+  const worker = createRequire(import.meta.url)(join(root, 'dist/worker.cjs'));
+  if (action === 'search') {
+    const found = await worker.searchMotions(rest.join(' '));
+    if (values.json) return console.log(JSON.stringify(found));
+    if (!found.length) return console.log('No motion has all of those words.');
+    for (const m of found) console.log(`${m.id}: ${m.name}. ${m.line}${m.fit ? ` For: ${m.fit}` : ''}`);
+    return;
+  }
+  if (action === 'use' && rest.length === 2) {
+    const used = await worker.useMotion(resolve(rest[1]), rest[0]);
+    return console.log(`Took ${used.id} into ${used.path}. Read its MOTION.md and tokens.json before drawing in it.`);
+  }
+  throw new Error(usage);
+}
 
 async function run() {
   const [command, ...args] = process.argv.slice(2);
   if (!command || command === '--help') return console.log(usage);
+  if (command === 'motion') return motion(args);
   const options = command === 'still' ? { at: { type: 'string' }, out: { type: 'string' } }
     : command === 'render' ? { out: { type: 'string' } }
     : command === 'check' ? { json: { type: 'boolean' } } : {};

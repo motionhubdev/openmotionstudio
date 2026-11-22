@@ -27,6 +27,15 @@ try {
   assert.equal(await readFile(join(starter, 'film.tsx'), 'utf8'), source);
   assert.equal(JSON.parse(oms('check', starter, '--json')).issues.length, 0);
 
+  // A motion from motionhub, taken into a project when a film asks for one.
+  const found = JSON.parse(oms('motion', 'search', 'plumb', '--json'));
+  assert(found.some((motion) => motion.id === '@iamsuosi/plumb-line'));
+  assert.match(oms('motion', 'use', '@iamsuosi/plumb-line', starter), /Took @iamsuosi\/plumb-line/);
+  assert.match(await readFile(join(starter, 'motions/@iamsuosi/plumb-line/MOTION.md'), 'utf8'), /\S/);
+  assert(JSON.parse(await readFile(join(starter, 'motions.lock.json'), 'utf8')).motions['@iamsuosi/plumb-line'].sha256);
+  assert.throws(() => oms('motion', 'use', '@iamsuosi/plumb-line', starter), /already holds/);
+  assert.equal(JSON.parse(oms('check', starter, '--json')).issues.length, 0);
+
   const project = join(scratch, '影片 Sample');
   await cp(join(installed, 'dist/example'), project, { recursive: true });
   const report = JSON.parse(oms('check', project, '--json'));
@@ -101,7 +110,7 @@ export default function Main() {
 `);
   assert.throws(() => oms('check', silent, '--json'), error =>
     error.status === 1 && JSON.parse(error.stdout).issues.some(issue => issue.text.includes('media/chime.wav')));
-  console.log('PASS installed skill, starter, editable example, PNG, bounds, a fresh frame, a render and missing audio');
+  console.log('PASS installed skill, starter, editable example, PNG, bounds, a fresh frame, a render, a motion from motionhub and missing audio');
 } finally {
   await rm(scratch, { recursive: true, force: true });
 }

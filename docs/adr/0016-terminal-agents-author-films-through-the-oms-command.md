@@ -11,7 +11,9 @@ film end to end, as Remotion's or HyperFrames' command line does; opening it in 
 copies the skill and the film format (the film section of `film.md`) into the host's user skills directory
 (`CLAUDE_CONFIG_DIR` or `~/.claude`, `CODEX_HOME` or `~/.codex`) and refuses to replace one already there. `oms init`
 writes the Studio's starter `film.tsx` into an empty or new folder; `oms check` and `oms still` build the film and draw
-it; `oms render` exports it as an MP4.
+it; `oms render` exports it as an MP4. `oms motion search` and `oms motion use` find a motion on motionhub and take it
+into the project when a film asks for one, as the Studio's `search_motions` and `use_motion` do (`motions.ts`, through
+`@motionhub/cli`): `oms` ships no motions of its own.
 
 `check`, `still` and `render` run the Studio's own build, review, sound lookup and export, not a copy: `apps/desktop/scripts/build-cli.mjs`
 bundles `apps/cli/worker.ts` against `film.ts` (`buildFilmOnce`, the Studio's esbuild options and reporter), `serve.ts`,
@@ -44,7 +46,7 @@ build. The Studio keeps shipping its own (`ffmpeg-static`).
 
 `oms` writes nothing into the project: a Studio watching the same folder keeps its bundle. `still` and `render` write
 only new files (a PNG; an MP4 and its SubRip beside it) and never overwrite one. The package depends on
-`@puppeteer/browsers`, esbuild and three.js. It is built with
+`@motionhub/cli`, `@puppeteer/browsers`, esbuild and three.js. It is built with
 `npm pack`; publishing it, on npm or with a release, is a separate decision.
 
 ## Reason
