@@ -368,8 +368,48 @@ async function loadFaces(): Promise<void> {
     if (result.status === 'rejected') console.warn(`The face ${faces[i]?.family} did not load:`, result.reason);
 }
 
+/**
+ * WebGL contexts the film makes. A browser keeps at most 16 at once in a page and drops the oldest beyond that, so a
+ * film whose layers each make a renderer, and do not lose their context when they go (three.js's dispose() does not),
+ * draws blank once enough scenes have played. A canvas that was in the page and has left it has its context lost here,
+ * so only the canvases on screen count; a context the browser drops all the same is the film's error, with its cure.
+ */
+function watchWebGL(): void {
+  const contexts = new Map<HTMLCanvasElement, { context: WebGLRenderingContext | WebGL2RenderingContext; shown: boolean }>();
+  const released = new WeakSet<HTMLCanvasElement>();
+  const getContext = HTMLCanvasElement.prototype.getContext;
+  HTMLCanvasElement.prototype.getContext = function (this: HTMLCanvasElement, type: string, ...rest: unknown[]) {
+    const context = (getContext as (this: HTMLCanvasElement, type: string, ...rest: unknown[]) => RenderingContext | null).call(this, type, ...rest);
+    if (context && /^(webgl2?|experimental-webgl)$/.test(type) && !contexts.has(this)) {
+      contexts.set(this, { context: context as WebGLRenderingContext, shown: this.isConnected });
+      this.addEventListener('webglcontextlost', () => {
+        if (released.has(this)) return;
+        post({
+          type: 'oms:error',
+          message:
+            'A WebGL canvas lost its context: the page had more than the 16 a browser keeps at once, and its picture is blank. ' +
+            'Draw with fewer renderers at once (one a layer, or one shared), and lose a renderer’s context when its layer goes ' +
+            '(three.js: renderer.dispose(); renderer.forceContextLoss()).',
+        });
+      });
+    }
+    return context;
+  } as typeof HTMLCanvasElement.prototype.getContext;
+  new MutationObserver(() => {
+    for (const [canvas, entry] of contexts) {
+      if (canvas.isConnected) entry.shown = true;
+      else if (entry.shown) {
+        released.add(canvas);
+        contexts.delete(canvas);
+        entry.context.getExtension('WEBGL_lose_context')?.loseContext();
+      }
+    }
+  }).observe(document, { childList: true, subtree: true });
+}
+
 async function start(): Promise<void> {
   reportErrors();
+  watchWebGL();
   const inline = window.__omsInline;
   const render = inline !== undefined || new URLSearchParams(location.search).get('render') === '1';
   const version = new URLSearchParams(location.search).get('v') ?? '';
