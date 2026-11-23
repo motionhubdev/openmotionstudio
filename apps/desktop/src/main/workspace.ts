@@ -47,7 +47,7 @@ import { type MessageParam, caller, failure } from './agent/model';
 import { testProvider } from './agent/test-connection';
 import { TOOLS, type ToolContext, projectPath } from './agent/tools';
 import type { BuildContext } from 'esbuild';
-import { exportFrames, sceneStills, type Stage } from './film/capture';
+import { exportFrames, renderStages, sceneStills, type Stage } from './film/capture';
 import { openStage as captureStage } from './film/stage';
 import ffmpegStatic from 'ffmpeg-static';
 import { soundPeaks } from './film/mix';
@@ -1061,7 +1061,8 @@ export function createWorkspace(host: WorkspaceHost, renderSession: Session, cha
         controller.signal.throwIfAborted();
         if (open !== state || state.build?.version !== build.version)
           throw new Error('The film changed before export. Review the latest preview and export again.');
-        await exportFrames(state.project.path, build.version, result.filePath, (done) => send(EVENTS.exportProgress, done), controller.signal, openStage, ffmpegPath());
+        // Several stages at once, each a window drawing every n-th frame, as `oms render` draws with several browsers.
+        await exportFrames(state.project.path, build.version, result.filePath, (done) => send(EVENTS.exportProgress, done), controller.signal, openStage, ffmpegPath(), { stages: renderStages() });
         exported = result.filePath;
         return result.filePath;
       } finally {
