@@ -27,7 +27,10 @@ export function ExportDialog({
   const sounds = review?.film?.sounds.length ?? 0;
   const narrated = !!review?.film?.narration.length;
   const kind = sounds === 1 ? 'sound' : 'sounds';
-  const audio = narrated
+  // Until the check has read the film, its sound is not known: say so rather than "picture only".
+  const audio = !review?.film
+    ? tr("sound: checking…")
+    : narrated
     ? sounds
       ? tr("AAC sound: the narration and {0} {1} mixed", {0: sounds, 1: kind})
       : tr("AAC sound: the narration")

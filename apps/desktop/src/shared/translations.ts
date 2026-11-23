@@ -103,6 +103,7 @@ export const zh: Record<string, string> = {
   "Saved {0}": "已保存 {0}",
   "Save the film file": "保存影片文件",
   "Film file": "影片文件",
+  "sound: checking…": "声音：检查中…",
   "The film as a Remotion project, each scene a Series.Sequence.": "将视频导出为 Remotion 项目，每个场景对应一个 Series.Sequence。",
   "Assistant": "助手",
   "Assets": "素材",
