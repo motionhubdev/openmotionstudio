@@ -1,6 +1,6 @@
 # Architecture
 
-> **Status:** Plan — steps 1 to 3 and 6 built, 7 under way; signing waits for its accounts · **Updated:** 2026-11-22
+> **Status:** Plan — steps 1 to 3 and 6 built, 7 under way; signing waits for its accounts · **Updated:** 2026-11-23
 
 The components of the Studio and what each owns, the film, the agent and its providers, what is expensive to change, and the order of work.
 
@@ -43,7 +43,7 @@ apps/desktop/
       serve.ts         those files and their policy, without Electron, for the scheme and for oms's Chrome
       stage.ts         an offscreen window that photographs the film at a time, through DevTools' screenshot
       capture.ts       stills, the timeline's scene frames, and export through ffmpeg, from a stage
-      effects.ts       a film's sound effects: its motion's sound.json rendered for cues into a WAV (oms sound)
+      effects.ts       a film's sound effects: its motion's sound.json, or oms's own, rendered for cues into a WAV (oms sound)
       mix.ts           a film's sounds for the export: each <Sound>'s file found in the project, decoded by ffmpeg
                        and mixed in blocks (ADR 0010, 0017); and each file's waveform for the timeline
       remotion-export.ts  the film written as a Remotion project

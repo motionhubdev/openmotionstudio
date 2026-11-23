@@ -2,6 +2,7 @@
 
 ## A look of the film's own
 
+- A film has a look of its own unless the project already draws in a motion or the person asks for one; do not search motionhub for a look nobody asked for.
 - A project's motion decides colour, type and timing by its tokens; its rules are binding (film-format.md, "Motions"). When the person asks for a look change, decide first whether it belongs to the motion or to this film, and ask when it is unclear.
 - Without a motion, write the look in `parts/kit.tsx` before drawing: a comment with one look line taken from the subject's own world ("an observatory's star chart at night; ground #0D1320, ink #EEF2F8, one accent #F2B44C for the comet; a serif at 600 for headings"), then the palette `C`, the type scale `T` and a shared `Frame` component. A look from the subject's world holds together; an adjective ("modern", "clean") leaves the choice to a default.
 - The ground is a layer in `<Film>`, drawn across every scene.

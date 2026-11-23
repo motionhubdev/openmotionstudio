@@ -1,6 +1,7 @@
-// A film's sound effects from its motion's sound (react/sound.json, motionhub's SPEC.md): the cues the film's picture
-// makes (something lands, moves, is drawn, counts, cuts, goes), rendered by @motionhub/runtime/sound, the same synth
-// that gives a motion's reel its sound on motionhub.dev, into a WAV in the project that a <Sound> plays.
+// A film's sound effects from its motion's sound (react/sound.json, motionhub's SPEC.md), or from oms's own when the
+// film draws in no motion: the cues the film's picture makes (something lands, moves, is drawn, counts, cuts, goes),
+// rendered by @motionhub/runtime/sound, the same synth that gives a motion's reel its sound on motionhub.dev, into a WAV
+// in the project that a <Sound> plays.
 
 import { existsSync } from 'node:fs';
 import { readFile, readdir } from 'node:fs/promises';
@@ -27,6 +28,24 @@ export function parseCues(text: string): Cue[] {
   if (!cues.length) throw new Error('No cues: write them as at:role, separated by commas, as "1.2:land, 3.4:move:0.6".');
   return cues.sort((a, b) => a.at - b.at);
 }
+
+/**
+ * The sound a film without a motion plays: every role, no bed, plain enough for any look. A motion's own sound, when
+ * the project has one, comes first.
+ */
+export const DEFAULT_SOUND: Sound = {
+  roles: {
+    land: [{ voice: 'thump', freq: 70, len: 0.35, drop: 0.5 }, { voice: 'click', lo: 1500, hi: 6000, len: 0.03, gain: 0.5 }],
+    move: { voice: 'swish', lo: 300, hi: 3000, rise: 0.5 },
+    draw: { voice: 'scratch', lo: 1800, hi: 6000 },
+    count: { voice: 'marimba', freq: 784, len: 0.4 },
+    cut: { voice: 'click', lo: 2000, hi: 9000, len: 0.03 },
+    out: { voice: 'swish', lo: 200, hi: 1500, rise: 0.2 },
+  },
+};
+
+/** What the report names as the sound's source when no motion gave it. */
+export const DEFAULT_SOUND_ID = 'oms';
 
 /** The project's motions with a sound: a motion from motionhub at motions/@scope/slug, the project's own at motions/name. */
 export async function motionSounds(dir: string): Promise<{ id: string; file: string }[]> {
@@ -69,19 +88,18 @@ export interface EffectsReport {
 }
 
 /**
- * The sound of motion `id` (or the project's only motion with one) for `cues`, `seconds` long, as a 16-bit mono WAV,
+ * The sound of motion `id` (or the project's only motion with one, or oms's own when it has none) for `cues`, `seconds` long, as a 16-bit mono WAV,
  * with what it holds. A cue whose role the motion's sound does not know is refused: it would be silence.
  */
 export async function effectsTrack(dir: string, cues: Cue[], seconds: number, id?: string): Promise<{ motion: string; wav: Buffer; report: EffectsReport }> {
   if (!(seconds > 0) || !Number.isFinite(seconds)) throw new Error('The track needs a length in seconds: the film\'s, as `oms check` gives it.');
   const sounds = await motionSounds(dir);
-  const chosen = id ? sounds.find((s) => s.id === id) : sounds.length === 1 ? sounds[0] : undefined;
+  const chosen = id ? sounds.find((s) => s.id === id) : sounds.length === 1 ? sounds[0] : sounds.length ? undefined : { id: DEFAULT_SOUND_ID, file: '' };
   if (!chosen) {
     const have = sounds.map((s) => s.id).join(', ') || 'none';
-    throw new Error(id ? `The project holds no motion ${id} with a sound (react/sound.json); those with one: ${have}.`
-      : sounds.length ? `Name the motion whose sound to use: ${have}.` : 'No motion in the project has a sound (react/sound.json). Take one with `oms motion use`, or bring sound files of your own.');
+    throw new Error(id ? `The project holds no motion ${id} with a sound (react/sound.json); those with one: ${have}.` : `Name the motion whose sound to use: ${have}.`);
   }
-  const sound = JSON.parse(await readFile(chosen.file, 'utf8')) as Sound;
+  const sound = chosen.file ? (JSON.parse(await readFile(chosen.file, 'utf8')) as Sound) : DEFAULT_SOUND;
   const issues = soundIssues(sound);
   if (issues.length) throw new Error(`${chosen.id}'s sound.json: ${issues.join('; ')}`);
   const late = cues.filter((cue) => cue.at >= seconds);

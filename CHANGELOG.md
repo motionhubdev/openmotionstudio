@@ -3,6 +3,14 @@
 Every key change to OpenMotionStudio, newest first, by date. What counts as key and the entry format are in
 `CLAUDE.md`, "The changelog".
 
+## 2026-11-23 — The skill draws a film in a look of its own unless a motion is asked for, and `oms sound` has a sound of its own
+
+- **What:** The skill's look step no longer searches motionhub by default: a film gets a look of its own in `parts/kit.tsx`, and `oms motion search` and `oms motion use` run only when the project already has a motion or the person asks for one. `oms sound` in a project with no motion that has a sound renders oms's own sound (every role from `land` to `out`, no bed) instead of refusing.
+- **Why:** A film's look should come from its subject, as VisoTalk's did, not from whichever motion a search turns up; and a film in a look of its own still needs its effects.
+- **Breaking:** None. A project with no motion now gets a track from `oms sound` where it got an error.
+- **Upgrade:** Move the installed `skills/oms` folder aside and run `oms install claude` or `oms install codex` again.
+- **Refs:** `apps/cli/skills/oms/`, `apps/desktop/src/main/film/effects.ts`, `docs/tech/architecture.md`.
+
 ## 2026-11-23 — A check finds characters no loaded face draws, and `oms sound` says what it made
 
 - **What:** The check before an export (and `oms check`) also warns when characters of a text fall past the faces the film loads to a face it never loaded (Chinese after a Latin face), naming them; it had looked only at the first face of each stack. `oms sound` refuses a cue in a role the motion's sound does not have, naming the roles it has, where it had rendered silence, and prints the track's peak and average level and each cue's peak, marking a cue that made no sound. The film format and the skill put a motion's own rules (its type sizes, how its components are placed) before their defaults, place a component drawn in the frame's coordinates in a layer the size of the frame, explain how loud to play a motion's effects track and its bed, and allow fonts under the SIL Open Font License.
