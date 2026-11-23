@@ -3,6 +3,14 @@
 Every key change to OpenMotionStudio, newest first, by date. What counts as key and the entry format are in
 `CLAUDE.md`, "The changelog".
 
+## 2026-11-23 — Films draw with `@motionhub/runtime` 0.8.1
+
+- **What:** The Studio, `oms` and an exported Remotion project draw with `@motionhub/runtime` 0.8.1: word captions in Chinese and Japanese join without blanks, a caption's lengths are pixels in either form, a caption with no colour of its own is white on a dark ground and keeps 64 px from the frame's sides, and a film's voice may name a provider's voice with blanks and brackets (`minimax:Chinese (Mandarin)_News_Anchor`).
+- **Why:** What OpenMotionStudio's film trials found wrong in captions and voices, fixed in the runtime.
+- **Breaking:** None.
+- **Upgrade:** Nothing; `oms` takes it with the next install.
+- **Refs:** motionhubdev/motionhub#117, `apps/desktop/package.json`, `apps/desktop/src/main/film/remotion-export.ts`.
+
 ## 2026-11-23 — `oms voice --recording` takes a narration from the person's own take
 
 - **What:** `oms voice <folder> --recording <file>` takes a film's narration from one take of its lines, read by the person as written, in a film whose voice is `recording:<name>`: the take is transcribed with each word's time by MiniMax, OpenAI or ElevenLabs (`--transcribe`, else the first whose key the environment holds; kept by the file's hash in `~/.cache/oms/transcripts`), matched to the lines character by character, and cut into `voice/` one clip a line, as a spoken narration's are. Each caption word is the script's own text, timed by what was heard for it. A line heard less than 75 % as written stops the import with what was heard, and nothing is written.
