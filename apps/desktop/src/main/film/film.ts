@@ -12,8 +12,8 @@
 import type { BuildContext, BuildOptions, Message, Plugin } from 'esbuild';
 import { createRequire } from 'node:module';
 import { existsSync } from 'node:fs';
-import { copyFile, writeFile } from 'node:fs/promises';
-import { dirname, join } from 'node:path';
+import { copyFile, readFile, writeFile } from 'node:fs/promises';
+import { dirname, join, relative, resolve, sep } from 'node:path';
 import type { BuildResult } from '../../shared/api';
 import { motionFaces } from '../motions';
 import { STATE_DIR } from '../project';
@@ -163,5 +163,65 @@ export async function watchFilm(dir: string, onBuilt: (result: BuildResult) => v
   } catch (error) {
     logFailure('film.bundler-failed', error, { projectPath: dir });
     throw error;
+  }
+}
+
+const BASE64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+
+/** Where generated `line` and `column` (1-based, as a stack gives them) came from, by a source map's mappings. */
+export function sourceAt(map: { sources: string[]; mappings: string }, line: number, column: number): { source: string; line: number; column: number } | null {
+  const lines = map.mappings.split(';');
+  // Each field is relative to the one before it, across lines for all but the generated column.
+  let source = 0;
+  let sourceLine = 0;
+  let sourceColumn = 0;
+  let found: { source: string; line: number; column: number } | null = null;
+  for (let l = 0; l < lines.length && l < line; l++) {
+    let generated = 0;
+    for (const segment of lines[l]!.split(',')) {
+      if (!segment) continue;
+      const fields: number[] = [];
+      let value = 0;
+      let shift = 0;
+      for (const char of segment) {
+        const digit = BASE64.indexOf(char);
+        value += (digit & 31) << shift;
+        if (digit & 32) shift += 5;
+        else {
+          fields.push(value & 1 ? -(value >> 1) : value >> 1);
+          value = 0;
+          shift = 0;
+        }
+      }
+      generated += fields[0] ?? 0;
+      if (fields.length < 4) continue;
+      source += fields[1]!;
+      sourceLine += fields[2]!;
+      sourceColumn += fields[3]!;
+      if (l === line - 1 && generated <= column - 1) found = { source: map.sources[source] ?? '?', line: sourceLine + 1, column: sourceColumn + 1 };
+    }
+  }
+  return found;
+}
+
+/**
+ * A page's error as the person can act on it: its first line and where in the project's own sources it was thrown,
+ * from the first frame of its stack in the film's bundle (`bundle`, with its inline source map), the rest of the
+ * stack left out; a source is named from the project folder `dir`. Without such a frame, its first line alone.
+ */
+export async function located(text: string, bundle: string, dir: string): Promise<string> {
+  const [first, ...stack] = text.split('\n');
+  const frame = stack.join('\n').match(/film(?:-\d+)?\.js:(\d+):(\d+)/);
+  if (!frame) return text.includes('\n    at ') ? first! : text;
+  try {
+    const code = await readFile(bundle, 'utf8');
+    const inline = /\/\/# sourceMappingURL=data:application\/json;base64,([A-Za-z0-9+/=]+)\s*$/.exec(code);
+    if (!inline) return first!;
+    const at = sourceAt(JSON.parse(Buffer.from(inline[1]!, 'base64').toString('utf8')), Number(frame[1]), Number(frame[2]));
+    if (!at) return first!;
+    const source = relative(dir, resolve(dirname(bundle), at.source)).split(sep).join('/');
+    return `${first} (at ${source}:${at.line}:${at.column})`;
+  } catch {
+    return first!;
   }
 }

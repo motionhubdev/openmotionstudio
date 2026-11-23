@@ -9,7 +9,7 @@
 
 ## Motion
 
-- **The stage is in use from a scene's first frame.** At the scene's time 0 every layer already draws its base state (low bars, a faint curve, the outline); empty axes or a frame waiting for a word are not a picture, and a frame with only a title is unfinished.
+- **The stage is in use as soon as a scene has entered.** By half a second in every layer draws its base state (low bars, a faint curve, the outline); empty axes or a frame waiting for a word are not a picture, and a frame with only a title is unfinished.
 - **One main change a line**, when that line names its subject. Without word times, place it in the line's share of the scene (its `at`, or its slot when the scene's lines share it evenly). A fact is never on screen before its line starts.
 - **Motion means something.** An arrival says "here is a new thing", a growth "this quantity", a slide or morph "this became that", a draw "this leads there". A quantity changes by counting up or growing a bar: `Math.round(interpolate(t, [a, b], [0, 76], {easing: Easing.outQuart, clamp: true}))`. Motion that pulls the eye from what the line is about is decoration; leave it out.
 - **Ease everything**, and clamp: pass `easing` and `clamp: true` to every `interpolate`. Only time itself moves at a constant speed (`Easing.linear`).

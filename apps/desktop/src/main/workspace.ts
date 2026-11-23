@@ -58,7 +58,7 @@ import { ASSET_EXTENSIONS, importAssets, projectAssets, renameAsset, trashAsset 
 import { projectFileToOpen, projectFiles, readProjectFile } from './files';
 import { archiveConversation, pastConversation, pastConversations } from './conversations';
 import { reviewBuild } from './film/review';
-import { FILM, FILM_SKILL, startFilm, watchFilm } from './film/film';
+import { FILM, FILM_SKILL, buildDir, startFilm, watchFilm } from './film/film';
 import { type ExportedSpeech, exportedSpeech, writeRemotionProject } from './film/remotion-export';
 import { motionDetail, motionReel, projectMotions, searchMotions, useMotion, removeMotion } from './motions';
 import { STATE_DIR, projectAt, rememberProject } from './project';
@@ -696,7 +696,7 @@ export function createWorkspace(host: WorkspaceHost, renderSession: Session, cha
       const controller = new AbortController();
       working = controller;
       try {
-        const result = await reviewBuild(state.build, openStage, controller.signal);
+        const result = await reviewBuild(state.build, openStage, controller.signal, { bundle: join(buildDir(state.project.path), `film-${state.build?.version ?? 0}.js`), dir: state.project.path });
         if (open !== state || state.build?.version !== result.version) throw new Error('The film changed during the check. Check it again.');
         return result;
       } finally {
@@ -1037,7 +1037,7 @@ export function createWorkspace(host: WorkspaceHost, renderSession: Session, cha
       const controller = new AbortController();
       exporting = controller;
       try {
-        const review = await reviewBuild(build, openStage, controller.signal);
+        const review = await reviewBuild(build, openStage, controller.signal, { bundle: join(buildDir(state.project.path), `film-${build.version}.js`), dir: state.project.path });
         const errors = review.issues.filter((issue) => issue.severity === 'error');
         if (errors.length) throw new Error(`Before exporting: ${errors.map((issue) => issue.text).join('\n')}`);
         const window = host.window?.() ?? BrowserWindow.fromWebContents(event.sender);

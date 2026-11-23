@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { BuildResult } from '../../../shared/api';
-import { FILM, buildDir, hasFilm, startFilm, watchFilm } from '../film';
+import { FILM, buildDir, buildFilmOnce, hasFilm, located, startFilm, watchFilm } from '../film';
 
 vi.mock('electron', () => ({}));
 
@@ -101,5 +101,24 @@ export default function Main() { return null; }
     expect(results[0]?.ok).toBe(false);
     expect(results[0]?.errors[0]).toContain('film.tsx');
     expect(results[1]).toMatchObject({ ok: true, version: 2 });
+  });
+});
+
+describe('located', () => {
+  it("says where in the project's own sources a page's error was thrown, by the bundle's source map", async () => {
+    await mkdir(join(root, 'parts'), { recursive: true });
+    await writeFile(join(root, 'parts', 'cover.tsx'), "export function Cover() {\n  const size = W * 0.5;\n  const W = 1080;\n  return <div style={{ width: size }} />;\n}\n");
+    await writeFile(join(root, FILM), "import { Cover } from './parts/cover.tsx';\nexport const film = {};\nexport default function Main() { return <Cover />; }\n");
+    const output = join(root, 'out');
+    expect(await buildFilmOnce(root, output)).toMatchObject({ ok: true, version: 1 });
+    const bundle = join(output, 'film-1.js');
+    // Where the bundle reads W, as a stack names it: the bundle's line and column, 1-based.
+    const lines = (await readFile(bundle, 'utf8')).split('\n');
+    const line = lines.findIndex((text) => /const size = W\d* \* 0\.5/.test(text));
+    const column = lines[line]!.search(/W\d* \* 0\.5/) + 1;
+    const stack = `ReferenceError: Cannot access 'W2' before initialization\n    at Cover (https://film.invalid/build/film-1.js:${line + 1}:${column})\n    at renderWithHooks (https://film.invalid/studio/core.js:1:2)`;
+    expect(await located(stack, bundle, root)).toBe("ReferenceError: Cannot access 'W2' before initialization (at parts/cover.tsx:2:16)");
+    expect(await located("TypeError: x is not a function\n    at f (https://film.invalid/studio/core.js:1:2)", bundle, root)).toBe('TypeError: x is not a function');
+    expect(await located('The film did not load.', bundle, root)).toBe('The film did not load.');
   });
 });

@@ -122,6 +122,8 @@ export interface Inspection {
    * loaded before it in the stack draw the rest (a Latin face before the one for Chinese), or empty when it draws all.
    */
   unloaded: { layer: string; family: string; chars: string }[];
+  /** The layers that draw anything visible now: text, a picture, a shape, a ground or a border. */
+  shown?: string[];
 }
 
 /** The script that inspects a render page as it now is (after a seek), giving an Inspection. */
@@ -190,5 +192,24 @@ export const inspectScript = `(() => {
       unloaded.set(id + '|' + bare(family), { layer: id, family, chars });
     }
   }
-  return { outside: [...outside.values()], unloaded: [...unloaded.values()] };
+  // A layer draws something when any element in it, seen and of some size, holds text, is a picture or a shape, or
+  // paints a ground, an image or a border.
+  const PAINTED = new Set(['img', 'canvas', 'video', 'path', 'circle', 'rect', 'line', 'polyline', 'polygon', 'ellipse', 'text', 'image', 'use']);
+  const shown = new Set();
+  for (const layer of document.querySelectorAll('[data-layer]')) {
+    const id = layer.getAttribute('data-layer');
+    if (shown.has(id)) continue;
+    for (const element of [layer, ...layer.querySelectorAll('*')]) {
+      if (!element.checkVisibility({ opacityProperty: true, visibilityProperty: true })) continue;
+      const box = element.getBoundingClientRect();
+      if (box.width < 1 || box.height < 1) continue;
+      const style = getComputedStyle(element);
+      const painted = PAINTED.has(element.tagName.toLowerCase()) ||
+        [...element.childNodes].some((node) => node.nodeType === 3 && node.textContent.trim()) ||
+        !/^(transparent|rgba\\(0, 0, 0, 0\\))$/.test(style.backgroundColor) || style.backgroundImage !== 'none' ||
+        ['Top', 'Right', 'Bottom', 'Left'].some((side) => parseFloat(style['border' + side + 'Width']) > 0 && style['border' + side + 'Style'] !== 'none');
+      if (painted) { shown.add(id); break; }
+    }
+  }
+  return { outside: [...outside.values()], unloaded: [...unloaded.values()], shown: [...shown] };
 })()`;

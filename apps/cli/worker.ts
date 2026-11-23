@@ -6,7 +6,7 @@ import { readdir, rm, stat } from 'node:fs/promises';
 import { availableParallelism, freemem, homedir } from 'node:os';
 import { basename, join, resolve } from 'node:path';
 import type { FilmReview } from '../desktop/src/shared/api';
-import { buildFilmOnce } from '../desktop/src/main/film/film';
+import { buildFilmOnce, located } from '../desktop/src/main/film/film';
 import { soundFile } from '../desktop/src/main/film/mix';
 import { reviewBuild } from '../desktop/src/main/film/review';
 import { exportFrames } from '../desktop/src/main/film/capture';
@@ -43,7 +43,7 @@ export const renderStages = (cores = availableParallelism(), free = freemem()): 
 /** The film's review: build errors, its scenes and layers, a draw of its start, each scene's middle and its end, and its sounds. */
 export async function check(dir: string, scratch: string): Promise<FilmReview> {
   const { build, output, open } = await opener(dir, scratch);
-  const review = await reviewBuild(build, open);
+  const review = await reviewBuild(build, open, undefined, { bundle: join(output, `film-${build.version}.js`), dir });
   for (const sound of review.film?.sounds ?? []) {
     try {
       await soundFile(dir, sound.src, output);
@@ -143,12 +143,14 @@ export async function preview(dir: string, scratch: string, port: number, say: (
 
 /** The frame at `seconds`, as a PNG. */
 export async function still(dir: string, scratch: string, seconds: number): Promise<Buffer> {
-  const { build, open } = await opener(dir, scratch);
+  const { build, output, open } = await opener(dir, scratch);
   if (!build.ok) throw new Error(build.errors.join('\n'));
-  const stage = await open();
+  // A page's error, said where in the project's sources it was thrown.
+  const where = async (error: unknown) => new Error(await located(error instanceof Error ? error.message : String(error), join(output, `film-${build.version}.js`), dir));
+  const stage = await open().catch(async (error) => Promise.reject(await where(error)));
   try {
     if (!(seconds >= 0 && seconds < stage.film.seconds)) throw new Error(`Time must be in [0, ${stage.film.seconds}) seconds.`);
-    return await stage.png(seconds);
+    return await stage.png(seconds).catch(async (error) => Promise.reject(await where(error)));
   } finally {
     await stage.close();
   }

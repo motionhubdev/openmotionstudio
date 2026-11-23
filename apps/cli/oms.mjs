@@ -115,6 +115,9 @@ async function run() {
     await mkdir(dir, { recursive: true });
     if ((await readdir(dir)).length) throw new Error('Choose an empty or new project folder.');
     await copyFile(join(root, 'dist/starter.tsx'), join(dir, 'film.tsx'), constants.COPYFILE_EXCL);
+    // What oms and the Studio make beside the film, never its own media: renders, their subtitles and stills at the top
+    // of the folder, and the Studio's state.
+    await writeFile(join(dir, '.gitignore'), '/*.mp4\n/*.srt\n/*.png\n.motion-studio/\n', { flag: 'wx' });
     return console.log(dir);
   }
   if (!['still', 'check', 'render', 'player', 'preview'].includes(command)) throw new Error(usage);

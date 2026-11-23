@@ -17,7 +17,7 @@
 
 - **One thing first** in each scene, taking at least a third of the stage; size a hero picture to 70 percent of the width or more.
 - **The same frame in every scene**: the heading, the key line and the figure sit in the same layer boxes throughout (the kit's `Frame`), so the eye knows where to look.
-- **Clear of the caption**: with `<Film captions>`, keep text and key graphics out of the bottom sixth of the frame (below about y 900 of 1080 at the default caption size; scale it with a motion's `caption` tokens).
+- **Clear of the caption**: with `<Film captions>`, keep text and key graphics out of the bottom sixth of the frame (below about y 900 of 1080 at the default caption size; in portrait, below about y 1450 of 1920; scale it with a motion's `caption` tokens).
 - **Pointers read at once**: an arrow, bracket or callout sits where the viewer sees what it refers to; a label that seems to belong to nothing confuses.
 
 ## Colour and surface
@@ -32,4 +32,4 @@ Small things floating in a dark void; glow, neon and particles as decoration; ev
 
 ## Portrait (9:16)
 
-A portrait film is its own film, not a landscape one squeezed: shorter (30 to 45 seconds, one idea), one figure and one short line a scene, the picture large in the upper part of the frame (about y 160 to 980 of 1920). The last 200 px stay empty: platforms put their name and buttons there.
+A portrait film is its own film, not a landscape one squeezed: shorter (30 to 45 seconds, one idea), one figure and one short line a scene, laid out top to bottom in 1080 × 1920: the title in about y 150 to 370, the figure large in about y 400 to 1440, the caption below it (with `<Film captions>`, the caption's `bottom` about 280, so it sits around y 1520 to 1640, its text kept 64 px from the sides), and the last 200 px empty: platforms put their name and buttons there.

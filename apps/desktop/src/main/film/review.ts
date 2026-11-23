@@ -1,12 +1,21 @@
 import type { BuildResult, FilmReview } from '../../shared/api';
+import { located } from './film';
 import type { PhotoStage } from './stage';
 
-/** Checks a fixed bundle. Sampling catches rendering failures, not every possible visual defect. */
+/**
+ * Checks a fixed bundle. Sampling catches rendering failures, not every possible visual defect. With `bundle`, the
+ * build's script, and `dir`, the project's folder, a page's error says where in the project's sources it was thrown.
+ */
 export async function reviewBuild(
   build: BuildResult | null,
   open: (version: number) => Promise<PhotoStage>,
   signal?: AbortSignal,
+  where?: { bundle: string; dir: string },
 ): Promise<FilmReview> {
+  const told = async (error: unknown) => {
+    const text = error instanceof Error ? error.message : String(error);
+    return where ? located(text, where.bundle, where.dir) : text;
+  };
   const review: FilmReview = { version: build?.version ?? 0, checkedFrames: 0, issues: [] };
   if (!build?.ok) {
     review.issues = (build?.errors.length ? build.errors : ['The film is not ready yet.']).map((text, i) => ({
@@ -61,9 +70,11 @@ export async function reviewBuild(
           });
         }
     }
-    // The start, each scene's middle, 85 % of the way through each line (where what it names has appeared), the end.
+    // Each scene once it has entered and at its middle, 85 % of the way through each line (where what it names has appeared), the end.
     const lineTimes = film.scenes.flatMap((s) => s.lines.map((line) => line.start + 0.85 * (line.end - line.start)));
-    const times = [...new Set([0, ...film.scenes.map((s) => s.start + s.duration / 2), ...lineTimes, Math.max(0, film.seconds - 1 / film.fps)])]
+    // Half a second into each scene (a quarter of a short one), once it has entered from the film's ground.
+    const entered = new Map(film.scenes.map((s) => [s.start + Math.min(0.5, s.duration / 4), s] as const));
+    const times = [...new Set([0, ...entered.keys(), ...film.scenes.map((s) => s.start + s.duration / 2), ...lineTimes, Math.max(0, film.seconds - 1 / film.fps)])]
       .filter((time) => time >= 0 && time < film.seconds)
       .sort((a, b) => a - b);
     /** In a face's characters: a whole text set in it. */
@@ -79,6 +90,18 @@ export async function reviewBuild(
         await stage.png(time);
         review.checkedFrames++;
         const seen = await stage.inspect();
+        // A scene enters from the film's ground over about half a second (film.md); one that still shows none of its own
+        // layers then holds the ground alone.
+        const opening = entered.get(time);
+        if (opening && opening.layers.length && seen.shown && !opening.layers.some((layer) => seen.shown!.includes(layer.id)))
+          review.issues.push({
+            id: `empty-${opening.id}`,
+            kind: 'layout',
+            severity: 'warning',
+            text: `Scene “${opening.id}” still shows none of its layers at ${time.toFixed(2)} s, ${(time - opening.start).toFixed(2)} s after it opens: the film's ground alone. Have its picture in by then, and bring in later only what its lines add.`,
+            time,
+            scene: opening.id,
+          });
         // One warning a layer, at the first frame it shows in: its first words, and every edge any of its text crosses.
         for (const layer of new Set(seen.outside.map((o) => o.layer))) {
           if (said.has(`outside|${layer}`)) continue;
@@ -110,7 +133,7 @@ export async function reviewBuild(
           id: 'drawing',
           kind: 'runtime',
           severity: 'error',
-          text: error instanceof Error ? error.message : String(error),
+          text: await told(error),
           time,
           scene: film.scenes.find((s) => time >= s.start && time < s.start + s.duration)?.id,
         });
@@ -141,7 +164,7 @@ export async function reviewBuild(
     }
   } catch (error) {
     if (signal?.aborted) throw error;
-    review.issues.push({ id: 'preview', kind: 'runtime', severity: 'error', text: error instanceof Error ? error.message : String(error) });
+    review.issues.push({ id: 'preview', kind: 'runtime', severity: 'error', text: await told(error) });
   } finally {
     await stage?.close();
   }

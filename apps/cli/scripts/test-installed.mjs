@@ -27,6 +27,7 @@ try {
   oms('init', starter);
   const source = await readFile(join(starter, 'film.tsx'), 'utf8');
   assert.throws(() => oms('init', starter));
+  assert.equal(await readFile(join(starter, '.gitignore'), 'utf8'), '/*.mp4\n/*.srt\n/*.png\n.motion-studio/\n');
   assert.equal(await readFile(join(starter, 'film.tsx'), 'utf8'), source);
   assert.equal(JSON.parse(oms('check', starter, '--json')).issues.length, 0);
 
@@ -78,7 +79,7 @@ export default function Main() {
   await cp(join(installed, 'dist/example'), project, { recursive: true });
   const report = JSON.parse(oms('check', project, '--json'));
   assert.equal(report.film.seconds, 20);
-  assert.equal(report.checkedFrames, 9); // its start, three scenes' middles, four lines at 85 %, its end
+  assert.equal(report.checkedFrames, 12); // its start, three scenes half a second in and at their middles, four lines at 85 %, its end
   assert.deepEqual(report.issues, []);
   assert(report.film.scenes[2].layers.some(layer => layer.id === 'download-address'));
   const png = join(scratch, 'ending.png');

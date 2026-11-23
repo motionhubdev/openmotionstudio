@@ -21,7 +21,7 @@ const stage = () => ({ film, png: vi.fn().mockResolvedValue(Buffer.from('')), in
 it('samples each scene and closes the renderer', async () => {
   const s = stage();
   const result = await reviewBuild({ ok: true, version: 4, errors: [] }, async () => s);
-  expect(result.checkedFrames).toBe(4);
+  expect(result.checkedFrames).toBe(6); // 0, half a second into each scene, both middles, the last frame
   expect(result.issues).toEqual([]);
   expect(s.png).toHaveBeenCalledWith(1.5);
   expect(s.png).toHaveBeenCalledWith(4.5);
@@ -59,7 +59,7 @@ it('says once each text past the frame, and each face that never loaded, at the 
   const outside = result.issues.filter((issue) => issue.id.startsWith('outside-'));
   const faces = result.issues.filter((issue) => issue.id.startsWith('face-'));
   expect(outside).toHaveLength(1);
-  expect(outside[0]).toMatchObject({ kind: 'layout', severity: 'warning', time: 1.5 });
+  expect(outside[0]).toMatchObject({ kind: 'layout', severity: 'warning', time: 0.5 }); // the second frame drawn: half a second into the intro
   expect(outside[0]!.text).toContain('layer “figure” (“约 6 倍” and 1 more) runs past the frame\'s left and bottom edge');
   expect(faces.map((face) => face.text)).toEqual([
     "Layer “title” sets text in “Noto Sans SC”, which neither the film nor its motion loads, so to this machine's fallback. Frames differ between machines. Declare a face that has them from the project's files, or use one the motion ships.",
@@ -104,4 +104,26 @@ it('says each pair of placed layers of a scene that overlap, not those that only
   expect(overlaps.map((issue) => issue.text)).toEqual([
     'Layers “title” and “stage” in scene “cover” overlap by 1760×20 px at x 80, y 214. Give each its own part of the frame, or draw what overlaps on purpose in one layer.',
   ]);
+});
+
+it("says a scene that still shows none of its layers half a second in, not one whose picture is in, nor by the film's own ground", async () => {
+  const s = stage();
+  const box = { x: 0, y: 0, w: 1920, h: 1080, z: 0 };
+  s.film = { ...film, layers: [{ ...box, id: 'ground' }], scenes: [
+    { ...film.scenes[0]!, layers: [{ ...box, id: 'title' }] },
+    { ...film.scenes[1]!, layers: [{ ...box, id: 'chart' }, { ...box, id: 'note' }] },
+  ] };
+  let at = -1;
+  vi.mocked(s.png).mockImplementation(async (t: number) => ((at = t), Buffer.from('')));
+  // The intro is in by half a second; the end shows only the film's ground then.
+  vi.mocked(s.inspect).mockImplementation(async () => ({ outside: [], unloaded: [], shown: at === 3.5 ? ['ground'] : ['ground', 'title', 'chart'] }));
+  const result = await reviewBuild({ ok: true, version: 1, errors: [] }, async () => s);
+  expect(result.issues).toEqual([{
+    id: 'empty-end',
+    kind: 'layout',
+    severity: 'warning',
+    text: "Scene “end” still shows none of its layers at 3.50 s, 0.50 s after it opens: the film's ground alone. Have its picture in by then, and bring in later only what its lines add.",
+    time: 3.5,
+    scene: 'end',
+  }]);
 });

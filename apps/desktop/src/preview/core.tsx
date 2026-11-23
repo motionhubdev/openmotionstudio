@@ -383,7 +383,8 @@ async function start(): Promise<void> {
     window.__omsFrame = film;
     post({ type: 'oms:ready', film });
   } catch (error) {
-    post({ type: 'oms:error', message: error instanceof Error ? error.message : String(error) });
+    // With its stack, which the Studio and oms map back to the project's sources.
+    post({ type: 'oms:error', message: error instanceof Error ? (error.stack ?? error.message) : String(error) });
     throw error;
   }
 }
