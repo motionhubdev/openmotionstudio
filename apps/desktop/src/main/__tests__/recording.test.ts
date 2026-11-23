@@ -52,6 +52,29 @@ describe('alignLines', () => {
     expect(b).toMatchObject({ start: 3, heard: 1 });
   });
 
+  it('says each stretch read otherwise, and the words said between lines that no line holds', () => {
+    const heard = [...heardAt('潮汐是怎样来的', 0), ...heardAt('嗯', 2), ...heardAt('答案嗯在月球', 3)];
+    const [a, b] = alignLines(lines, heard);
+    expect(a!.changes).toEqual([{ written: '么', heard: '样' }]);
+    expect(a!.after).toEqual({ text: '嗯', at: 2 });
+    expect(b!.before).toEqual({ text: '嗯', at: 2 });
+    // A word said inside a line is a change of that line, not an aside; it is still heard in full as written.
+    expect(b).toMatchObject({ heard: 1, changes: [{ written: '', heard: '嗯' }], after: null });
+    expect(alignLines(lines, [...heardAt('潮汐是怎么来的', 0), ...heardAt('答案在月球', 3)]).flatMap((fit) => fit.changes)).toEqual([]);
+  });
+
+  it('spells what was said between English lines with its blanks', () => {
+    const heard: Word[] = [
+      { text: 'Tides', start: 0, end: 0.4 },
+      { text: 'uh,', start: 0.6, end: 0.8 },
+      { text: 'well', start: 0.8, end: 1 },
+      { text: 'Moon', start: 1.2, end: 1.6 },
+    ];
+    const [tides, moon] = alignLines([{ id: 't', text: 'Tides.' }, { id: 'm', text: 'Moon.' }], heard);
+    expect(tides!.after).toEqual({ text: 'uh well', at: 0.6 });
+    expect(moon!.changes).toEqual([]);
+  });
+
   it('says a line left out as not heard, and times its words between its neighbours', () => {
     const heard = [...heardAt('潮汐是怎么来的', 0), ...heardAt('海水涨了', 3)];
     const [, b] = alignLines([...lines, { id: 'c', text: '海水涨了。' }], heard).slice(1);
@@ -148,7 +171,7 @@ describe('voiceRecording', () => {
     const cache = join(dir, 'cache');
     const project = join(dir, 'project');
     const done = await voiceRecording(project, film('recording:take'), file, { kind: 'minimax', key: 'k', region: 'china' }, ffmpeg, cache, () => {}, minimax.io);
-    expect(done).toMatchObject({ lines: 2, heard: 1 });
+    expect(done).toEqual({ lines: 2, seconds: done.seconds, heard: 1, transcriber: 'minimax', cached: false, changed: [], asides: [] });
     const lines = JSON.parse(await readFile(join(project, 'voice', 'lines.json'), 'utf8')) as { voice: string; lines: Record<string, string> };
     expect(lines.voice).toBe('recording:take');
     const clip = JSON.parse(await readFile(join(project, 'voice', `${lines.lines.a}.json`), 'utf8'));
@@ -158,8 +181,21 @@ describe('voiceRecording', () => {
     expect(clip.words.map((w: { text: string }) => w.text).join('')).toBe('潮汐是怎么来的？');
     expect(clip.seconds).toBeGreaterThan(1.8);
     expect((await readdir(join(project, 'voice'))).filter((f) => f.endsWith('.mp3'))).toHaveLength(2);
-    await voiceRecording(project, film('recording:take'), file, { kind: 'minimax', key: 'k', region: 'china' }, ffmpeg, cache, () => {}, minimax.io);
+    const again = await voiceRecording(project, film('recording:take'), file, { kind: 'minimax', key: 'k', region: 'china' }, ffmpeg, cache, () => {}, minimax.io);
     expect(minimax.asked).toHaveLength(1);
+    expect(again.cached).toBe(true);
+  }, 60_000);
+
+  it('cuts a take with a word changed and a word said between lines, and says both', async () => {
+    const file = await take(6);
+    const heard = io(() => ({ segments: [...heardAt('潮汐是怎样来的', 0.5), ...heardAt('嗯', 2.4), ...heardAt('答案在月球', 3)], base_resp: { status_code: 0 } }));
+    const project = join(dir, 'project');
+    const done = await voiceRecording(project, film('recording:take'), file, { kind: 'minimax', key: 'k' }, ffmpeg, join(dir, 'cache'), () => {}, heard.io);
+    expect(done).toMatchObject({ lines: 2, changed: [{ id: 'a', changes: [{ written: '么', heard: '样' }] }], asides: [{ text: '嗯', at: 2.4 }] });
+    // The caption keeps the written word, at the time the changed one was said.
+    const lines = JSON.parse(await readFile(join(project, 'voice', 'lines.json'), 'utf8')) as { lines: Record<string, string> };
+    const clip = JSON.parse(await readFile(join(project, 'voice', `${lines.lines.a}.json`), 'utf8'));
+    expect(clip.words.map((w: { text: string }) => w.text).join('')).toBe('潮汐是怎么来的？');
   }, 60_000);
 
   it('writes nothing for a take that reads a line otherwise, and says what was heard', async () => {

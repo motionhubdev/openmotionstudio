@@ -94,7 +94,8 @@ async function voice(args) {
   const worker = createRequire(import.meta.url)(join(root, 'dist/worker.cjs'));
   if (values.list) {
     if (positionals.length || !Object.hasOwn(worker.VOICE_ENV, values.list)) throw new Error(usage);
-    for (const choice of await worker.voices(values.list)) console.log(`${values.list}:${choice.id}${choice.name && choice.name !== choice.id ? `  ${choice.name}` : ''}${choice.language ? `  (${choice.language})` : ''}`);
+    // A tab after the voice, which may hold blanks and brackets itself (minimax:Chinese (Mandarin)_News_Anchor).
+    for (const choice of await worker.voices(values.list)) console.log(`${values.list}:${choice.id}${choice.name && choice.name !== choice.id ? `\t${choice.name}` : ''}${choice.language ? `\t(${choice.language})` : ''}`);
     return;
   }
   if (positionals.length !== 1 || (values.transcribe && !values.recording)) throw new Error(usage);
@@ -103,7 +104,7 @@ async function voice(args) {
   try {
     if (values.recording) {
       const done = await worker.record(dir, scratch, resolve(values.recording), values.transcribe, (text) => console.error(text));
-      return console.log(`Cut ${done.lines} line${done.lines === 1 ? '' : 's'} (${done.seconds.toFixed(1)} s of speech) from ${values.recording} into voice/, ${Math.round(done.heard * 100)}% of the script heard as written. Run oms check: each line now lasts as long as it was said.`);
+      return console.log(worker.recordingReport(done, values.recording).join('\n'));
     }
     const done = await worker.voice(dir, scratch, (n, of) => process.stderr.isTTY && process.stderr.write(`\rSpeaking ${n}/${of}`));
     if (process.stderr.isTTY) process.stderr.write('\n');

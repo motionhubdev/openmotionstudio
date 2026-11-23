@@ -216,6 +216,27 @@ export async function record(dir: string, scratch: string, file: string, kind: V
   return voiceRecording(dir, await filmOf(open), file, voiceSetup(by), await findFfmpeg(), TRANSCRIPTS, onStep);
 }
 
+/** What `oms voice --recording` says it did: who transcribed, what was cut, and every place the take differs from the script. */
+export function recordingReport(done: RecordedFilm, file: string): string[] {
+  const quote = (text: string) => `"${text}"`;
+  const change = ({ written, heard }: RecordedFilm['changed'][number]['changes'][number]) =>
+    !written ? `added ${quote(heard)}` : !heard ? `${quote(written)} not heard` : `${quote(written)} heard as ${quote(heard)}`;
+  const by = VOICE_NAMES[done.transcriber];
+  const report = [
+    done.cached ? `Used the transcript kept from an earlier import of this take (by ${by}): nothing was paid.` : `Transcribed by ${by}.`,
+    `Cut ${done.lines} line${done.lines === 1 ? '' : 's'} (${done.seconds.toFixed(1)} s of speech) from ${file} into voice/, ${Math.round(done.heard * 100)}% of the script heard as written.`,
+  ];
+  if (done.changed.length)
+    report.push(
+      'Read otherwise than written, and cut all the same: each caption shows the written words, timed by what was said.',
+      ...done.changed.map((line) => `- ${line.id}: ${line.changes.map(change).join('; ')}`),
+      'A transcriber may spell a homophone or a number its own way: listen where unsure. For a caption that shows what was said, write the line as it was said and run this again (the transcript is kept, so nothing is paid).',
+    );
+  if (done.asides.length) report.push(`Said between the lines, and in no clip: ${done.asides.map((aside) => `${quote(aside.text)} at ${aside.at.toFixed(1)} s`).join(', ')}.`);
+  report.push('Run oms check: each line now lasts as long as it was said.');
+  return report;
+}
+
 /** The voices a provider offers, with the key in the environment. */
 export const voices = (kind: VoiceKind) => voicesOf(voiceSetup(kind));
 

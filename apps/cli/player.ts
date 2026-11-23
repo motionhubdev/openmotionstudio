@@ -101,8 +101,8 @@ if (audio) {
   audio.preload = 'auto';
   audio.load();
   // The whole soundtrack in memory, so it seeks on any host: one that answers no range requests cannot seek a streamed
-  // one, and a seek went back to its start. Taken in whenever it is not playing; a page opened from disk, which may not
-  // fetch, keeps streaming the file.
+  // one, and a seek went back to its start. Taken in whenever it is not playing; a page opened from disk, which cannot
+  // fetch (and would say so in the console), keeps streaming the file.
   let whole: string | null = null;
   const takeIn = () => {
     if (!whole || !audio.paused || audio.src === whole) return;
@@ -110,13 +110,14 @@ if (audio) {
     audio.src = whole;
     audio.currentTime = at;
   };
-  fetch('soundtrack.mp4')
-    .then((response) => (response.ok ? response.blob() : Promise.reject(new Error(String(response.status)))))
-    .then((blob) => {
-      whole = URL.createObjectURL(blob);
-      takeIn();
-    })
-    .catch(() => {});
+  if (location.protocol !== 'file:')
+    fetch('soundtrack.mp4')
+      .then((response) => (response.ok ? response.blob() : Promise.reject(new Error(String(response.status)))))
+      .then((blob) => {
+        whole = URL.createObjectURL(blob);
+        takeIn();
+      })
+      .catch(() => {});
   audio.addEventListener('pause', takeIn);
 }
 
