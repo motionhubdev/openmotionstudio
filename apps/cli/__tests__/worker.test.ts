@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { renderStages, voiceSetup } from '../worker';
+import { recordingReport, renderStages, voiceSetup } from '../worker';
 
 describe('renderStages', () => {
   it('draws with a Chrome a core, as memory allows, and at most eight', () => {
@@ -37,5 +37,29 @@ describe('voiceSetup', () => {
     }
     expect(said).toMatch(/AZURE_SPEECH_REGION/);
     expect(said).not.toContain('secret-value');
+  });
+});
+
+describe('recordingReport', () => {
+  const done = { lines: 2, seconds: 7.25, heard: 0.97, transcriber: 'minimax' as const, cached: false, changed: [], asides: [] };
+
+  it('names who transcribed, and whether the kept transcript was used', () => {
+    expect(recordingReport(done, 'take.m4a')).toEqual([
+      'Transcribed by MiniMax.',
+      'Cut 2 lines (7.3 s of speech) from take.m4a into voice/, 97% of the script heard as written.',
+      'Run oms check: each line now lasts as long as it was said.',
+    ]);
+    expect(recordingReport({ ...done, cached: true }, 'take.m4a')[0]).toBe('Used the transcript kept from an earlier import of this take (by MiniMax): nothing was paid.');
+  });
+
+  it('lists every line read otherwise and every word said between lines', () => {
+    const report = recordingReport({
+      ...done,
+      changed: [{ id: 'race', changes: [{ written: '一瞬间', heard: '一眨眼' }, { written: '', heard: '嗯' }, { written: '了', heard: '' }] }],
+      asides: [{ text: '嗯', at: 27.62 }],
+    }, 'take.m4a');
+    expect(report).toContain('- race: "一瞬间" heard as "一眨眼"; added "嗯"; "了" not heard');
+    expect(report).toContain('Said between the lines, and in no clip: "嗯" at 27.6 s.');
+    expect(report.join('\n')).toMatch(/caption shows the written words[\s\S]*write the line as it was said and run this again/);
   });
 });

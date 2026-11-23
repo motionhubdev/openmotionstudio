@@ -3,6 +3,14 @@
 Every key change to OpenMotionStudio, newest first, by date. What counts as key and the entry format are in
 `CLAUDE.md`, "The changelog".
 
+## 2026-11-23 — `oms voice --recording` says every difference from the script
+
+- **What:** Importing a recording now says who transcribed it, and when the transcript kept from an earlier import was used (nothing paid); lists every line that was cut though read otherwise than written, each difference as written against heard (`"一瞬间" heard as "一眨眼"`, `added "嗯"`), since its caption shows the written words; and lists the words said between the lines, which no clip holds, with their times. `oms voice --list` puts a tab after each voice, whose name may hold blanks. A web player opened from disk no longer logs an error for the soundtrack it cannot fetch. The skill says what to ask the person to record, what `recording:<name>` names, how to read the import, that a voiced line may take `at`, and how long a narrated film runs past its speech.
+- **Why:** A trial import cut a line with a word changed at 97 % and said nothing, so the caption showed a word the narration did not say; and it gave no way to tell who transcribed the take or whether it was paid for again.
+- **Breaking:** None. A script that read `oms voice --list` by its two blanks reads a tab now.
+- **Upgrade:** Move the installed `skills/oms` folder aside and run `oms install claude` or `oms install codex` again.
+- **Refs:** `apps/desktop/src/main/recording.ts`, `apps/cli/worker.ts`, `apps/cli/oms.mjs`, `apps/cli/player.ts`, `apps/cli/skills/oms/`, `docs/tech/sound-and-captions.md`.
+
 ## 2026-11-23 — Films draw with `@motionhub/runtime` 0.8.1
 
 - **What:** The Studio, `oms` and an exported Remotion project draw with `@motionhub/runtime` 0.8.1: word captions in Chinese and Japanese join without blanks, a caption's lengths are pixels in either form, a caption with no colour of its own is white on a dark ground and keeps 64 px from the frame's sides, and a film's voice may name a provider's voice with blanks and brackets (`minimax:Chinese (Mandarin)_News_Anchor`).

@@ -96,7 +96,10 @@ A narration from the person's own recording (`recording.ts`, `oms voice --record
 interface): one take of the film's lines, read as written, in a film whose voice is `recording:<name>`. It is transcribed
 with each word's time by MiniMax, OpenAI or ElevenLabs (kept by the file's hash), matched to the lines character by
 character, and cut into `voice/` one clip a line, as a spoken narration's are, each word the script's own text timed by
-the characters heard for it. A line heard less than 75 % as written stops the import, which writes nothing.
+the characters heard for it. A line heard less than 75 % as written stops the import, which writes nothing. Every
+other line read otherwise is cut and listed with each difference, written against heard, and words said between the
+lines (no line holds them, so no clip does) are listed with their times; the import also says who transcribed the take
+and whether the kept transcript was used.
 
 ## Order
 

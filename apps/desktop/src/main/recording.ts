@@ -2,7 +2,8 @@
 // each word's time by the person's provider, matched to the lines character by character, and cut into one clip a line
 // in voice/, as a spoken narration's are (narration.ts). The film, its captions and every export then take it as they
 // take a voice's. A line's words keep the script's own text, each timed by the characters heard for it, so a caption
-// shows what was written; a line read too differently from its words is said, and nothing is written.
+// shows what was written; a line read too differently from its words is said, and nothing is written. Every other
+// difference is said too, and so is anything said between the lines, which no line keeps.
 
 import { execFile } from 'node:child_process';
 import { createHash } from 'node:crypto';
@@ -130,6 +131,12 @@ export function captionWords(text: string): { text: string; spoken: string[] }[]
   return words;
 }
 
+/** Words heard that no line holds, between two lines (or before the first, after the last), from `at` seconds. */
+export interface Aside {
+  text: string;
+  at: number;
+}
+
 /** Where a line was heard in the recording: its span, its words timed, and how much of it was heard as written. */
 export interface LineFit {
   id: string;
@@ -141,6 +148,12 @@ export interface LineFit {
   heard: number;
   /** What was heard where it was read. */
   said: string;
+  /** Each stretch read otherwise than written, in order: what was written there, and what was heard (either may be empty). */
+  changes: { written: string; heard: string }[];
+  /** Words heard before it that no line holds, after the line before it (or the take's start); null when none. */
+  before: Aside | null;
+  /** Words heard after it that no line holds, before the line after it (or the take's end); null when none. */
+  after: Aside | null;
 }
 
 /** Most character pairs one alignment compares: a recording of about twenty minutes of Chinese. */
@@ -152,15 +165,15 @@ const MOST_PAIRS = 60_000_000;
  * it was read. Each of a line's characters takes the time of the character heard for it, or one between its neighbours'.
  */
 export function alignLines(lines: { id: string; text: string }[], heard: Word[]): LineFit[] {
-  // What was heard, a character at a time, each with its share of its word's time.
-  const said: { char: string; start: number; end: number }[] = [];
-  for (const word of heard) {
+  // What was heard, a character at a time, each with its share of its word's time and the word it is in.
+  const said: { char: string; start: number; end: number; word: number }[] = [];
+  heard.forEach((word, w) => {
     const chars = [...word.text].filter((c) => SPOKEN.test(c)).map(folded);
     chars.forEach((char, k) => {
       const step = (word.end - word.start) / chars.length;
-      said.push({ char, start: word.start + k * step, end: word.start + (k + 1) * step });
+      said.push({ char, start: word.start + k * step, end: word.start + (k + 1) * step, word: w });
     });
-  }
+  });
   // What is written, a character at a time, each with its line and its word.
   const written: { char: string; line: number; word: number }[] = [];
   const words = lines.map((line, l) => {
@@ -222,6 +235,14 @@ export function alignLines(lines: { id: string; text: string }[], heard: Word[])
   // What was heard where a line was read: all between the last character heard for the lines before it and the first
   // heard for the lines after it, so words said in place of its own are shown too.
   const heardBy = lines.map((_, l) => written.map((w, i) => (w.line === l ? match[i]! : -1)).filter((j) => j >= 0));
+  // Heard characters as text: a blank between two words of a spaced script.
+  const spell = (chars: { char: string; word: number }[]) =>
+    chars.map((c, k) => (k && c.word !== chars[k - 1]!.word && !UNSPACED.test(c.char) && !UNSPACED.test(chars[k - 1]!.char) ? ' ' : '') + c.char).join('');
+  // The words heard from `from` up to `to` that no line holds, as an aside.
+  const aside = (from: number, to: number): Aside | null => {
+    const left = said.slice(from, to);
+    return left.length ? { text: spell(left), at: round(left[0]!.start) } : null;
+  };
   return lines.map((line, l) => {
     const own = written.map((w, i) => ({ ...w, i })).filter((w) => w.line === l);
     const first = own[0]?.i ?? 0;
@@ -229,6 +250,29 @@ export function alignLines(lines: { id: string; text: string }[], heard: Word[])
     const heardIn = own.filter((w) => same[w.i]).length;
     const from = Math.max(-1, ...heardBy.slice(0, l).flat()) + 1;
     const to = Math.min(m, ...heardBy.slice(l + 1).flat());
+    // Where it was read otherwise: each run of its characters not heard as written, with what was heard in their place
+    // and any heard between its own; the characters heard around it belong to no line, and are its asides.
+    const changes: { written: string; heard: string }[] = [];
+    let run: { written: { char: string; word: number }[]; heard: { char: string; word: number }[] } | null = null;
+    let prev = -1;
+    const close = () => {
+      if (run) changes.push({ written: spell(run.written), heard: spell(run.heard) });
+      run = null;
+    };
+    for (const c of own) {
+      const j = match[c.i]!;
+      if (j >= 0 && prev >= 0 && j > prev + 1) (run ??= { written: [], heard: [] }).heard.push(...said.slice(prev + 1, j));
+      if (j >= 0 && same[c.i]) {
+        close();
+        prev = j;
+        continue;
+      }
+      run ??= { written: [], heard: [] };
+      run.written.push({ char: c.char, word: c.word });
+      if (j >= 0) (run.heard.push(said[j]!), (prev = j));
+    }
+    close();
+    const mine = heardBy[l]!;
     return {
       id: line.id,
       text: line.text,
@@ -239,7 +283,10 @@ export function alignLines(lines: { id: string; text: string }[], heard: Word[])
         return { text: w.text, start: round(start[chars[0]!.i]!), end: round(end[chars.at(-1)!.i]!) };
       }),
       heard: own.length ? heardIn / own.length : 0,
-      said: said.slice(from, to).map((c) => c.char).join(''),
+      said: spell(said.slice(from, to)),
+      changes,
+      before: mine.length ? aside(from, mine[0]!) : null,
+      after: mine.length ? aside(mine.at(-1)! + 1, to) : null,
     };
   });
 }
@@ -257,6 +304,13 @@ export interface RecordedFilm {
   seconds: number;
   /** Characters of the script heard as written, 0 to 1, over the whole film. */
   heard: number;
+  /** Who transcribed the take, and whether its transcript was the one kept from an earlier import (nothing paid). */
+  transcriber: VoiceKind;
+  cached: boolean;
+  /** The lines cut though read otherwise than written: their captions show the written words, timed by what was said. */
+  changed: { id: string; changes: LineFit['changes'] }[];
+  /** Words heard between the lines that no line holds, and so no clip. */
+  asides: Aside[];
 }
 
 /**
@@ -283,7 +337,8 @@ export async function voiceRecording(
   const language = languageOf(lines.map((line) => line.text).join(''));
   const transcript = join(cache, `${hash.slice(0, 32)}-${setup.kind}-${language}.json`);
   let heard: Word[];
-  if (existsSync(transcript)) heard = JSON.parse(await readFile(transcript, 'utf8')) as Word[];
+  const cached = existsSync(transcript);
+  if (cached) heard = JSON.parse(await readFile(transcript, 'utf8')) as Word[];
   else {
     const seconds = await mediaSeconds(ffmpeg, file);
     const work = await mkdtemp(join(tmpdir(), 'oms-recording-'));
@@ -336,5 +391,13 @@ export async function voiceRecording(
   }
   await keepNarration(folder, narration);
   const characters = fits.reduce((sum, fit) => sum + captionWords(fit.text).reduce((n, w) => n + w.spoken.length, 0), 0);
-  return { lines: fits.length, seconds: round(total), heard: fits.reduce((sum, fit) => sum + fit.heard * captionWords(fit.text).reduce((n, w) => n + w.spoken.length, 0), 0) / characters };
+  return {
+    lines: fits.length,
+    seconds: round(total),
+    heard: fits.reduce((sum, fit) => sum + fit.heard * captionWords(fit.text).reduce((n, w) => n + w.spoken.length, 0), 0) / characters,
+    transcriber: setup.kind,
+    cached,
+    changed: fits.filter((fit) => fit.changes.length).map((fit) => ({ id: fit.id, changes: fit.changes })),
+    asides: [fits[0]!.before, ...fits.map((fit) => fit.after)].filter((a): a is Aside => a !== null),
+  };
 }
