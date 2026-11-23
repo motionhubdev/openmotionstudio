@@ -12,6 +12,7 @@ import { keepFilmsInPlace, registerPreviewScheme, SCHEME, servePreview } from '.
 import { allowSoftwareWebGL } from './film/stage';
 import { startFilm } from './film/film';
 import { openExample } from './examples';
+import { OMS_EXTENSION, importProject } from './oms-file';
 import { createInWorkspace, duplicateProject, filmName, forgetProject, inLibrary, openProject, projectAt, projectLibrary, rememberProject, renameProject } from './project';
 import { providers, studioTranslator } from './providers';
 import { createWorkspace, type WorkspaceHost } from './workspace';
@@ -529,7 +530,7 @@ else {
           if (entry?.window) entry.window.close();
           showHome(); return;
         }
-        if ([CHANNELS.openProject, CHANNELS.createProject, CHANNELS.openRecent, CHANNELS.openExample].includes(channel as never)) {
+        if ([CHANNELS.openProject, CHANNELS.importProject, CHANNELS.createProject, CHANNELS.openRecent, CHANNELS.openExample].includes(channel as never)) {
           let project: Project;
           let brief: string | null = null;
           if (channel === CHANNELS.openRecent) { await openKnown(args[0], false); return null; }
@@ -542,6 +543,13 @@ else {
             project = await createInWorkspace((await workspaceSettings()).path, brief ? filmName(brief) : undefined);
             await startFilm(project.path);
             project = projectAt(project.path);
+          } else if (channel === CHANNELS.importProject) {
+            const result = await dialog.showOpenDialog(entry?.host ?? mainWindow, {
+              title: (await studioTranslator())('Import a film file'), properties: ['openFile'],
+              filters: [{ name: 'OpenMotionStudio', extensions: [OMS_EXTENSION.slice(1)] }],
+            });
+            if (result.canceled || !result.filePaths[0]) return null;
+            project = await importProject(result.filePaths[0], (await workspaceSettings()).path);
           } else {
             const result = await dialog.showOpenDialog(entry?.host ?? mainWindow, {
               title: (await studioTranslator())('Open a project folder'), properties: ['openDirectory'],

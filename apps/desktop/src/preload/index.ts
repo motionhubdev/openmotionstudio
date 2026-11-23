@@ -60,6 +60,7 @@ const api: StudioApi = {
   signInAgent: (kind) => ipcRenderer.invoke(CHANNELS.signInAgent, kind),
   undoTurn: (checkpoint) => ipcRenderer.invoke(CHANNELS.undoTurn, checkpoint),
   openProject: () => ipcRenderer.invoke(CHANNELS.openProject),
+  importProject: () => ipcRenderer.invoke(CHANNELS.importProject),
   createProject: (brief) => ipcRenderer.invoke(CHANNELS.createProject, brief),
   takeBrief: () => ipcRenderer.invoke(CHANNELS.takeBrief),
   openRecent: (path) => ipcRenderer.invoke(CHANNELS.openRecent, path),

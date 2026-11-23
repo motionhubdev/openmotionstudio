@@ -2,7 +2,7 @@
 // headless Chrome (chrome.ts) and encoded by the person's ffmpeg (ffmpeg.ts). Bundled into dist/worker.cjs beside the
 // Studio's preview scripts (resources/preview/).
 import { createHash } from 'node:crypto';
-import { readdir, rm, stat } from 'node:fs/promises';
+import { readdir, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { availableParallelism, freemem, homedir } from 'node:os';
 import { basename, join, resolve } from 'node:path';
 import type { FilmReview } from '../desktop/src/shared/api';
@@ -17,6 +17,7 @@ import { TRANSCRIBERS, voiceRecording, type RecordedFilm } from '../desktop/src/
 import { VOICE_NAMES, voicesOf, type VoiceSetup } from '../desktop/src/main/voice';
 import type { VoiceKind, VoicedFilm } from '../desktop/src/shared/api';
 import { removeBuilt, servePlayer, watchProject, writePlayer } from './web';
+import { OMS_EXTENSION, packProject } from '../desktop/src/main/oms-file';
 
 // Motions come from motionhub when a film asks for one, taken into the project as the Studio and @motionhub/cli take them.
 export { motionWords, searchMotions, useMotion } from '../desktop/src/main/motions';
@@ -107,6 +108,16 @@ async function filmOf(open: () => Promise<{ film: import('../desktop/src/shared/
 }
 
 /** The film as a web player in the new folder `out` (web.ts): plays in a browser without a render. */
+/** The project in `dir` packed into the film file `out` (ADR 0019), written whole, then moved into place. */
+export async function pack(dir: string, out: string): Promise<{ files: number; bytes: number }> {
+  if (!out.toLowerCase().endsWith(OMS_EXTENSION)) throw new Error(`Name a film file ending in ${OMS_EXTENSION}.`);
+  const { bytes, files } = await packProject(dir);
+  const partial = `${out}.partial`;
+  await writeFile(partial, bytes);
+  await rename(partial, out);
+  return { files, bytes: bytes.length };
+}
+
 export async function player(dir: string, scratch: string, out: string): Promise<{ soundtrack: boolean }> {
   const { build, output, open } = await opener(dir, scratch);
   if (!build.ok) throw new Error(build.errors.join('\n'));

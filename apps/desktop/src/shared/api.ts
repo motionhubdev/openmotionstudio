@@ -561,6 +561,8 @@ export interface StudioApi {
   undoTurn(checkpoint: string): Promise<{ text: string }>;
   /** Asks for a folder and opens it; null when the person cancels. */
   openProject(): Promise<Project | null>;
+  /** Asks for a film file (.oms), takes it into a new folder in the workspace and opens it; null when the person cancels. */
+  importProject(): Promise<Project | null>;
   /**
    * Creates a fresh film folder in the configured workspace and opens it. With a brief (what the person wants to make,
    * in their words), the folder is named from it and the brief waits for the new editor (`takeBrief`).
@@ -709,6 +711,7 @@ export const CHANNELS = {
   restoreCheckpoint: 'project:restore',
   undoTurn: 'agent:undo-turn',
   openProject: 'project:open',
+  importProject: 'project:import',
   createProject: 'project:create',
   takeBrief: 'project:take-brief',
   openRecent: 'project:open-recent',

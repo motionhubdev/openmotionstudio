@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 
 const root = dirname(fileURLToPath(import.meta.url));
-const usage = 'oms install <claude|codex> | init <folder> | check <folder> [--json] | still <folder> --at <seconds> --out <new.png> | render <folder> --out <new.mp4> | player <folder> --out <new folder> | preview <folder> [--port <n>] | motion search <words…> [--json] | motion use <@scope/slug> <folder> | sound <folder> --cues <at:role,…> --seconds <s> --out <new.wav> [--motion <id>] | font <folder> --family <name[:400,700]>… [--weights 400,700] | voice <folder> [--recording <file> [--transcribe <minimax|openai|elevenlabs>]] | voice --list <minimax|elevenlabs|openai|azure>';
+const usage = 'oms install <claude|codex> | init <folder> | check <folder> [--json] | still <folder> --at <seconds> --out <new.png> | render <folder> --out <new.mp4> | player <folder> --out <new folder> | pack <folder> [--out <file.oms>] | preview <folder> [--port <n>] | motion search <words…> [--json] | motion use <@scope/slug> <folder> | sound <folder> --cues <at:role,…> --seconds <s> --out <new.wav> [--motion <id>] | font <folder> --family <name[:400,700]>… [--weights 400,700] | voice <folder> [--recording <file> [--transcribe <minimax|openai|elevenlabs>]] | voice --list <minimax|elevenlabs|openai|azure>';
 
 /** `oms motion search <words…> [--json]` and `oms motion use <@scope/slug> <folder>`: motions from motionhub, on demand. */
 async function motion(args) {
@@ -122,7 +122,7 @@ async function run() {
   if (command === 'font') return font(args);
   if (command === 'voice') return voice(args);
   const options = command === 'still' ? { at: { type: 'string' }, out: { type: 'string' } }
-    : command === 'render' || command === 'player' ? { out: { type: 'string' } }
+    : command === 'render' || command === 'player' || command === 'pack' ? { out: { type: 'string' } }
     : command === 'preview' ? { port: { type: 'string' } }
     : command === 'check' ? { json: { type: 'boolean' } } : {};
   const { values, positionals } = parseArgs({ args, options, allowPositionals: true });
@@ -158,6 +158,14 @@ async function run() {
     // of the folder, and the Studio's state.
     await writeFile(join(dir, '.gitignore'), '/*.mp4\n/*.srt\n/*.png\n.motion-studio/\n', { flag: 'wx' });
     return console.log(dir);
+  }
+  if (command === 'pack') {
+    // The film as one file for the Studio's Import (ADR 0019): beside the folder unless --out names another place.
+    const out = resolve(values.out ?? `${dir}.oms`);
+    const worker = createRequire(import.meta.url)(join(root, 'dist/worker.cjs'));
+    const { files, bytes } = await worker.pack(dir, out);
+    console.log(out);
+    return console.error(`Packed ${files} file${files === 1 ? '' : 's'} (${(bytes / 1024 / 1024).toFixed(1)} MB). In OpenMotionStudio, Import film file opens it as a new project; renders, stills and the Studio's state are left out.`);
   }
   if (!['still', 'check', 'render', 'player', 'preview'].includes(command)) throw new Error(usage);
   if (command === 'player' && !values.out) throw new Error(usage);

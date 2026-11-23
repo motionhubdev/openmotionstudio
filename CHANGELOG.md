@@ -3,6 +3,14 @@
 Every key change to OpenMotionStudio, newest first, by date. What counts as key and the entry format are in
 `CLAUDE.md`, "The changelog".
 
+## 2026-11-23 — A film travels as one `.oms` file: `oms pack`, and Import film file in the Studio
+
+- **What:** `oms pack <folder> [--out <file.oms>]` writes a project as one film file (`<folder>.oms` beside it by default): the project's own files in a gzipped tar, the format of a motion's package, without renders, stills, `.git`, `node_modules` or the Studio's state (`.motion-studio/`, which holds conversations). Home's **Import film file** takes one into a new folder in the workspace named after it and opens it; a file holding a path outside its project, a link or no `film.tsx` is refused and leaves nothing behind.
+- **Why:** A film an agent made in a terminal reaches the Studio, or another person, as one file a chat or a mail can carry.
+- **Breaking:** None: a new file format beside the folder, which stays the truth.
+- **Upgrade:** Move the installed `skills/oms` folder aside and run `oms install claude` or `oms install codex` again.
+- **Refs:** [ADR 0019](docs/adr/0019-a-film-travels-as-one-oms-file.md), `apps/desktop/src/main/oms-file.ts`, `apps/cli/worker.ts`, `apps/cli/oms.mjs`.
+
 ## 2026-11-23 — `oms voice --recording` says every difference from the script
 
 - **What:** Importing a recording now says who transcribed it, and when the transcript kept from an earlier import was used (nothing paid); lists every line that was cut though read otherwise than written, each difference as written against heard (`"一瞬间" heard as "一眨眼"`, `added "嗯"`), since its caption shows the written words; and lists the words said between the lines, which no clip holds, with their times. `oms voice --list` puts a tab after each voice, whose name may hold blanks. A web player opened from disk no longer logs an error for the soundtrack it cannot fetch. The skill says what to ask the person to record, what `recording:<name>` names, how to read the import, that a voiced line may take `at`, and how long a narrated film runs past its speech.

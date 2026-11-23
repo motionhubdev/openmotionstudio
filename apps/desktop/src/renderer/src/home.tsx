@@ -9,6 +9,7 @@ import {
   Check,
   CircleHelp,
   Clapperboard,
+  FileInput,
   Folder,
   FolderOpen,
   Home as HomeIcon,
@@ -434,7 +435,7 @@ const STARTERS = ['A 15-second launch teaser for ', 'A 30-second explainer on ho
  * What the person wants to make, in their words: a new project named from it, opened, with the words as the agent's
  * first message. Without an assistant they wait in the project's composer.
  */
-function Prompt({ field, available, disabled, onCreate, onOpen, onSetUp }: {
+function Prompt({ field, available, disabled, onCreate, onOpen, onImport, onSetUp }: {
   field: RefObject<HTMLTextAreaElement | null>;
   available: boolean;
   disabled: boolean;
@@ -442,6 +443,8 @@ function Prompt({ field, available, disabled, onCreate, onOpen, onSetUp }: {
   onCreate(brief: string): Promise<boolean>;
   /** Opens a folder the person already has, the other way to start. */
   onOpen(): void;
+  /** Takes a film file (.oms) an agent packed into a new project. */
+  onImport(): void;
   onSetUp(): void;
 }) {
   const { t } = usePreferences();
@@ -486,6 +489,10 @@ function Prompt({ field, available, disabled, onCreate, onOpen, onSetUp }: {
         <button type="button" className="button" disabled={disabled} onClick={onOpen}>
           <Folder size={15} />
           {t('Open project')}
+        </button>
+        <button type="button" className="button" disabled={disabled} onClick={onImport}>
+          <FileInput size={15} />
+          {t('Import film file')}
         </button>
         <button className="button primary" type="submit" disabled={disabled || !brief.trim()}>
           {t('Start creating')}
@@ -762,6 +769,7 @@ export function Home({ providers, workspace, tasks, examples, busy, error, revis
               disabled={disabled}
               onCreate={(brief) => onAction(() => window.studio.createProject(brief))}
               onOpen={() => void onAction(window.studio.openProject)}
+              onImport={() => void onAction(window.studio.importProject)}
               onSetUp={() => onSettings({ models: true })}
             />
           </section>

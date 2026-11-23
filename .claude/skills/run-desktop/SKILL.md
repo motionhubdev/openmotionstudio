@@ -26,6 +26,7 @@ pnpm build
 node .claude/skills/run-desktop/drive.mjs <shots-dir>                  # kinetic example, ss:workspace + boxes
 node .claude/skills/run-desktop/drive.mjs <shots-dir> data ss:open key:Backslash ss:folded click:".topbar .status" ss:checks
 node .claude/skills/run-desktop/drive.mjs <shots-dir> "<project folder>" ss:open   # a folder oms made, opened where it is
+node .claude/skills/run-desktop/drive.mjs <shots-dir> "<film>.oms" ss:imported     # a film file oms pack wrote, through Import
 ```
 
 Then **read the screenshots**. A blank or launcher-only shot means it did not reach the workspace.

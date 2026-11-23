@@ -31,6 +31,7 @@ apps/desktop/
     index.ts           the tray-backed main window, retained editor views, dedicated windows and IPC routing
     workspace.ts       a project's handlers, bundler, agent sessions, tasks and outgoing events (ADR 0014)
     project.ts         open / create a folder, whether it holds a film, the project library
+    oms-file.ts        a project as one film file (.oms) and back: `oms pack`, and Home's Import (ADR 0019)
     history.ts         local checkpoints of the agent's source writes in .motion-studio/history.json, and restoring
                        one only when no file it touches was changed since (ADR 0007)
     examples.ts        the bundled starting films, copied into a fresh project in the default workspace on each click

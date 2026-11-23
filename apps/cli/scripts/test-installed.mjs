@@ -5,6 +5,7 @@ import { cp, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/pr
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { gunzipSync } from 'node:zlib';
 
 const installed = resolve(process.argv[2]);
 const scratch = await mkdtemp(join(tmpdir(), 'oms-skill-test-'));
@@ -60,6 +61,12 @@ try {
   assert.throws(() => oms('voice', voiced), /MiniMax speaks with the key in MINIMAX_API_KEY/);
   assert.throws(() => oms('voice', voiced, '--recording', join(voiced, 'film.tsx')), /A recording is transcribed by MiniMax, OpenAI or ElevenLabs/);
   assert.match(JSON.parse(oms('check', voiced, '--json')).issues.find((issue) => issue.id === 'unvoiced').text, /^Not yet spoken in minimax:male-qn-jingying: .* oms voice speaks them\.$/);
+  // A film file for the Studio's Import: the project's own files, and not the render beside them.
+  await writeFile(join(voiced, 'Voiced.mp4'), 'render');
+  assert.equal(oms('pack', voiced).trim(), `${voiced}.oms`);
+  const packed = gunzipSync(await readFile(`${voiced}.oms`)).toString('latin1');
+  assert.ok(packed.includes('film.tsx') && packed.includes('.gitignore') && !packed.includes('Voiced.mp4'));
+  assert.throws(() => oms('pack', voiced, '--out', join(scratch, 'film.zip')), /ending in \.oms/);
 
   // A face from Google Fonts, cut to the characters the project writes, with its licence.
   await writeFile(join(starter, 'parts.tsx'), "export const words = '四季';");
@@ -184,7 +191,7 @@ export default function Main() {
 `);
   assert.throws(() => oms('check', silent, '--json'), error =>
     error.status === 1 && JSON.parse(error.stdout).issues.some(issue => issue.text.includes('media/chime.wav')));
-  console.log('PASS installed skill, starter, editable example, PNG, bounds, a fresh frame, a render (with and without a subtitle track), a web player, a face from Google Fonts, a narration voice and its key, a motion from motionhub and its sound, and missing audio');
+  console.log('PASS installed skill, starter, editable example, PNG, bounds, a fresh frame, a render (with and without a subtitle track), a web player, a face from Google Fonts, a narration voice and its key, a film file for the Studio, a motion from motionhub and its sound, and missing audio');
 } finally {
   await rm(scratch, { recursive: true, force: true });
 }

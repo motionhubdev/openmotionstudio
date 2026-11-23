@@ -1,9 +1,10 @@
 // Drives the built Studio for a look at it: launches Electron with a throwaway profile (so the person's recent
 // projects and settings are untouched), opens an example or a project folder, runs the steps given and exits.
 //
-//   node drive.mjs <shots-dir> [example | folder] [step ...]
+//   node drive.mjs <shots-dir> [example | folder | file.oms] [step ...]
 //
-// example: kinetic (default), product or data; or the path of a project folder, opened where it is. Steps run in order:
+// example: kinetic (default), product or data; or the path of a project folder, opened where it is; or a film file
+// (.oms), taken in through Home's Import film file into the throwaway workspace. Steps run in order:
 //   ss:<name>        screenshot to <shots-dir>/<name>.png
 //   key:<key>        press a key (Playwright names: Space, ArrowRight, Backslash, BracketLeft, ...)
 //   click:<css>      click the first element matching the selector, through the DOM
@@ -130,7 +131,11 @@ try {
   await resize(1600, 960);
   await home.waitForSelector('.studio-home', { timeout: 30_000 });
   if (folder) await home.evaluate((path) => window.studio.openRecent(path), folder);
-  else {
+  else if (example.toLowerCase().endsWith('.oms')) {
+    // The open dialog answered with the file, as a person would pick it.
+    await app.evaluate(({ dialog }, file) => { dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [file] }); }, path.resolve(example));
+    await home.evaluate(() => window.studio.importProject());
+  } else {
     const ids = await home.evaluate(() => window.studio.examples().then((all) => all.map((e) => e.id)));
     if (!ids.includes(example)) throw new Error(`No example "${example}": there are ${ids.join(', ')}, or give a project folder.`);
     await home.evaluate((id) => window.studio.openExample(id), example);
