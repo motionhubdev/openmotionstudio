@@ -310,6 +310,12 @@ export function changesOf(element: PickedElement, look: Look): MarkChange[] {
 
 const WEIGHTS = ['100', '200', '300', '400', '500', '600', '700', '800', '900'];
 
+/** The weights a picked element can be tried in: those its face is declared in, else all; always with its own. */
+export function weightChoices(element: PickedElement, current: string): string[] {
+  const offered = element.weights?.length ? element.weights : WEIGHTS;
+  return offered.includes(current) ? offered : [current, ...offered];
+}
+
 /** What a picked element is called: its words, else the last step of its path. */
 export const elementName = (element: PickedElement) =>
   element.text ? `“${element.text.slice(0, 28)}”` : (element.path.split(' > ').pop() ?? element.path);
@@ -704,7 +710,7 @@ export function Stage({
                   <label>
                     <span>{tr("Weight")}</span>
                     <select value={shown['font-weight']} onChange={(e) => set('font-weight', e.target.value)}>
-                      {(WEIGHTS.includes(shown['font-weight']) ? WEIGHTS : [shown['font-weight'], ...WEIGHTS]).map((w) => (
+                      {weightChoices(draft.element, shown['font-weight']).map((w) => (
                         <option key={w} value={w}>
                           {w}
                         </option>

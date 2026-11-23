@@ -9,7 +9,7 @@
 //   oms:tweak {styles, text}  -> the element last picked tried with that look (and words), until the next tweak or pick
 //   window.__omsMark(box | null)  outlines a box (fractions of the frame) for a still of a mark
 
-import { type FilmInfo, type FromPreview, type PickedElement, TWEAKABLE, type ToPreview } from '../shared/preview';
+import { type FilmInfo, type FromPreview, type PickedElement, TWEAKABLE, type ToPreview, declaredWeights } from '../shared/preview';
 
 declare global {
   interface Window {
@@ -83,7 +83,9 @@ function describe(element: Element, frame: DOMRect): PickedElement & { box: Box 
   const layer = element.closest('[data-layer]')?.getAttribute('data-layer');
   // Words can be tried only on an element of text alone: replacing its text then loses nothing drawn inside it.
   const ownText = element.childElementCount === 0 && element.textContent?.trim() ? element.textContent.slice(0, 500) : undefined;
-  return { path: path.join(' > '), text, attributes, styles, ...(scene ? { scene } : {}), ...(layer ? { layer } : {}), ...(ownText !== undefined ? { ownText } : {}), box };
+  // The weights its face has, so a weight is tried only in one it draws in.
+  const weights = text ? declaredWeights(computed.fontFamily, document.fonts) : undefined;
+  return { path: path.join(' > '), text, attributes, styles, ...(scene ? { scene } : {}), ...(layer ? { layer } : {}), ...(ownText !== undefined ? { ownText } : {}), ...(weights ? { weights } : {}), box };
 }
 
 /** The element last picked, which a tweak tries a look on. */

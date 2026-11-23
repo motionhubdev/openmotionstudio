@@ -11,6 +11,14 @@ Every key change to OpenMotionStudio, newest first, by date. What counts as key 
 - **Upgrade:** Move the installed `skills/oms` folder aside and run `oms install claude` or `oms install codex` again.
 - **Refs:** [ADR 0019](docs/adr/0019-a-film-travels-as-one-oms-file.md), `apps/desktop/src/main/oms-file.ts`, `apps/cli/worker.ts`, `apps/cli/oms.mjs`.
 
+## 2026-11-23 — The Studio keeps a recorded narration, and offers only the weights a face has
+
+- **What:** A film narrated from the person's own recording (`voice="recording:<name>"`, from `oms voice --recording`) opens in the Studio with a Voice view that says so, lists any line missing from the take, and no longer asks to choose a provider, whose voice would have replaced the recording. A text picked on the picture is offered only the weights its face is declared in (a film's Noto Sans SC at 400 and 900 offers those two), not all nine.
+- **Why:** Opening an `oms` project in the Studio, the Voice view invited the person to speak over their own recording, and a weight the film's face lacks drew in a fallback face.
+- **Breaking:** None.
+- **Upgrade:** Nothing.
+- **Refs:** `apps/desktop/src/renderer/src/voice-view.tsx`, `apps/desktop/src/renderer/src/preview.tsx`, `apps/desktop/src/preview/pick.ts`, `apps/desktop/src/shared/preview.ts`, `docs/tech/sound-and-captions.md`.
+
 ## 2026-11-23 — `oms voice --recording` says every difference from the script
 
 - **What:** Importing a recording now says who transcribed it, and when the transcript kept from an earlier import was used (nothing paid); lists every line that was cut though read otherwise than written, each difference as written against heard (`"一瞬间" heard as "一眨眼"`, `added "嗯"`), since its caption shows the written words; and lists the words said between the lines, which no clip holds, with their times. `oms voice --list` puts a tab after each voice, whose name may hold blanks. A web player opened from disk no longer logs an error for the soundtrack it cannot fetch. The skill says what to ask the person to record, what `recording:<name>` names, how to read the import, that a voiced line may take `at`, and how long a narrated film runs past its speech.

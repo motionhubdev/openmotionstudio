@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { sampleText, voicesFound } from '../voice-view';
+import { recordingOf, sampleText, voicesFound } from '../voice-view';
 
 it('hears a voice say the film’s own first line, cut short, else a sentence in its language', () => {
   expect(sampleText([{ text: '  ' }, { text: '一个人用 AI，可以做得更多。' }])).toBe('一个人用 AI，可以做得更多。');
@@ -18,4 +18,10 @@ it('finds voices by every word typed, in their name, language or id', () => {
   expect(voicesFound(voices, 'zh').map((v) => v.id)).toEqual(['male-qn-jingying', 'female-shaonv']);
   expect(voicesFound(voices, 'lady en').map((v) => v.id)).toEqual(['English_Graceful_Lady']);
   expect(voicesFound(voices, 'jingying')).toHaveLength(1);
+});
+
+it('tells a recording of the person’s own from a provider’s voice', () => {
+  expect(recordingOf('recording:take')).toBe('take');
+  expect(recordingOf('minimax:Chinese (Mandarin)_News_Anchor')).toBeNull();
+  expect(recordingOf(null)).toBeNull();
 });
