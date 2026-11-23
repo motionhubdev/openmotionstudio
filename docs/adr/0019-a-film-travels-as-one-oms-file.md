@@ -21,7 +21,8 @@ motionhub, with every entry's owner, mode (0644) and time fixed, so the same fil
 **`oms pack <folder> [--out <file.oms>]`** writes one, beside the folder unless `--out` names another place; it is
 written whole, then moved into place.
 
-**Import film file**, on Home, takes one into a new folder in the workspace named after the file (`Thunder.oms` becomes
+**Import project**, at the foot of Home's prompt (and Ctrl/⌘ O), opens a project folder where it is, or takes a film
+file into a new folder in the workspace named after the file (`Thunder.oms` becomes
 `Thunder`, or `Thunder 2` beside an earlier one), adds `.motion-studio/` to its `.gitignore` and opens it. The file
 is anyone's, so it is read whole and checked before a byte reaches the disk:
 - every path is relative, in plain parts (no `..`, no `\`, no `:`, no control characters) and outside `.motion-studio/`;
@@ -40,7 +41,8 @@ out keeps what a person said to their agent with the person.
 
 ## Cost
 
-- A second way into the Studio beside Open project, and one IPC method (`importProject`).
+- Open project and the film file share one action, so its dialog asks for either: macOS's picks a folder or a file;
+  Windows' and Linux's pick only files, so there a folder is picked by its `film.tsx`.
 - An import is a copy: changes made in the Studio do not reach the folder the file was packed from.
 - A film's media over 1 GB does not travel this way; such a folder is opened where it is.
 - The Studio does not yet write a film file, nor open one from the system (double-click, drag onto the window).

@@ -165,7 +165,7 @@ async function run() {
     const worker = createRequire(import.meta.url)(join(root, 'dist/worker.cjs'));
     const { files, bytes } = await worker.pack(dir, out);
     console.log(out);
-    return console.error(`Packed ${files} file${files === 1 ? '' : 's'} (${(bytes / 1024 / 1024).toFixed(1)} MB). In OpenMotionStudio, Import film file opens it as a new project; renders, stills and the Studio's state are left out.`);
+    return console.error(`Packed ${files} file${files === 1 ? '' : 's'} (${(bytes / 1024 / 1024).toFixed(1)} MB). In OpenMotionStudio, Import project opens it as a new project; renders, stills and the Studio's state are left out.`);
   }
   if (!['still', 'check', 'render', 'player', 'preview'].includes(command)) throw new Error(usage);
   if (command === 'player' && !values.out) throw new Error(usage);

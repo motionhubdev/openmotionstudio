@@ -15,8 +15,10 @@ person scrolling it takes it over), and shows the last check's issues on its rul
 Home offers three bundled starting points. Each click creates a fresh ordinary project in the default
 workspace, copying the bundled source and preserving earlier projects. New film also creates its own workspace
 directory without a folder picker. The workspace defaults to Documents/OpenMotionStudio and can be changed in
-Settings → General → Workspace; existing projects stay where they are. Open folder and Recent reopen existing projects.
-Import film file (under Home's prompt, and on My projects beside Open project) takes a `.oms` an agent packed with `oms pack` into a new folder in the workspace and opens it
+Settings → General → Workspace; existing projects stay where they are. Recent reopens existing projects.
+Import project (at the right of the prompt's foot, or Ctrl/⌘ O) takes what the person picks: a project folder, opened
+where it is (on Windows and Linux, whose dialogs pick files or folders but not either, by its `film.tsx`), or a `.oms`
+an agent packed with `oms pack`, taken into a new folder in the workspace and opened
 ([ADR 0019](../adr/0019-a-film-travels-as-one-oms-file.md)).
 No provider is needed to play, inspect, check or export a starting point. The assistant's brief prepares a message with the subject, audience,
 length and aspect ratio; it never sends a message or edits the film by itself.

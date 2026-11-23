@@ -3,9 +3,9 @@
 Every key change to OpenMotionStudio, newest first, by date. What counts as key and the entry format are in
 `CLAUDE.md`, "The changelog".
 
-## 2026-11-23 — A film travels as one `.oms` file: `oms pack`, and Import film file in the Studio
+## 2026-11-23 — A film travels as one `.oms` file: `oms pack`, and Import project in the Studio
 
-- **What:** `oms pack <folder> [--out <file.oms>]` writes a project as one film file (`<folder>.oms` beside it by default): the project's own files in a gzipped tar, the format of a motion's package, without renders, stills, `.git`, `node_modules` or the Studio's state (`.motion-studio/`, which holds conversations). Home's **Import film file** takes one into a new folder in the workspace named after it and opens it; a file holding a path outside its project, a link or no `film.tsx` is refused and leaves nothing behind.
+- **What:** `oms pack <folder> [--out <file.oms>]` writes a project as one film file (`<folder>.oms` beside it by default): the project's own files in a gzipped tar, the format of a motion's package, without renders, stills, `.git`, `node_modules` or the Studio's state (`.motion-studio/`, which holds conversations). Home's Open project becomes **Import project**, at the right of the prompt's foot (and Ctrl/⌘ O): it opens a project folder where it is (picked by its `film.tsx` on Windows and Linux), or takes a film file into a new folder in the workspace named after it and opens it; a file holding a path outside its project, a link or no `film.tsx` is refused and leaves nothing behind.
 - **Why:** A film an agent made in a terminal reaches the Studio, or another person, as one file a chat or a mail can carry.
 - **Breaking:** None: a new file format beside the folder, which stays the truth.
 - **Upgrade:** Move the installed `skills/oms` folder aside and run `oms install claude` or `oms install codex` again.

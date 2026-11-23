@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { gzipSync } from 'node:zlib';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { importProject, packProject, packedFiles, unpackedFiles } from '../oms-file';
+import { importProject, packProject, packedFiles, takeProject, unpackedFiles } from '../oms-file';
 
 let dir: string;
 beforeEach(async () => {
@@ -116,5 +116,18 @@ describe('importing a film file', () => {
     await expect(importProject(file, workspace)).rejects.toThrow('outside its project');
     expect(await readdir(workspace)).toEqual([]);
     await expect(importProject(join(dir, 'film.zip'), workspace)).rejects.toThrow('Choose a film file (.oms)');
+  });
+});
+
+describe('importing what the person picked', () => {
+  it('opens a folder where it is, by itself or by its film.tsx, and takes a film file into the workspace', async () => {
+    const root = await project(join(dir, 'Mine'), FILM);
+    const workspace = join(dir, 'workspace');
+    expect((await takeProject(root, workspace)).path).toBe(root);
+    expect((await takeProject(join(root, 'film.tsx'), workspace)).path).toBe(root);
+    const file = join(dir, 'Sent.oms');
+    await writeFile(file, (await packProject(root)).bytes);
+    expect((await takeProject(file, workspace)).path).toBe(join(workspace, 'Sent'));
+    await expect(takeProject(join(root, 'parts', 'kit.tsx'), workspace)).rejects.toThrow('Choose a project folder');
   });
 });

@@ -179,17 +179,17 @@ shortcuts) and the content.
   keeps its state. Leaving with unsaved edits, by Home's sidebar or header, asks first, as Settings' own sidebar
   does in the editor, where Settings is still a page of its own over the project.
 - **Home** asks what the person wants to make next, over a prompt: a field for the film in their own words, three
-  starts to finish (a launch teaser, an explainer, kinetic type) and **Start creating**; under it, apart from it, a quiet
-  line for a film the person already has: Already have a film? **Open project** (a folder) and **Import film file** (an
-  `.oms` an agent packed, ADR 0019). Enter sends it, Shift+Enter
+  starts to finish (a launch teaser, an explainer, kinetic type) and **Start creating**; the prompt's foot holds, on its
+  left, the note that no assistant is connected (while none is), and on its right **Import project**: a film the person
+  already has, as a project folder or an `.oms` an agent packed (ADR 0019). Enter sends it, Shift+Enter
   is a new line, `/` goes to it. It creates a project named from the words' first line and opens it, and the words
   are the assistant's first message, sent as soon as the agent and the film are ready; with no assistant connected,
   the prompt says so and the words wait in the composer. The field keeps them until the project exists. Below it, while
   tasks run in the background, a line counts those that need the person and those running and opens to a row per task.
   Then Continue creating: the project opened last as a large card (its cover beside its name and **Continue
   editing**), the next four in a row, and Start from a template.
-- **My projects** is every project in the library with search (`/` goes to it), a sort (recently opened, recently modified, name), a
-  grid or a list, and Open project and Import film file at the toolbar's end. A card is the project's cover (a still of its film from `.motion-studio/cover.jpg`, drawn whole
+- **My projects** is every project in the library with search (`/` goes to it), a sort (recently opened, recently modified, name), and a
+  grid or a list. A card is the project's cover (a still of its film from `.motion-studio/cover.jpg`, drawn whole
   on the stage's dark, so a portrait or square film is not cropped; else its initials), its name and when it was last opened. A task over it is a badge: a ring filling with its progress (turning
   while it has none) and Working, or a pulsing cobalt dot and Needs you; a running task with progress also draws a
   line along the cover's foot. Home's task line takes the same cobalt dot while anything needs the person. Its ⋯ menu opens it in an editor

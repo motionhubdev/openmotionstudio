@@ -6094,29 +6094,21 @@ input.switch:disabled {
 }
 
 .home-prompt-note {
+  display: flex;
+  align-items: center;
+  gap: 12px;
   margin: 0;
-  padding: 10px 16px 12px;
+  padding: 8px 12px 8px 16px;
   border-top: 1px solid var(--line);
 }
 
-/* Under the prompt, apart from it: a film the person already has. */
-.home-elsewhere {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: center;
-  gap: 4px 10px;
-  margin: 12px 0 0;
-  color: var(--muted);
-  font-size: 13px;
-}
-
-.home-elsewhere .quiet {
+/* A film the person already has, at the prompt's foot on the right: a project folder or a film file. */
+.home-import {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 13px;
-  color: var(--text);
+  margin-left: auto;
+  flex-shrink: 0;
 }
 
 /* The project opened last, large: its cover beside its name and a way back into it. */

@@ -3,11 +3,11 @@
 // the Studio's Import takes one into a new folder in the workspace. Left out: the Studio's state, git's, installed
 // packages, and what a project ignores at its top (a render, its subtitles, stills).
 
-import { lstat, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
+import { lstat, mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
 import { basename, dirname, join } from 'node:path';
 import { gunzipSync, gzipSync } from 'node:zlib';
 import type { Project } from '../shared/api';
-import { STATE_DIR, createInWorkspace, ignore, projectAt } from './project';
+import { STATE_DIR, createInWorkspace, ignore, openProject, projectAt } from './project';
 
 export const OMS_EXTENSION = '.oms';
 /** Most bytes a project takes in or out, unpacked: a film's media, not a video library. */
@@ -123,4 +123,15 @@ export async function importProject(file: string, workspace: string): Promise<Pr
     throw error;
   }
   return projectAt(project.path);
+}
+
+/**
+ * The project the person picked to import: a film file taken into the workspace, or a project folder (or the film.tsx
+ * in one, as a dialog that picks only files gives it) opened where it is.
+ */
+export async function takeProject(picked: string, workspace: string): Promise<Project> {
+  if (picked.toLowerCase().endsWith(OMS_EXTENSION)) return importProject(picked, workspace);
+  if ((await stat(picked)).isDirectory()) return openProject(picked);
+  if (basename(picked) === 'film.tsx') return openProject(dirname(picked));
+  throw new Error("Choose a project folder (or the film.tsx in it), or a film file (.oms).");
 }

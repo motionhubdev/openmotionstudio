@@ -4,7 +4,7 @@
 //   node drive.mjs <shots-dir> [example | folder | file.oms] [step ...]
 //
 // example: kinetic (default), product or data; or the path of a project folder, opened where it is; or a film file
-// (.oms), taken in through Home's Import film file into the throwaway workspace. Steps run in order:
+// (.oms), taken in through Home's Import project into the throwaway workspace. Steps run in order:
 //   ss:<name>        screenshot to <shots-dir>/<name>.png
 //   key:<key>        press a key (Playwright names: Space, ArrowRight, Backslash, BracketLeft, ...)
 //   click:<css>      click the first element matching the selector, through the DOM
@@ -134,7 +134,7 @@ try {
   else if (example.toLowerCase().endsWith('.oms')) {
     // The open dialog answered with the file, as a person would pick it.
     await app.evaluate(({ dialog }, file) => { dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [file] }); }, path.resolve(example));
-    await home.evaluate(() => window.studio.importProject());
+    await home.evaluate(() => window.studio.openProject());
   } else {
     const ids = await home.evaluate(() => window.studio.examples().then((all) => all.map((e) => e.id)));
     if (!ids.includes(example)) throw new Error(`No example "${example}": there are ${ids.join(', ')}, or give a project folder.`);
