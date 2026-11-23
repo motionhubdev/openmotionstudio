@@ -1,0 +1,13 @@
+{
+  "voice": "recording:take",
+  "lines": {
+    "cover-ask": "4e44feeea27742bb",
+    "same-born": "029d36f6083fd1a4",
+    "same-why": "aeacc679b44ae6ab",
+    "race-light": "0e0a4bdb83c77a9d",
+    "race-sound": "41bf350bbb2425f7",
+    "count-start": "21c6738e02ee21b4",
+    "count-rule": "87cfbe88d9273e9b",
+    "count-example": "1f78b15d87fee0ba"
+  }
+}
