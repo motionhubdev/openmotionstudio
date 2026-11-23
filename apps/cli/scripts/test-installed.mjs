@@ -56,9 +56,9 @@ try {
   assert.throws(() => oms('voice', starter), /The film names no voice/);
   const voiced = join(scratch, 'Voiced');
   oms('init', voiced);
-  await writeFile(join(voiced, 'film.tsx'), (await readFile(join(voiced, 'film.tsx'), 'utf8')).replace('<Film>', '<Film voice="minimax:presenter_male">'));
+  await writeFile(join(voiced, 'film.tsx'), (await readFile(join(voiced, 'film.tsx'), 'utf8')).replace('<Film>', '<Film voice="minimax:male-qn-jingying">'));
   assert.throws(() => oms('voice', voiced), /MiniMax speaks with the key in MINIMAX_API_KEY/);
-  assert.match(JSON.parse(oms('check', voiced, '--json')).issues.find((issue) => issue.id === 'unvoiced').text, /^Not yet spoken in minimax:presenter_male: .* oms voice speaks them\.$/);
+  assert.match(JSON.parse(oms('check', voiced, '--json')).issues.find((issue) => issue.id === 'unvoiced').text, /^Not yet spoken in minimax:male-qn-jingying: .* oms voice speaks them\.$/);
 
   // A face from Google Fonts, cut to the characters the project writes, with its licence.
   await writeFile(join(starter, 'parts.tsx'), "export const words = '四季';");
