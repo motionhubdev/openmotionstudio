@@ -5,6 +5,8 @@ description: Make, inspect, revise or render OpenMotionStudio (OMS) motion video
 
 Making a film is a creative task. It is finished when someone who has not read the script would be glad to publish it, not when `oms check` is clean. Each scene needs a visual idea of its own subject (a metaphor, a drawing driven by its data, one object that transforms, a move of the frame) and motion that carries meaning.
 
+Its commands come from the `oms` package: when `oms` is not found, install it with `npm install -g @motionhub/oms` (Node 22.12 or newer).
+
 Read the bundled [film format](film-format.md) first, then the [example film](example/film.tsx) (copy its structure, not its look). Read each reference below when its step comes.
 
 ## Order of work

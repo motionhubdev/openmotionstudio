@@ -98,7 +98,7 @@ export default function Main() {
   assert.match(faces[0].text, /^Characters the faces it loads lack fall to this machine's own sans-serif face: layer “title” \(“天空”\)/);
 
   const project = join(scratch, '影片 Sample');
-  await cp(join(installed, 'dist/example'), project, { recursive: true });
+  await cp(join(installed, 'skills/oms/example'), project, { recursive: true });
   const report = JSON.parse(oms('check', project, '--json'));
   assert.equal(report.film.seconds, 20);
   assert.equal(report.checkedFrames, 12); // its start, three scenes half a second in and at their middles, four lines at 85 %, its end
