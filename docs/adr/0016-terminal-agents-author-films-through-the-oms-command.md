@@ -22,7 +22,8 @@ length, with its levels, with `@motionhub/runtime/sound`, the synth that gives a
 that licence's text, which the package carries (`apps/cli/font.ts`). `oms voice` speaks the film's lines in its `<Film voice>` into `voice/` as the Studio's Voice the film does
 (`narration.ts`, [ADR 0011](0011-narration-is-synthesized-per-line-and-times-the-captions.md)), through the same
 providers ([ADR 0012](0012-a-narration-speaks-through-the-persons-own-voice-provider.md)); `oms voice --list` gives a
-provider's voices. Their keys are not the Studio's, which only the Studio can open: `oms` reads a key from the
+provider's voices, and `oms voice --recording <file>` takes the narration from the person's own take of the lines instead
+(`recording.ts`: transcribed with word times, matched to the lines, cut a clip a line). Their keys are not the Studio's, which only the Studio can open: `oms` reads a key from the
 environment it runs in (`MINIMAX_API_KEY`, `ELEVENLABS_API_KEY`, `OPENAI_API_KEY`, `AZURE_SPEECH_KEY`, with each
 provider's settings beside it) at the moment of a call, and never writes, prints or passes it on.
 

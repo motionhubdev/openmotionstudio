@@ -3,6 +3,14 @@
 Every key change to OpenMotionStudio, newest first, by date. What counts as key and the entry format are in
 `CLAUDE.md`, "The changelog".
 
+## 2026-11-23 — `oms voice --recording` takes a narration from the person's own take
+
+- **What:** `oms voice <folder> --recording <file>` takes a film's narration from one take of its lines, read by the person as written, in a film whose voice is `recording:<name>`: the take is transcribed with each word's time by MiniMax, OpenAI or ElevenLabs (`--transcribe`, else the first whose key the environment holds; kept by the file's hash in `~/.cache/oms/transcripts`), matched to the lines character by character, and cut into `voice/` one clip a line, as a spoken narration's are. Each caption word is the script's own text, timed by what was heard for it. A line heard less than 75 % as written stops the import with what was heard, and nothing is written.
+- **Why:** A person often wants their own voice on a film an agent wrote; read from the script, the take times the film and its captions as a synthesized voice does.
+- **Breaking:** None.
+- **Upgrade:** Move the installed `skills/oms` folder aside and run `oms install claude` or `oms install codex` again.
+- **Refs:** `apps/desktop/src/main/recording.ts`, `apps/desktop/src/main/narration.ts`, `apps/cli/worker.ts`, `apps/cli/oms.mjs`, `apps/cli/skills/oms/`, `docs/tech/sound-and-captions.md`, `docs/adr/0016-terminal-agents-author-films-through-the-oms-command.md`.
+
 ## 2026-11-23 — `oms voice` speaks a film's narration
 
 - **What:** `oms voice <folder>` speaks the film's lines in its `<Film voice>` into `voice/`, as the Studio's Voice the film does: only lines whose words changed are spoken, and each voiced line then lasts as long as its speech in the preview, `oms render` and the web player. The key is read from the environment oms runs in (`MINIMAX_API_KEY`, with `MINIMAX_REGION=china` or `MINIMAX_BASE_URL` for an account on minimaxi.com; `ELEVENLABS_API_KEY`; `OPENAI_API_KEY`; `AZURE_SPEECH_KEY` with `AZURE_SPEECH_REGION`), never written or printed. `oms voice --list <provider>` gives its voices. `oms check` says which lines are not yet spoken and which speech is cut short. The film format `oms install` puts beside the skill keeps its narration rule, and the skill says how to write and time a narration.

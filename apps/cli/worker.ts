@@ -13,6 +13,7 @@ import { exportFrames } from '../desktop/src/main/film/capture';
 import { findFfmpeg } from './ffmpeg';
 import { findChrome, openChromeStage } from './chrome';
 import { voiceFilm } from '../desktop/src/main/narration';
+import { TRANSCRIBERS, voiceRecording, type RecordedFilm } from '../desktop/src/main/recording';
 import { VOICE_NAMES, voicesOf, type VoiceSetup } from '../desktop/src/main/voice';
 import type { VoiceKind, VoicedFilm } from '../desktop/src/shared/api';
 import { removeBuilt, servePlayer, watchProject, writePlayer } from './web';
@@ -196,6 +197,23 @@ export async function voice(dir: string, scratch: string, onLine: (done: number,
   const film = await filmOf(open);
   if (!film.voice) throw new Error('The film names no voice: give its <Film> one, as voice="minimax:Chinese (Mandarin)_News_Anchor".');
   return voiceFilm(dir, film, async (kind) => voiceSetup(kind), await findFfmpeg(), onLine);
+}
+
+/** Where the words a recording was heard to say are kept, by its hash and the provider: one take is paid for once. */
+const TRANSCRIPTS = join(homedir(), '.cache', 'oms', 'transcripts');
+
+/**
+ * The film's narration from the person's own recording `file`, one take of its lines in order, in its <Film
+ * voice="recording:…">: transcribed by `kind` (else the first of MiniMax, OpenAI and ElevenLabs whose key the
+ * environment holds), matched to the lines and cut into voice/.
+ */
+export async function record(dir: string, scratch: string, file: string, kind: VoiceKind | undefined, onStep: (text: string) => void): Promise<RecordedFilm> {
+  const by = kind ?? TRANSCRIBERS.find((k) => process.env[VOICE_ENV[k].key]?.trim());
+  if (!by) throw new Error(`A recording is transcribed by MiniMax, OpenAI or ElevenLabs, with its key in ${TRANSCRIBERS.map((k) => VOICE_ENV[k].key).join(', ')}: set one in the environment oms runs in.`);
+  if (!TRANSCRIBERS.includes(by)) throw new Error(`${VOICE_NAMES[by]} does not transcribe a recording here: use ${TRANSCRIBERS.join(', ')}.`);
+  const { build, open } = await opener(dir, scratch);
+  if (!build.ok) throw new Error(build.errors.join('\n'));
+  return voiceRecording(dir, await filmOf(open), file, voiceSetup(by), await findFfmpeg(), TRANSCRIPTS, onStep);
 }
 
 /** The voices a provider offers, with the key in the environment. */

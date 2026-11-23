@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 
 const root = dirname(fileURLToPath(import.meta.url));
-const usage = 'oms install <claude|codex> | init <folder> | check <folder> [--json] | still <folder> --at <seconds> --out <new.png> | render <folder> --out <new.mp4> | player <folder> --out <new folder> | preview <folder> [--port <n>] | motion search <words…> [--json] | motion use <@scope/slug> <folder> | sound <folder> --cues <at:role,…> --seconds <s> --out <new.wav> [--motion <id>] | font <folder> --family <name[:400,700]>… [--weights 400,700] | voice <folder> | voice --list <minimax|elevenlabs|openai|azure>';
+const usage = 'oms install <claude|codex> | init <folder> | check <folder> [--json] | still <folder> --at <seconds> --out <new.png> | render <folder> --out <new.mp4> | player <folder> --out <new folder> | preview <folder> [--port <n>] | motion search <words…> [--json] | motion use <@scope/slug> <folder> | sound <folder> --cues <at:role,…> --seconds <s> --out <new.wav> [--motion <id>] | font <folder> --family <name[:400,700]>… [--weights 400,700] | voice <folder> [--recording <file> [--transcribe <minimax|openai|elevenlabs>]] | voice --list <minimax|elevenlabs|openai|azure>';
 
 /** `oms motion search <words…> [--json]` and `oms motion use <@scope/slug> <folder>`: motions from motionhub, on demand. */
 async function motion(args) {
@@ -90,17 +90,21 @@ async function font(args) {
  * key from the environment. `oms voice --list <provider>`: the voices that provider offers.
  */
 async function voice(args) {
-  const { values, positionals } = parseArgs({ args, options: { list: { type: 'string' } }, allowPositionals: true });
+  const { values, positionals } = parseArgs({ args, options: { list: { type: 'string' }, recording: { type: 'string' }, transcribe: { type: 'string' } }, allowPositionals: true });
   const worker = createRequire(import.meta.url)(join(root, 'dist/worker.cjs'));
   if (values.list) {
     if (positionals.length || !Object.hasOwn(worker.VOICE_ENV, values.list)) throw new Error(usage);
     for (const choice of await worker.voices(values.list)) console.log(`${values.list}:${choice.id}${choice.name && choice.name !== choice.id ? `  ${choice.name}` : ''}${choice.language ? `  (${choice.language})` : ''}`);
     return;
   }
-  if (positionals.length !== 1) throw new Error(usage);
+  if (positionals.length !== 1 || (values.transcribe && !values.recording)) throw new Error(usage);
   const dir = resolve(positionals[0]);
   const scratch = await mkdtemp(join(tmpdir(), 'oms-voice-'));
   try {
+    if (values.recording) {
+      const done = await worker.record(dir, scratch, resolve(values.recording), values.transcribe, (text) => console.error(text));
+      return console.log(`Cut ${done.lines} line${done.lines === 1 ? '' : 's'} (${done.seconds.toFixed(1)} s of speech) from ${values.recording} into voice/, ${Math.round(done.heard * 100)}% of the script heard as written. Run oms check: each line now lasts as long as it was said.`);
+    }
     const done = await worker.voice(dir, scratch, (n, of) => process.stderr.isTTY && process.stderr.write(`\rSpeaking ${n}/${of}`));
     if (process.stderr.isTTY) process.stderr.write('\n');
     console.log(`Spoke ${done.spoken} line${done.spoken === 1 ? '' : 's'} (${done.characters} characters, ${done.seconds.toFixed(1)} s of speech) into voice/; ${done.kept} kept as they were. Run oms check: each voiced line now lasts as long as its speech.`);
