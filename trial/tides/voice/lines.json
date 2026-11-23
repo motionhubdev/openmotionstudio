@@ -1,0 +1,13 @@
+{
+  "voice": "minimax:male-qn-jingying",
+  "lines": {
+    "question-line": "29a28e9775eaa491",
+    "pull-moon": "4296caf6660a05f3",
+    "pull-near": "a38458cc81424e9b",
+    "far-side": "e8b11858c6582b45",
+    "spin-turn": "26331ab1652d6c40",
+    "spin-twice": "e95a0606450db7c9",
+    "sun-pull": "8eb545feaafd3a70",
+    "sun-spring": "2a12127415edc800"
+  }
+}
