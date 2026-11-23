@@ -113,14 +113,17 @@ export const seekScript = (t: number): string =>
 
 /** What a frame shows that a picture alone does not say: text past the frame's edge, and faces that never loaded. */
 export interface Inspection {
-  /** Visible text running past an edge of the frame, by layer: the first words of it, and which edges. */
-  outside: { layer: string; text: string; edges: string[] }[];
   /**
-   * Text that draws in a face the page never loaded, by layer: `family` is that face, the first in its stack not loaded
+   * Visible text running past an edge of the frame, by layer (null for the film's captions, which no layer holds): the
+   * first words of it, and which edges.
+   */
+  outside: { layer: string | null; text: string; edges: string[] }[];
+  /**
+   * Text that draws in a face the page never loaded, by layer (null for the captions): `family` is that face, the first in its stack not loaded
    * (a generic name when the stack falls to the machine's own), and `chars` the characters it draws, when the faces
    * loaded before it in the stack draw the rest (a Latin face before the one for Chinese), or empty when it draws all.
    */
-  unloaded: { layer: string; family: string; chars: string }[];
+  unloaded: { layer: string | null; family: string; chars: string }[];
 }
 
 /** The script that inspects a render page as it now is (after a seek), giving an Inspection. */
@@ -150,36 +153,35 @@ export const inspectScript = `(() => {
     return drawn.get(key);
   };
   const outside = new Map(), unloaded = new Map();
-  for (const layer of document.querySelectorAll('[data-layer]')) {
-    const id = layer.getAttribute('data-layer');
-    const walker = document.createTreeWalker(layer, NodeFilter.SHOW_TEXT);
-    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
-      const text = node.textContent.replace(/\\s+/g, ' ').trim();
-      const element = node.parentElement;
-      if (!text || !element || !element.checkVisibility({ opacityProperty: true, visibilityProperty: true })) continue;
-      const range = document.createRange();
-      range.selectNodeContents(node);
-      const box = range.getBoundingClientRect();
-      if (!box.width || !box.height) continue;
-      const edges = [box.left < -1 && 'left', box.top < -1 && 'top', box.right > width + 1 && 'right', box.bottom > height + 1 && 'bottom'].filter(Boolean);
-      if (edges.length) outside.set(id + '|' + text, { layer: id, text: text.slice(0, 40), edges });
-      const computed = getComputedStyle(element);
-      const stack = computed.fontFamily.split(',').map((family) => family.trim()).filter(Boolean);
-      const first = stack.findIndex((family) => !loaded.has(bare(family)));
-      if (first < 0) continue;
-      const family = stack[first].replace(/^["']|["']$/g, '');
-      if (first === 0) {
-        if (!generic.has(bare(family))) unloaded.set(id + '|' + bare(family), { layer: id, family, chars: '' });
-        continue;
-      }
-      const style = computed.fontStyle + ' ' + computed.fontWeight;
-      const faces = stack.slice(0, first).join(', ');
-      const missed = [...new Set(text.replace(/\\s/g, ''))].filter((char) => !covers(style, faces, char));
-      if (!missed.length) continue;
-      const seen = unloaded.get(id + '|' + bare(family));
-      const chars = [...new Set((seen ? seen.chars : '') + missed.join(''))].slice(0, 12).join('');
-      unloaded.set(id + '|' + bare(family), { layer: id, family, chars });
+  // Every visible text on the page: a layer's, or the captions <Film captions> draws outside every layer.
+  const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+    const text = node.textContent.replace(/\\s+/g, ' ').trim();
+    const element = node.parentElement;
+    if (!text || !element || !element.checkVisibility({ opacityProperty: true, visibilityProperty: true })) continue;
+    const id = element.closest('[data-layer]')?.getAttribute('data-layer') ?? null;
+    const range = document.createRange();
+    range.selectNodeContents(node);
+    const box = range.getBoundingClientRect();
+    if (!box.width || !box.height) continue;
+    const edges = [box.left < -1 && 'left', box.top < -1 && 'top', box.right > width + 1 && 'right', box.bottom > height + 1 && 'bottom'].filter(Boolean);
+    if (edges.length) outside.set(id + '|' + text, { layer: id, text: text.slice(0, 40), edges });
+    const computed = getComputedStyle(element);
+    const stack = computed.fontFamily.split(',').map((family) => family.trim()).filter(Boolean);
+    const first = stack.findIndex((family) => !loaded.has(bare(family)));
+    if (first < 0) continue;
+    const family = stack[first].replace(/^["']|["']$/g, '');
+    if (first === 0) {
+      if (!generic.has(bare(family))) unloaded.set(id + '|' + bare(family), { layer: id, family, chars: '' });
+      continue;
     }
+    const style = computed.fontStyle + ' ' + computed.fontWeight;
+    const faces = stack.slice(0, first).join(', ');
+    const missed = [...new Set(text.replace(/\\s/g, ''))].filter((char) => !covers(style, faces, char));
+    if (!missed.length) continue;
+    const seen = unloaded.get(id + '|' + bare(family));
+    const chars = [...new Set((seen ? seen.chars : '') + missed.join(''))].join('');
+    unloaded.set(id + '|' + bare(family), { layer: id, family, chars });
   }
   return { outside: [...outside.values()], unloaded: [...unloaded.values()] };
 })()`;

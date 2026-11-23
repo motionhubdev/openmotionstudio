@@ -3,6 +3,14 @@
 Every key change to OpenMotionStudio, newest first, by date. What counts as key and the entry format are in
 `CLAUDE.md`, "The changelog".
 
+## 2026-11-23 — The check names every layer and caption missing characters, and `oms sound --out` is read from where oms runs
+
+- **What:** The check before an export (and `oms check`) warns once for each layer and face that draws characters in a fallback face, naming every such character any checked frame shows; it had said only the first layer for each face, so a second title or a caption with the same gap went unreported. It also inspects the captions `<Film captions>` draws, which sit outside every layer, for missing characters and text past the frame. `oms sound --out` is a path from the working directory, as `oms still` and `oms render` read theirs, and must lead into the project; it had been read from the project, so a path written from outside it landed in a nested folder.
+- **Why:** A trial of the skill left a heading and a caption in the machine's fallback face with only one warning between them, and wrote its effects track to `trial/moon-phases/trial/moon-phases/media/` while the film looked for it in `media/`.
+- **Breaking:** `oms sound … --out media/effects.wav` run from outside the project now fails, saying where to write it; pass `--out "<folder>/media/effects.wav"`.
+- **Upgrade:** Move the installed `skills/oms` folder aside and run `oms install claude` or `oms install codex` again.
+- **Refs:** `apps/desktop/src/shared/preview.ts`, `apps/desktop/src/main/film/review.ts`, `apps/cli/oms.mjs`, `apps/cli/skills/oms/SKILL.md`, `apps/cli/README.md`, `apps/cli/scripts/test-installed.mjs`.
+
 ## 2026-11-23 — The skill draws a film in a look of its own unless a motion is asked for, and `oms sound` has a sound of its own
 
 - **What:** The skill's look step no longer searches motionhub by default: a film gets a look of its own in `parts/kit.tsx`, and `oms motion search` and `oms motion use` run only when the project already has a motion or the person asks for one. `oms sound` in a project with no motion that has a sound renders oms's own sound (every role from `land` to `out`, no bed) instead of refusing. The film format and the skill say how a film in no motion styles its captions (its own `caption` tokens in a `<MotionScope>` around the `<Film>`), since without a motion `<Film captions>` draws black text on nothing.

@@ -66,3 +66,17 @@ it('says once each text past the frame, and each face that never loaded, at the 
     "Layer “note” draws “天空”, which the faces it loads lack, in this machine's own sans-serif face: frames differ between machines. Declare a face that has them from the project's files, or use one the motion ships.",
   ]);
 });
+
+it('says which layers and captions miss characters, each once, with every character any frame found', async () => {
+  const s = stage();
+  vi.mocked(s.inspect)
+    .mockResolvedValueOnce({ outside: [], unloaded: [{ layer: 'cover-title', family: 'sans-serif', chars: '龘' }] })
+    .mockResolvedValueOnce({ outside: [], unloaded: [{ layer: 'cover-title', family: 'sans-serif', chars: '鬱' }, { layer: null, family: 'sans-serif', chars: '爨' }] })
+    .mockResolvedValue({ outside: [{ layer: null, text: '一句很长的字幕', edges: ['bottom'] }], unloaded: [{ layer: 'ending-title', family: 'sans-serif', chars: '鬱' }] });
+  const result = await reviewBuild({ ok: true, version: 1, errors: [] }, async () => s);
+  const faces = result.issues.filter((issue) => issue.id.startsWith('face-'));
+  expect(faces.map((face) => face.id)).toEqual(['face-cover-title-sans-serif', 'face-captions-sans-serif', 'face-ending-title-sans-serif']);
+  expect(faces[0]!.text).toContain('Layer “cover-title” draws “龘鬱”');
+  expect(faces[1]!.text).toContain('The captions draw “爨”, which the faces they load lack');
+  expect(result.issues.find((issue) => issue.id === 'outside-captions')!.text).toContain('Text in the captions (“一句很长的字幕”)');
+});

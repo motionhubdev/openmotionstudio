@@ -50,6 +50,10 @@ export async function reviewBuild(
     const GENERIC = new Set(['serif', 'sans-serif', 'monospace', 'cursive', 'fantasy', 'system-ui', 'ui-serif', 'ui-sans-serif', 'ui-monospace', 'ui-rounded', 'math', 'emoji', 'fangsong']);
     const sceneAt = (time: number) => film.scenes.find((s) => time >= s.start && time < s.start + s.duration)?.id;
     const said = new Set<string>();
+    /** A layer's name in a warning, or the captions', which no layer holds. */
+    const where = (layer: string | null) => (layer === null ? 'the captions' : `layer “${layer}”`);
+    /** Each face warning so far, by layer and face, with every character it has found missing across the frames. */
+    const faces = new Map<string, { issue: FilmReview['issues'][number]; chars: Set<string> }>();
     for (const time of times) {
       signal?.throwIfAborted();
       try {
@@ -64,29 +68,29 @@ export async function reviewBuild(
           const edges = [...new Set(texts.flatMap((o) => o.edges))];
           const more = texts.length > 1 ? ` and ${texts.length - 1} more` : '';
           review.issues.push({
-            id: `outside-${layer}`,
+            id: `outside-${layer ?? 'captions'}`,
             kind: 'layout',
             severity: 'warning',
-            text: `Text in layer “${layer}” (“${texts[0]!.text}”${more}) runs past the frame's ${edges.join(' and ')} edge at ${time.toFixed(2)} s. A component's coordinates are its layer's, not the frame's.`,
+            text: `Text in ${where(layer)} (“${texts[0]!.text}”${more}) runs past the frame's ${edges.join(' and ')} edge at ${time.toFixed(2)} s. A component's coordinates are its layer's, not the frame's.`,
             time,
             scene: sceneAt(time),
           });
         }
+        // One warning a layer and face, at the first frame it shows in, naming every character any frame found it drawing.
         for (const { layer, family, chars } of seen.unloaded) {
           const key = family.toLowerCase();
-          if (said.has(`face|${key}`)) continue;
-          said.add(`face|${key}`);
+          const id = `face-${layer ?? 'captions'}-${key}`;
+          const found = faces.get(id) ?? { issue: { id, kind: 'layout' as const, severity: 'warning' as const, text: '', time, scene: sceneAt(time) }, chars: new Set<string>() };
+          if (!faces.has(id)) {
+            faces.set(id, found);
+            review.issues.push(found.issue);
+          }
+          for (const char of chars) found.chars.add(char);
           // A whole text in a face never loaded, or the characters the loaded faces before it in its stack lack.
-          const where = GENERIC.has(key) ? `this machine's own ${family} face` : `“${family}”, which neither the film nor its motion loads, so in this machine's fallback`;
-          const what = chars ? `draws “${chars}”, which the faces it loads lack, in ${where}` : `sets text in ${where}`;
-          review.issues.push({
-            id: `face-${key}`,
-            kind: 'layout',
-            severity: 'warning',
-            text: `Layer “${layer}” ${what}: frames differ between machines. Declare a face that has them from the project's files, or use one the motion ships.`,
-            time,
-            scene: sceneAt(time),
-          });
+          const face = GENERIC.has(key) ? `this machine's own ${family} face` : `“${family}”, which neither the film nor its motion loads, so in this machine's fallback`;
+          const [subject, s] = layer === null ? ['The captions', ''] : [`Layer “${layer}”`, 's'];
+          const what = found.chars.size ? `draw${s} “${[...found.chars].join('')}”, which the faces ${layer === null ? 'they load' : 'it loads'} lack, in ${face}` : `set${s} text in ${face}`;
+          found.issue.text = `${subject} ${what}: frames differ between machines. Declare a face that has them from the project's files, or use one the motion ships.`;
         }
       } catch (error) {
         if (signal?.aborted) throw error;

@@ -30,6 +30,11 @@ try {
   assert.equal(await readFile(join(starter, 'film.tsx'), 'utf8'), source);
   assert.equal(JSON.parse(oms('check', starter, '--json')).issues.length, 0);
 
+  // Without a motion, oms's own sound; --out is a path from where oms runs, and must lead into the project.
+  const plain = oms('sound', starter, '--cues', '0.5:land, 2:out', '--seconds', '6', '--out', join(starter, 'media/plain.wav'));
+  assert.match(plain, /Wrote media\/plain\.wav from oms's sound \(roles: land, move, draw, count, cut, out\)/);
+  assert.throws(() => oms('sound', starter, '--cues', '0.5:land', '--seconds', '6', '--out', 'media/stray.wav'), /is outside the project/);
+
   // A motion from motionhub, taken into a project when a film asks for one.
   const found = JSON.parse(oms('motion', 'search', 'plumb', '--json'));
   assert(found.some((motion) => motion.id === '@iamsuosi/plumb-line'));
@@ -39,14 +44,14 @@ try {
   assert.throws(() => oms('motion', 'use', '@iamsuosi/plumb-line', starter), /already holds/);
   assert.equal(JSON.parse(oms('check', starter, '--json')).issues.length, 0);
   // Its sound, for the starter's cues, as a track the film plays.
-  const sound = oms('sound', starter, '--cues', '0.5:land, 3:cut', '--seconds', '6', '--out', 'media/effects.wav');
+  const sound = oms('sound', starter, '--cues', '0.5:land, 3:cut', '--seconds', '6', '--out', join(starter, 'media/effects.wav'));
   assert.match(sound, /Wrote media\/effects\.wav from @iamsuosi\/plumb-line's sound \(roles: land, move, draw, count, cut\)/);
   assert.match(sound, /Track: peak -?\d+\.\d dBFS/);
   assert.match(sound, /^ {2}3s cut: peak -?\d+\.\d dBFS$/m);
   assert.equal((await readFile(join(starter, 'media/effects.wav'))).toString('ascii', 0, 4), 'RIFF');
-  assert.throws(() => oms('sound', starter, '--cues', '0.5:land', '--seconds', '6', '--out', 'media/effects.wav'), /is there already/);
-  assert.throws(() => oms('sound', starter, '--cues', '0.5:bang', '--seconds', '6', '--out', 'media/other.wav'), /no cue/);
-  assert.throws(() => oms('sound', starter, '--cues', '0.5:land, 2:out', '--seconds', '6', '--out', 'media/other.wav'), /has no out: its roles are land, move, draw, count, cut/);
+  assert.throws(() => oms('sound', starter, '--cues', '0.5:land', '--seconds', '6', '--out', join(starter, 'media/effects.wav')), /is there already/);
+  assert.throws(() => oms('sound', starter, '--cues', '0.5:bang', '--seconds', '6', '--out', join(starter, 'media/other.wav')), /no cue/);
+  assert.throws(() => oms('sound', starter, '--cues', '0.5:land, 2:out', '--seconds', '6', '--out', join(starter, 'media/other.wav')), /has no out: its roles are land, move, draw, count, cut/);
 
   // Chinese in a stack whose one loaded face is Latin falls past it to the machine's own face, and is said.
   const mixed = join(scratch, 'Mixed');
