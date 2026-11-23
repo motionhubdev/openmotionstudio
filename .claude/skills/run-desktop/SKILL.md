@@ -4,7 +4,7 @@ description: Build, launch and screenshot the OpenMotionStudio desktop app with 
 ---
 
 The Studio is an Electron app. `drive.mjs` launches the built app with a throwaway profile (the person's recent
-projects and settings stay untouched), seeds its workspace inside that temporary profile, opens an example from the launcher in its project editor view, runs a list of steps (screenshots, keys,
+projects and settings stay untouched), seeds its workspace and preferences inside that temporary profile (past the first run, so Home shows no onboarding), opens an example from Home's templates in its project editor view, runs a list of steps (screenshots, keys,
 clicks, window sizes) and exits. All commands run from the repository root.
 
 ## Once per machine
@@ -80,4 +80,4 @@ Examples in the launcher: `kinetic`, `product`, `data`.
   nothing; `theme:` sets the scheme through `page.emulateMedia`.
 - **The app's CSP refuses eval**, so `page.waitForFunction` fails at once; poll `page.evaluate` instead. `eval:` steps
   work, since an expression passed to `page.evaluate` is not run through eval.
-- Verified on Windows. On Linux it adds `--no-sandbox`; a headless machine needs `xvfb-run -a node ...`.
+- Verified on Windows, and on Linux under `xvfb-run`. On Linux it adds `--no-sandbox`; a headless machine needs `xvfb-run -a node ...`.

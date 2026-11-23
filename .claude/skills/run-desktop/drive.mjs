@@ -91,7 +91,11 @@ async function settled(page) {
 }
 
 const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'oms-profile-'));
-fs.writeFileSync(path.join(profile, 'settings.json'), JSON.stringify({ providers: [], active: null, workspace: path.join(profile, 'Workspace') }));
+// Past the first run (Home shows no onboarding), with no update check, as scripts/shoot/shoot.sh seeds its profile.
+fs.writeFileSync(path.join(profile, 'settings.json'), JSON.stringify({
+  providers: [], active: null, workspace: path.join(profile, 'Workspace'),
+  preferences: { theme: 'system', language: 'system', onboardingComplete: true, backgroundNoticeSeen: true, checkUpdatesAutomatically: false },
+}));
 const args = [...(packagedExecutable ? [] : [appDir]), `--user-data-dir=${profile}`];
 if (process.platform === 'linux') args.push('--no-sandbox');
 let app = await electron.launch({ executablePath: bin, args, timeout: 60_000 });
@@ -112,17 +116,18 @@ try {
     await app.close();
     app = await electron.launch({ executablePath: bin, args, timeout: 60_000 });
     home = await app.firstWindow();
-    await home.waitForSelector('.example-card', { timeout: 30_000 });
+    await home.waitForSelector('.studio-home', { timeout: 30_000 });
     await home.evaluate((path) => window.studio.openRecent(path), project);
     page = await editorPage();
     await settled(page);
   };
   const resize = (w, h) => app.evaluate(({ BrowserWindow }, [w, h]) => BrowserWindow.getAllWindows()[0]?.setSize(w, h), [w, h]);
   await resize(1600, 960);
-  await home.waitForSelector('.example-card', { timeout: 30_000 });
-  const card = await home.$(`.example-card.example-${example}`);
-  if (!card) throw new Error(`No example "${example}" in the launcher.`);
-  await card.evaluate((el) => el.click());
+  await home.waitForSelector('.studio-home', { timeout: 30_000 });
+  // A template opened as Home's template preview opens it, through the bridge.
+  const ids = await home.evaluate(() => window.studio.examples().then((examples) => examples.map((e) => e.id)));
+  if (!ids.includes(example)) throw new Error(`No example "${example}" in the launcher: ${ids.join(', ')}.`);
+  await home.evaluate((id) => window.studio.openExample(id), example);
   page = await editorPage();
   await page.waitForSelector('.stage-bar', { timeout: 30_000 });
   await settled(page);
