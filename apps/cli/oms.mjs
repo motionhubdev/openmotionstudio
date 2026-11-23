@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 
 const root = dirname(fileURLToPath(import.meta.url));
-const usage = 'oms install <claude|codex> | init <folder> | check <folder> [--json] | still <folder> --at <seconds> --out <new.png> | render <folder> --out <new.mp4> | player <folder> --out <new folder> | preview <folder> [--port <n>] | motion search <words…> [--json] | motion use <@scope/slug> <folder> | sound <folder> --cues <at:role,…> --seconds <s> --out <new.wav> [--motion <id>] | font <folder> --family <name[:400,700]>… [--weights 400,700]';
+const usage = 'oms install <claude|codex> | init <folder> | check <folder> [--json] | still <folder> --at <seconds> --out <new.png> | render <folder> --out <new.mp4> | player <folder> --out <new folder> | preview <folder> [--port <n>] | motion search <words…> [--json] | motion use <@scope/slug> <folder> | sound <folder> --cues <at:role,…> --seconds <s> --out <new.wav> [--motion <id>] | font <folder> --family <name[:400,700]>… [--weights 400,700] | voice <folder> | voice --list <minimax|elevenlabs|openai|azure>';
 
 /** `oms motion search <words…> [--json]` and `oms motion use <@scope/slug> <folder>`: motions from motionhub, on demand. */
 async function motion(args) {
@@ -85,12 +85,37 @@ async function font(args) {
   console.log('  `}</style>');
 }
 
+/**
+ * `oms voice <folder>`: the film's lines spoken in its <Film voice> into voice/, only those whose words changed, with the
+ * key from the environment. `oms voice --list <provider>`: the voices that provider offers.
+ */
+async function voice(args) {
+  const { values, positionals } = parseArgs({ args, options: { list: { type: 'string' } }, allowPositionals: true });
+  const worker = createRequire(import.meta.url)(join(root, 'dist/worker.cjs'));
+  if (values.list) {
+    if (positionals.length || !Object.hasOwn(worker.VOICE_ENV, values.list)) throw new Error(usage);
+    for (const choice of await worker.voices(values.list)) console.log(`${values.list}:${choice.id}${choice.name && choice.name !== choice.id ? `  ${choice.name}` : ''}${choice.language ? `  (${choice.language})` : ''}`);
+    return;
+  }
+  if (positionals.length !== 1) throw new Error(usage);
+  const dir = resolve(positionals[0]);
+  const scratch = await mkdtemp(join(tmpdir(), 'oms-voice-'));
+  try {
+    const done = await worker.voice(dir, scratch, (n, of) => process.stderr.isTTY && process.stderr.write(`\rSpeaking ${n}/${of}`));
+    if (process.stderr.isTTY) process.stderr.write('\n');
+    console.log(`Spoke ${done.spoken} line${done.spoken === 1 ? '' : 's'} (${done.characters} characters, ${done.seconds.toFixed(1)} s of speech) into voice/; ${done.kept} kept as they were. Run oms check: each voiced line now lasts as long as its speech.`);
+  } finally {
+    await rm(scratch, { recursive: true, force: true, maxRetries: 4 });
+  }
+}
+
 async function run() {
   const [command, ...args] = process.argv.slice(2);
   if (!command || command === '--help') return console.log(usage);
   if (command === 'motion') return motion(args);
   if (command === 'sound') return sound(args);
   if (command === 'font') return font(args);
+  if (command === 'voice') return voice(args);
   const options = command === 'still' ? { at: { type: 'string' }, out: { type: 'string' } }
     : command === 'render' || command === 'player' ? { out: { type: 'string' } }
     : command === 'preview' ? { port: { type: 'string' } }

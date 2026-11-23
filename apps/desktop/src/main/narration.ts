@@ -15,8 +15,7 @@ import { join } from 'node:path';
 import type { VoiceKind, VoicedFilm } from '../shared/api';
 import type { FilmInfo } from '../shared/preview';
 import { mediaSeconds } from './film/mix';
-import { VOICE_KINDS, VOICE_NAMES } from './providers';
-import { type Speech, type VoiceIo, type VoiceSetup, type Word, speak } from './voice';
+import { type Speech, type VoiceIo, type VoiceSetup, type Word, VOICE_KINDS, VOICE_NAMES, speak } from './voice';
 
 export const VOICE_DIR = 'voice';
 const LINES = 'lines.json';

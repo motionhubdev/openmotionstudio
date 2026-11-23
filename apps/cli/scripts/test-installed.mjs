@@ -11,7 +11,8 @@ const scratch = await mkdtemp(join(tmpdir(), 'oms-skill-test-'));
 function oms(...args) {
   return execFileSync(process.execPath, [join(installed, 'oms.mjs'), ...args], {
     encoding: 'utf8', timeout: 120000, stdio: ['ignore', 'pipe', 'pipe'],
-    env: { ...process.env, CLAUDE_CONFIG_DIR: join(scratch, 'claude'), CODEX_HOME: join(scratch, 'codex') },
+    // No voice provider's key, whatever the machine has: the test speaks nothing it would pay for.
+    env: { ...process.env, CLAUDE_CONFIG_DIR: join(scratch, 'claude'), CODEX_HOME: join(scratch, 'codex'), MINIMAX_API_KEY: '', ELEVENLABS_API_KEY: '', OPENAI_API_KEY: '', AZURE_SPEECH_KEY: '' },
   });
 }
 try {
@@ -50,6 +51,14 @@ try {
   assert.throws(() => oms('sound', starter, '--cues', '0.5:land', '--seconds', '6', '--out', 'media/stray.wav'), /is outside the project/);
   assert.throws(() => oms('sound', starter, '--cues', '0.5:bang', '--seconds', '6', '--out', join(starter, 'media/other.wav')), /no cue/);
   assert.throws(() => oms('sound', starter, '--cues', '0.5:land, 2:out', '--seconds', '6', '--out', join(starter, 'media/other.wav')), /has no out: its roles are land, move, draw, count, cut/);
+
+  // A narration: the film must name its voice, and the provider's key comes from the environment alone.
+  assert.throws(() => oms('voice', starter), /The film names no voice/);
+  const voiced = join(scratch, 'Voiced');
+  oms('init', voiced);
+  await writeFile(join(voiced, 'film.tsx'), (await readFile(join(voiced, 'film.tsx'), 'utf8')).replace('<Film>', '<Film voice="minimax:presenter_male">'));
+  assert.throws(() => oms('voice', voiced), /MiniMax speaks with the key in MINIMAX_API_KEY/);
+  assert.match(JSON.parse(oms('check', voiced, '--json')).issues.find((issue) => issue.id === 'unvoiced').text, /^Not yet spoken in minimax:presenter_male: .* oms voice speaks them\.$/);
 
   // A face from Google Fonts, cut to the characters the project writes, with its licence.
   await writeFile(join(starter, 'parts.tsx'), "export const words = '四季';");
@@ -174,7 +183,7 @@ export default function Main() {
 `);
   assert.throws(() => oms('check', silent, '--json'), error =>
     error.status === 1 && JSON.parse(error.stdout).issues.some(issue => issue.text.includes('media/chime.wav')));
-  console.log('PASS installed skill, starter, editable example, PNG, bounds, a fresh frame, a render (with and without a subtitle track), a web player, a face from Google Fonts, a motion from motionhub and its sound, and missing audio');
+  console.log('PASS installed skill, starter, editable example, PNG, bounds, a fresh frame, a render (with and without a subtitle track), a web player, a face from Google Fonts, a narration voice and its key, a motion from motionhub and its sound, and missing audio');
 } finally {
   await rm(scratch, { recursive: true, force: true });
 }

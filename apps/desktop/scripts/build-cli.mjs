@@ -41,9 +41,8 @@ await cp(join(desktop, 'resources/preview/core.js'), join(dist, 'resources/previ
 await cp(join(desktop, 'resources/preview/pick.js'), join(dist, 'resources/preview/pick.js'));
 await cp(join(desktop, 'src/main/film/starter.tsx.txt'), join(dist, 'starter.tsx'));
 const guide = await readFile(join(desktop, 'src/main/film/film.md'), 'utf8');
-// The film format as the Studio's agent has it, but narration, which oms does not speak: its lines are captions.
-const format = guide.slice(guide.indexOf('# The film'), guide.indexOf('# How you work'));
-await writeFile(join(dist, 'film-format.md'), format.split('\n').filter((line) => !line.startsWith('- **A narration speaks the lines**')).join('\n'));
+// The film format as the Studio's agent has it; the skill says which oms command stands for each of its tools.
+await writeFile(join(dist, 'film-format.md'), guide.slice(guide.indexOf('# The film'), guide.indexOf('# How you work')));
 await cp(join(desktop, '../../LICENSE'), join(dist, 'LICENSE'));
 await cp(join(cli, 'OFL.txt'), join(dist, 'OFL.txt'));
 

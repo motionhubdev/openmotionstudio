@@ -3,6 +3,14 @@
 Every key change to OpenMotionStudio, newest first, by date. What counts as key and the entry format are in
 `CLAUDE.md`, "The changelog".
 
+## 2026-11-23 — `oms voice` speaks a film's narration
+
+- **What:** `oms voice <folder>` speaks the film's lines in its `<Film voice>` into `voice/`, as the Studio's Voice the film does: only lines whose words changed are spoken, and each voiced line then lasts as long as its speech in the preview, `oms render` and the web player. The key is read from the environment oms runs in (`MINIMAX_API_KEY`, with `MINIMAX_REGION=china` or `MINIMAX_BASE_URL` for an account on minimaxi.com; `ELEVENLABS_API_KEY`; `OPENAI_API_KEY`; `AZURE_SPEECH_KEY` with `AZURE_SPEECH_REGION`), never written or printed. `oms voice --list <provider>` gives its voices. `oms check` says which lines are not yet spoken and which speech is cut short. The film format `oms install` puts beside the skill keeps its narration rule, and the skill says how to write and time a narration.
+- **Why:** A film made with `oms` could only be captioned; the Studio already speaks a film's lines, and `oms` now uses the same code and the same `voice/`.
+- **Breaking:** None. A project voiced by `oms` opens in the Studio as it is.
+- **Upgrade:** Move the installed `skills/oms` folder aside and run `oms install claude` or `oms install codex` again. A MiniMax voice whose name has blanks (`Chinese (Mandarin)_News_Anchor`) needs `@motionhub/runtime` 0.8.1.
+- **Refs:** `apps/cli/worker.ts`, `apps/cli/oms.mjs`, `apps/desktop/src/main/voice.ts`, `apps/desktop/src/main/narration.ts`, `apps/desktop/scripts/build-cli.mjs`, `apps/cli/skills/oms/`, `docs/adr/0016-terminal-agents-author-films-through-the-oms-command.md`.
+
 ## 2026-11-23 — Motion search finds any of its words; a web player seeks on any host; a check names every face a stack lacks
 
 - **What:** A motion search (`oms motion search`, the Studio agent's `search_motions`) gives the motions with any of its words, those with more of them first, where it gave only those with every word; `oms motion search` with nothing found lists the words motions are tagged with. A web player takes its whole soundtrack into memory, so it seeks on a host that answers no range requests. A check names every face of a stack it reaches before a loaded or generic one, not only the first. `oms font` takes several families at once (`--family` again, each `Name` or `Name:400,700`). The film format and the skill say a motion's own components are drawn as it made them, and that a check does not see what overlaps inside one layer.

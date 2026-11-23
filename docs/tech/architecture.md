@@ -72,7 +72,7 @@ apps/desktop/
   src/renderer/        React UI
 apps/cli/
   oms.mjs              the `oms` command (`@motionhub/oms`): install the skill, init, check, still, render, player,
-                       preview, sound, motion, font
+                       preview, sound, motion, font, voice
   worker.ts            check, still and render: the film built, reviewed and exported with film/ (bundled by
                        apps/desktop/scripts/build-cli.mjs)
   chrome.ts            the pinned chrome-headless-shell it draws in: found or downloaded, checked, driven over a pipe

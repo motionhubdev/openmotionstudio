@@ -19,8 +19,12 @@ into the project when a film asks for one, as the Studio's `search_motions` and 
 length, with its levels, with `@motionhub/runtime/sound`, the synth that gives a motion's reel its sound on motionhub.dev
 (`film/effects.ts`). `oms font` takes a face from Google Fonts cut to the characters the project's sources write
 (its `text=` subset), into `media/fonts/` with its licence: the font's copyright and, for the SIL Open Font License,
-that licence's text, which the package carries (`apps/cli/font.ts`). `oms` speaks no narration: a film's lines are its captions, and the film format it installs
-leaves narration out.
+that licence's text, which the package carries (`apps/cli/font.ts`). `oms voice` speaks the film's lines in its `<Film voice>` into `voice/` as the Studio's Voice the film does
+(`narration.ts`, [ADR 0011](0011-narration-is-synthesized-per-line-and-times-the-captions.md)), through the same
+providers ([ADR 0012](0012-a-narration-speaks-through-the-persons-own-voice-provider.md)); `oms voice --list` gives a
+provider's voices. Their keys are not the Studio's, which only the Studio can open: `oms` reads a key from the
+environment it runs in (`MINIMAX_API_KEY`, `ELEVENLABS_API_KEY`, `OPENAI_API_KEY`, `AZURE_SPEECH_KEY`, with each
+provider's settings beside it) at the moment of a call, and never writes, prints or passes it on.
 
 `check`, `still` and `render` run the Studio's own build, review, sound lookup and export, not a copy: `apps/desktop/scripts/build-cli.mjs`
 bundles `apps/cli/worker.ts` against `film.ts` (`buildFilmOnce`, the Studio's esbuild options and reporter), `serve.ts`,

@@ -12,6 +12,9 @@ import { reviewBuild } from '../desktop/src/main/film/review';
 import { exportFrames } from '../desktop/src/main/film/capture';
 import { findFfmpeg } from './ffmpeg';
 import { findChrome, openChromeStage } from './chrome';
+import { voiceFilm } from '../desktop/src/main/narration';
+import { VOICE_NAMES, voicesOf, type VoiceSetup } from '../desktop/src/main/voice';
+import type { VoiceKind, VoicedFilm } from '../desktop/src/shared/api';
 import { removeBuilt, servePlayer, watchProject, writePlayer } from './web';
 
 // Motions come from motionhub when a film asks for one, taken into the project as the Studio and @motionhub/cli take them.
@@ -33,7 +36,10 @@ async function opener(dir: string, scratch: string) {
   const output = join(scratch, 'build');
   const build = await buildFilmOnce(dir, output);
   let opened = 0;
-  return { build, output, open: async () => openChromeStage(await findChrome(), dir, output, studio, join(scratch, `profile-${opened++}`)) };
+  // A page's error, said where in the project's sources it was thrown.
+  const where = async (error: unknown) => new Error(await located(error instanceof Error ? error.message : String(error), join(output, `film-${build.version}.js`), dir));
+  const open = async () => openChromeStage(await findChrome(), dir, output, studio, join(scratch, `profile-${opened++}`)).catch(async (error) => Promise.reject(await where(error)));
+  return { build, output, open, where };
 }
 
 /** How many Chromes draw a render at once: one a core, as memory allows (about 1.5 GB each, as VisoTalk measured), at most 8. */
@@ -44,6 +50,14 @@ export const renderStages = (cores = availableParallelism(), free = freemem()): 
 export async function check(dir: string, scratch: string): Promise<FilmReview> {
   const { build, output, open } = await opener(dir, scratch);
   const review = await reviewBuild(build, open, undefined, { bundle: join(output, `film-${build.version}.js`), dir });
+  // The narration, as the Studio's agent hears of it: lines its voice has not spoken yet, and speech cut short.
+  const lines = (review.film?.scenes ?? []).flatMap((scene) => scene.lines.map((line) => ({ ...line, scene: scene.id }))).filter((line) => line.text.trim());
+  const unvoiced = lines.filter((line) => !line.voiced);
+  if (review.film?.voice && unvoiced.length)
+    review.issues.push({ id: 'unvoiced', kind: 'export', severity: 'warning', text: `Not yet spoken in ${review.film.voice}: ${unvoiced.map((line) => `"${line.text}"`).join(' ')}. oms voice speaks them.` });
+  for (const line of lines)
+    if (line.over)
+      review.issues.push({ id: `voice-over-${line.id}`, kind: 'layout', severity: 'warning', text: `"${line.text}" is cut ${Math.round(line.over * 10) / 10} s short by what follows it: give it more room, or fewer words.`, time: line.start, scene: line.scene });
   for (const sound of review.film?.sounds ?? []) {
     try {
       await soundFile(dir, sound.src, output);
@@ -141,13 +155,57 @@ export async function preview(dir: string, scratch: string, port: number, say: (
   };
 }
 
+/** The environment variables a voice provider's key and settings are read from: oms keeps no key of its own. */
+export const VOICE_ENV: Record<VoiceKind, { key: string; also: string }> = {
+  minimax: { key: 'MINIMAX_API_KEY', also: 'MINIMAX_GROUP_ID if the account has one, MINIMAX_REGION=china (or MINIMAX_BASE_URL=https://api.minimaxi.com) for an account on minimaxi.com, MINIMAX_TTS_MODEL' },
+  elevenlabs: { key: 'ELEVENLABS_API_KEY', also: 'ELEVENLABS_MODEL' },
+  openai: { key: 'OPENAI_API_KEY', also: 'OPENAI_TTS_MODEL' },
+  azure: { key: 'AZURE_SPEECH_KEY', also: 'AZURE_SPEECH_REGION, which it needs' },
+};
+
+/** A provider set up from the environment, as the Studio sets one up in Models; a missing key says which variable. */
+export function voiceSetup(kind: VoiceKind, env: NodeJS.ProcessEnv = process.env): VoiceSetup {
+  const { key, also } = VOICE_ENV[kind];
+  const value = env[key]?.trim();
+  if (!value) throw new Error(`${VOICE_NAMES[kind]} speaks with the key in ${key} (and ${also}): set it in the environment oms runs in. oms reads keys from there only and writes them nowhere.`);
+  switch (kind) {
+    case 'minimax': {
+      // MINIMAX_BASE_URL as VisoTalk read it: an account on minimaxi.com is China's site.
+      const china = env.MINIMAX_REGION?.trim() === 'china' || /(^|\/\/)api\.minimaxi\.com/.test(env.MINIMAX_BASE_URL?.trim() ?? '');
+      return { kind, key: value, groupId: env.MINIMAX_GROUP_ID?.trim() || undefined, region: china ? 'china' : 'global', model: env.MINIMAX_TTS_MODEL?.trim() || undefined };
+    }
+    case 'elevenlabs':
+      return { kind, key: value, model: env.ELEVENLABS_MODEL?.trim() || undefined };
+    case 'openai':
+      return { kind, key: value, model: env.OPENAI_TTS_MODEL?.trim() || undefined };
+    case 'azure': {
+      const region = env.AZURE_SPEECH_REGION?.trim();
+      if (!region) throw new Error('Azure speaks in a region: set AZURE_SPEECH_REGION (as eastasia) beside AZURE_SPEECH_KEY.');
+      return { kind, key: value, region };
+    }
+  }
+}
+
+/**
+ * Speaks the film's lines in its <Film voice> into the project's voice/, as the Studio's Voice the film does: only lines
+ * whose words changed are spoken (and paid for); `onLine` hears each line as it is done.
+ */
+export async function voice(dir: string, scratch: string, onLine: (done: number, of: number) => void): Promise<VoicedFilm> {
+  const { build, open } = await opener(dir, scratch);
+  if (!build.ok) throw new Error(build.errors.join('\n'));
+  const film = await filmOf(open);
+  if (!film.voice) throw new Error('The film names no voice: give its <Film> one, as voice="minimax:Chinese (Mandarin)_News_Anchor".');
+  return voiceFilm(dir, film, async (kind) => voiceSetup(kind), await findFfmpeg(), onLine);
+}
+
+/** The voices a provider offers, with the key in the environment. */
+export const voices = (kind: VoiceKind) => voicesOf(voiceSetup(kind));
+
 /** The frame at `seconds`, as a PNG. */
 export async function still(dir: string, scratch: string, seconds: number): Promise<Buffer> {
-  const { build, output, open } = await opener(dir, scratch);
+  const { build, open, where } = await opener(dir, scratch);
   if (!build.ok) throw new Error(build.errors.join('\n'));
-  // A page's error, said where in the project's sources it was thrown.
-  const where = async (error: unknown) => new Error(await located(error instanceof Error ? error.message : String(error), join(output, `film-${build.version}.js`), dir));
-  const stage = await open().catch(async (error) => Promise.reject(await where(error)));
+  const stage = await open();
   try {
     if (!(seconds >= 0 && seconds < stage.film.seconds)) throw new Error(`Time must be in [0, ${stage.film.seconds}) seconds.`);
     return await stage.png(seconds).catch(async (error) => Promise.reject(await where(error)));
