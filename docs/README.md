@@ -19,6 +19,7 @@ Read [positioning](prd/positioning.md) first, then [the architecture](tech/archi
 ## Operations
 
 - [Code signing](ops/code-signing.md) — the signing policy, who approves, the privacy statement, and how CI signs a Windows release through SignPath.
+- [Publishing oms](ops/publishing-oms.md) — tagging a version of `@motionhub/oms`, approving it on npm, and the first version staged by hand.
 
 ## Decisions
 
@@ -41,3 +42,4 @@ Read [positioning](prd/positioning.md) first, then [the architecture](tech/archi
 - [0017 An export is encoded in segments and mixed in blocks](adr/0017-an-export-is-encoded-in-segments-and-mixed-in-blocks.md) — segments joined as they are, which `oms` resumes; sounds summed in JavaScript.
 - [0018 A film plays on the web from a static folder](adr/0018-a-film-plays-on-the-web-from-a-static-folder.md) — `oms player` and `oms preview`: the preview core written whole into a sandboxed frame that loads nothing, kept to one mixed soundtrack.
 - [0019 A film travels as one .oms file](adr/0019-a-film-travels-as-one-oms-file.md) — `oms pack` and Home's Import project: the project's own files in a motion package's reproducible tar, checked before they reach the disk.
+- [0020 oms is published on npm from a tag](adr/0020-oms-is-published-on-npm-from-a-tag.md) — a tag on main packs the tarball once, drives it on three platforms and stages it for a maintainer's approval.

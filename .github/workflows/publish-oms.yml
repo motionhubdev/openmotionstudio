@@ -1,0 +1,97 @@
+# Publishes @motionhub/oms (ADR 0020, docs/ops/publishing-oms.md). A tag oms-v<version> on a commit main holds packs
+# the tarball once, drives that same tarball installed on Linux, macOS and Windows, and stages it on npm by trusted
+# publishing, with no token. A maintainer then approves it with `npm stage approve`.
+name: Publish oms
+
+on:
+  push:
+    tags: ['oms-v*']
+
+permissions:
+  contents: read
+
+jobs:
+  pack:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Only reviewed main history may be packed
+        run: git merge-base --is-ancestor "$GITHUB_SHA" origin/main
+      - name: The tag names the package's version
+        run: test "oms-v$(node -p "require('./apps/cli/package.json').version")" = "$GITHUB_REF_NAME"
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm test
+      - name: Pack
+        run: |
+          mkdir -p "$RUNNER_TEMP/oms"
+          (cd apps/cli && pnpm pack --pack-destination "$RUNNER_TEMP/oms")
+      - uses: actions/upload-artifact@v4
+        with:
+          name: oms-tarball
+          path: ${{ runner.temp }}/oms/*.tgz
+          if-no-files-found: error
+          retention-days: 3
+
+  verify:
+    needs: pack
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      # Only for the test script: the tarball under test is the one packed above.
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - uses: actions/download-artifact@v4
+        with:
+          name: oms-tarball
+          path: ${{ runner.temp }}/oms
+      - name: Install ffmpeg (apt, Homebrew, Chocolatey: a full build, as the README asks)
+        shell: bash
+        run: |
+          case "$RUNNER_OS" in
+            Linux) sudo apt-get update && sudo apt-get install -y ffmpeg ;;
+            macOS) brew install ffmpeg ;;
+            Windows) choco install ffmpeg -y --no-progress ;;
+          esac
+      - name: Install and drive the tarball
+        shell: bash
+        run: |
+          npm install -g "$RUNNER_TEMP"/oms/motionhub-oms-*.tgz
+          node apps/cli/scripts/test-installed.mjs "$(npm root -g)/@motionhub/oms"
+
+  stage:
+    needs: verify
+    runs-on: ubuntu-latest
+    environment: npm-release
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          # npm's staged publishing and trusted publishing need npm 11.
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+      - uses: actions/download-artifact@v4
+        with:
+          name: oms-tarball
+          path: ${{ runner.temp }}/oms
+      - name: Stage the tested tarball, running none of its scripts
+        env:
+          NPM_CONFIG_IGNORE_SCRIPTS: 'true'
+        run: npm stage publish "$RUNNER_TEMP"/oms/motionhub-oms-*.tgz

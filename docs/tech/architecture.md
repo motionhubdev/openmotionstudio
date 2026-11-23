@@ -427,7 +427,8 @@ Each step is a vertical slice that runs end to end before the next begins.
    folder, makes an empty one a project (its `.motion-studio/`, ignored by git) and remembers the projects opened;
    `.github/workflows/build.yml` runs the gate and packages a DMG and zip, an NSIS installer, and an AppImage and tarball,
    signed and notarised once the secrets in `CLAUDE.md` are set, unsigned until then; a Windows release is signed
-   through SignPath Foundation ([code signing](../ops/code-signing.md)).
+   through SignPath Foundation ([code signing](../ops/code-signing.md)). Its `oms` job packs `@motionhub/oms`, installs it
+   and drives it on Linux, macOS and Windows; a tag `oms-v*` publishes it on npm ([publishing oms](../ops/publishing-oms.md)).
 2. **A film, one provider**: a film, a motion from motionhub, the agent on one Anthropic-protocol model, the preview,
    `still`, export to MP4. This is the whole product. *Built*, and driven end to end in the app:
    a motion taken from a local copy of the catalogue and its reel played as a film, a turn of the agent against a

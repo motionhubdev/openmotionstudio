@@ -202,6 +202,39 @@ jobs:
             apps/desktop/dist/update-*.yml
           if-no-files-found: error
 
+  oms:
+    # The oms package as a person installs it, on each platform: packed, installed globally beside the ffmpeg its
+    # README names, and driven end to end (a downloaded Chrome, motionhub.dev and Google Fonts included).
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Install ffmpeg (apt, Homebrew, Chocolatey: a full build, as the README asks)
+        shell: bash
+        run: |
+          case "$RUNNER_OS" in
+            Linux) sudo apt-get update && sudo apt-get install -y ffmpeg ;;
+            macOS) brew install ffmpeg ;;
+            Windows) choco install ffmpeg -y --no-progress ;;
+          esac
+          ffmpeg -hide_banner -version | head -1
+      - name: Pack, install and drive oms
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/oms"
+          (cd apps/cli && pnpm pack --pack-destination "$RUNNER_TEMP/oms")
+          npm install -g "$RUNNER_TEMP"/oms/motionhub-oms-*.tgz
+          node apps/cli/scripts/test-installed.mjs "$(npm root -g)/@motionhub/oms"
+
   release:
     if: github.event_name == 'workflow_dispatch' && inputs.draft_release
     needs: build
