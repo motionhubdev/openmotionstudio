@@ -1,9 +1,11 @@
 {
   "name": "@motionhub/oms",
   "version": "0.1.0",
-  "private": true,
   "description": "Make motion videos from Claude Code or Codex: author, check, still and render OpenMotionStudio films.",
   "license": "Apache-2.0",
+  "repository": { "type": "git", "url": "git+https://github.com/motionhubdev/openmotionstudio.git", "directory": "apps/cli" },
+  "homepage": "https://github.com/motionhubdev/openmotionstudio/tree/main/apps/cli#readme",
+  "publishConfig": { "access": "public" },
   "bin": { "oms": "oms.mjs" },
   "files": ["oms.mjs", "dist", "skills", "README.md"],
   "engines": { "node": ">=22.12.0" },

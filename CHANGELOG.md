@@ -3,6 +3,22 @@
 Every key change to OpenMotionStudio, newest first, by date. What counts as key and the entry format are in
 `CLAUDE.md`, "The changelog".
 
+## 2026-11-23 — The check names characters no face on the machine has
+
+- **What:** On a machine with no face at all for a film's characters (Chinese on a Linux server without Chinese fonts), the check before an export and `oms check` said nothing about them, though the film drew them as empty boxes. They are now named like any character the film's faces lack.
+- **Why:** The check compared a character in the film's faces with the generic face's, and a character no face has is drawn as the first face's missing-glyph box, which differs from the generic face's: it read as drawn.
+- **Breaking:** None.
+- **Upgrade:** Nothing.
+- **Refs:** `apps/desktop/src/shared/preview.ts` (the frame's inspection).
+
+## 2026-11-23 — `oms` is installed from npm
+
+- **What:** `@motionhub/oms` is published on npm (`npm install -g @motionhub/oms`), from a tag `oms-v<version>` on main: the workflow packs the tarball once, drives it installed on Linux, macOS and Windows, and stages it on npm by trusted publishing for a maintainer's approval. Every pull request now packs, installs and drives `oms` on the three platforms too.
+- **Why:** A person or their agent can get `oms` without the repository and pnpm, and each version is tested as people install it, where they use it.
+- **Breaking:** None.
+- **Upgrade:** `npm install -g @motionhub/oms` replaces a tarball installed by hand.
+- **Refs:** [ADR 0020](docs/adr/0020-oms-is-published-on-npm-from-a-tag.md), [publishing oms](docs/ops/publishing-oms.md), `.github/workflows/publish-oms.yml`, `.github/workflows/build.yml`, `apps/cli/package.json`.
+
 ## 2026-11-23 — A film travels as one `.oms` file: `oms pack`, and Import project in the Studio
 
 - **What:** `oms pack <folder> [--out <file.oms>]` writes a project as one film file (`<folder>.oms` beside it by default): the project's own files in a gzipped tar, the format of a motion's package, without renders, stills, `.git`, `node_modules` or the Studio's state (`.motion-studio/`, which holds conversations). Home's Open project becomes **Import project**, at the right of the prompt's foot (and Ctrl/⌘ O): it opens a project folder where it is (picked by its `film.tsx` on Windows and Linux), or takes a film file into a new folder in the workspace named after it and opens it; a file holding a path outside its project, a link or no `film.tsx` is refused and leaves nothing behind.
