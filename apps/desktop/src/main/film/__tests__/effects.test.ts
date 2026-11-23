@@ -87,8 +87,15 @@ describe('the sound effects of a film', () => {
     expect(report.cues[0]!.peak).toBeGreaterThan(-60);
   });
 
-  it('asks which motion when the project has several, and says why there is none', async () => {
-    await expect(effectsTrack(dir, parseCues('1:land'), 2)).rejects.toThrow('No motion in the project has a sound');
+  it("plays oms's own sound, with every role, when the film draws in no motion", async () => {
+    const { motion: used, report } = await effectsTrack(dir, parseCues('0.2:land, 0.6:move:0.4, 1:draw:0.3, 1.4:count, 1.8:cut, 2.2:out'), 3);
+    expect(used).toBe('oms');
+    expect(report.roles).toEqual(['land', 'move', 'draw', 'count', 'cut', 'out']);
+    expect(report.cues.filter((cue) => cue.silent)).toEqual([]);
+    await expect(effectsTrack(dir, parseCues('1:land'), 2, '@c/three')).rejects.toThrow('no motion @c/three');
+  });
+
+  it('asks which motion when the project has several', async () => {
     await motion('@a/one');
     await motion('@b/two');
     await expect(effectsTrack(dir, parseCues('1:land'), 2)).rejects.toThrow('Name the motion whose sound to use: @a/one, @b/two');

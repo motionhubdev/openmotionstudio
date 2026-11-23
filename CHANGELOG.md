@@ -3,6 +3,14 @@
 Every key change to OpenMotionStudio, newest first, by date. What counts as key and the entry format are in
 `CLAUDE.md`, "The changelog".
 
+## 2026-11-23 — The skill draws a film in a look of its own unless a motion is asked for, and `oms sound` has a sound of its own
+
+- **What:** The skill's look step no longer searches motionhub by default: a film gets a look of its own in `parts/kit.tsx`, and `oms motion search` and `oms motion use` run only when the project already has a motion or the person asks for one. `oms sound` in a project with no motion that has a sound renders oms's own sound (every role from `land` to `out`, no bed) instead of refusing.
+- **Why:** A film's look should come from its subject, as VisoTalk's did, not from whichever motion a search turns up; and a film in a look of its own still needs its effects.
+- **Breaking:** None. A project with no motion now gets a track from `oms sound` where it got an error.
+- **Upgrade:** Move the installed `skills/oms` folder aside and run `oms install claude` or `oms install codex` again.
+- **Refs:** `apps/cli/skills/oms/`, `apps/desktop/src/main/film/effects.ts`, `docs/tech/architecture.md`.
+
 ## 2026-11-23 — `oms player` and `oms preview` play a film in a browser without rendering it
 
 - **What:** `oms player <folder> --out <new folder>` writes a folder any static web host plays: a player page with motionhub's reel controls, and the film drawn by the Studio's preview core in a sandboxed frame that loads nothing from the host (its document, with the film, its faces and its images, is in `frame.js`), so it plays on hosts that refuse cross-origin loads, such as artifacts, and opened from disk. Its sounds are one soundtrack mixed as its MP4's, which keeps the clock. A stalled soundtrack or an image still loading holds the picture, an image for at most five seconds. A browser that refuses sound plays the film muted with a "Tap for sound" button. `oms preview <folder>` plays the same at http://127.0.0.1:4173/ and reloads it at its time when a project file changes. The preview core's still page can now be moved by its parent (`oms:seek`), says whether an image it shows is loading, and takes a film and a narration carried in its page.
