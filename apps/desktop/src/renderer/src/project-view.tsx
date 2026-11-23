@@ -483,6 +483,8 @@ export function ProjectView({ onGlobalSettings, settingsOpen, project, providers
    * agent itself: finding it out when the project opens must not draw the assistant again and drop what is in it.
    */
   const [switches, setSwitches] = useState(0);
+  /** The composer's words, kept here: a switch of agent draws the assistant again, and must not drop them. */
+  const draft = useRef('');
   async function useAgent(kind: AgentKind) {
     try {
       setAgents(await window.studio.useAgent(kind));
@@ -906,6 +908,8 @@ export function ProjectView({ onGlobalSettings, settingsOpen, project, providers
               focusRequest={focusRequest}
               brief={brief}
               onBriefTaken={() => setBrief(null)}
+              draft={draft.current}
+              onDraft={(text) => (draft.current = text)}
               onReference={reference}
               onImport={() => void importForMessage()}
               onOpenPanel={(panel) => (panel === 'motions' ? setCentre({ kind: 'motions' }) : openSide(panel))}
