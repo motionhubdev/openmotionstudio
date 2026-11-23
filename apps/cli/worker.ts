@@ -18,6 +18,10 @@ import { removeBuilt, servePlayer, watchProject, writePlayer } from './web';
 export { searchMotions, useMotion } from '../desktop/src/main/motions';
 // Sound effects from the project's motion's sound, for the cues of its picture.
 export { effectsTrack, parseCues } from '../desktop/src/main/film/effects';
+// Faces from Google Fonts, cut to the project's characters.
+export { takeFont } from './font';
+/** The SIL Open Font License's text, beside this worker. */
+export const OFL = join(__dirname, 'OFL.txt');
 
 const studio = join(__dirname, 'resources', 'preview');
 

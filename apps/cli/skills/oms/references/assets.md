@@ -2,7 +2,7 @@
 
 ## What you may keep
 
-Public domain, CC0, CC BY with its attribution, CC BY-SA with its share-alike, for a font the SIL Open Font License (keep its licence file beside it), or a brand kit whose terms allow the use. Never "free to look at", never a file of unknown origin, never a hotlink: a film loads only the project's own files. A licence you cannot name is a reason not to use the file. No book covers, film stills or portraits of real people without a licence that allows them.
+Public domain, CC0, CC BY with its attribution, CC BY-SA with its share-alike, for a font the SIL Open Font License (keep its licence file beside it; `oms font` writes it), or a brand kit whose terms allow the use. Never "free to look at", never a file of unknown origin, never a hotlink: a film loads only the project's own files. A licence you cannot name is a reason not to use the file. No book covers, film stills or portraits of real people without a licence that allows them.
 
 Write each fetched file's source page and licence in a comment where the film imports it, and list the credits the licences ask for where the person will publish them.
 

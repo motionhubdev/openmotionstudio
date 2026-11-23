@@ -194,7 +194,7 @@ const run = (ffmpeg: string, args: string[]) =>
 
 /**
  * Renders build `version` of the film in `dir` to `file` as an MP4 with the `ffmpeg` at that path, its sounds mixed in
- * and its lines as a soft subtitle track, reporting the share done (0 to 1); the lines are written beside it as SubRip
+ * and its lines as a soft subtitle track unless it draws them as captions, reporting the share done (0 to 1); the lines are written beside it as SubRip
  * too (subtitlesFile). Each is written beside its place and moved there only when the video is whole, so a failed or
  * cancelled export leaves whatever was there untouched.
  *
@@ -262,18 +262,21 @@ export async function exportFrames(
     const mix = await mixSounds(sounds, seconds, ffmpeg, work, film.narration);
     const subtitles = srt(film);
     if (subtitles) await writeFile(partialSubtitles, subtitles);
+    // A film that draws its lines as captions (<Film captions>) has them in its picture: a subtitle track as well would
+    // show them twice where a player turns it on. Its SubRip file is still written beside it.
+    const track = subtitles && !film.captions;
     const subtitleInput = 1 + (mix ? 1 : 0);
     await run(ffmpeg, [
       '-i',
       picture,
       ...(mix ? [...MIX_FORMAT, '-i', mix] : []),
-      ...(subtitles ? ['-i', partialSubtitles] : []),
+      ...(track ? ['-i', partialSubtitles] : []),
       '-map',
       '0:v',
       '-c:v',
       'copy',
       ...(mix ? ['-filter_complex', `[1:a]${mixFinish(seconds)}[aout]`, '-map', '[aout]', '-c:a', 'aac', '-b:a', '192k'] : []),
-      ...(subtitles ? ['-map', `${subtitleInput}:s`, '-c:s', 'mov_text', '-metadata:s:s:0', 'language=und'] : []),
+      ...(track ? ['-map', `${subtitleInput}:s`, '-c:s', 'mov_text', '-metadata:s:s:0', 'language=und'] : []),
       '-movflags',
       '+faststart',
       partial,

@@ -17,7 +17,9 @@ into the project when a film asks for one, as the Studio's `search_motions` and 
 `@motionhub/cli`): `oms` ships no motions of its own. `oms sound` renders the project's motion's sound
 (`react/sound.json`) for cues the agent lists (`at:role`, refusing a role that sound lacks) into a WAV the film's
 length, with its levels, with `@motionhub/runtime/sound`, the synth that gives a motion's reel its sound on motionhub.dev
-(`film/effects.ts`). `oms` speaks no narration: a film's lines are its captions, and the film format it installs
+(`film/effects.ts`). `oms font` takes a face from Google Fonts cut to the characters the project's sources write
+(its `text=` subset), into `media/fonts/` with its licence: the font's copyright and, for the SIL Open Font License,
+that licence's text, which the package carries (`apps/cli/font.ts`). `oms` speaks no narration: a film's lines are its captions, and the film format it installs
 leaves narration out.
 
 `check`, `still` and `render` run the Studio's own build, review, sound lookup and export, not a copy: `apps/desktop/scripts/build-cli.mjs`

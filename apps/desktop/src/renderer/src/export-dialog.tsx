@@ -54,7 +54,9 @@ export function ExportDialog({
           </p>
           {review?.film && review.film.scenes.some((scene) => scene.lines.length > 0) && (
             <p>
-              {review.film.captions ? tr("Captions in the picture, and the lines") : tr("The lines")} {tr("as subtitles: a track in the video and an .srt file beside it")}
+              {review.film.captions
+                ? tr("Captions in the picture, and the lines in an .srt file beside it")
+                : tr("The lines as subtitles: a track in the video and an .srt file beside it")}
             </p>
           )}
           {review?.film && (

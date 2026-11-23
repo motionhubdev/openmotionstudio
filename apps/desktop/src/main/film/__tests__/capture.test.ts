@@ -203,6 +203,25 @@ describe('an export drawn by several stages', () => {
     expect(frames(join(dir, 'one.mp4'))).toHaveLength(small.seconds * small.fps);
   }, 30_000);
 
+  it('carries the lines as a subtitle track, but not in a film that draws them as captions; SubRip beside it either way', async () => {
+    const said = { ...small, scenes: [{ ...small.scenes[0]!, lines: [{ id: 'l', text: 'Hello.', start: 0.5, end: 2 }] }] } as unknown as FilmInfo;
+    const streams = (file: string) => {
+      try {
+        execFileSync(ffmpeg, ['-hide_banner', '-i', file], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+        return '';
+      } catch (error) {
+        return String((error as { stderr: string }).stderr);
+      }
+    };
+    for (const [name, captions] of [['soft', false], ['drawn', true]] as const) {
+      const open = async () => ({ film: { ...said, captions }, png: async (t: number) => png(t), inspect: async () => ({ outside: [], unloaded: [] }), close: vi.fn() });
+      await exportFrames(dir, 1, join(dir, `${name}.mp4`), () => {}, new AbortController().signal, open, ffmpeg, { output: dir });
+      expect(await readFile(join(dir, `${name}.srt`), 'utf8')).toContain('Hello.');
+    }
+    expect(streams(join(dir, 'soft.mp4'))).toMatch(/Subtitle: mov_text/);
+    expect(streams(join(dir, 'drawn.mp4'))).not.toMatch(/Subtitle/);
+  }, 30_000);
+
   it('stops every stage at the first failure, and leaves no video', async () => {
     const failing = stages(7);
     const file = join(dir, 'failed.mp4');

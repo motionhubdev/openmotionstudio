@@ -72,11 +72,12 @@ apps/desktop/
   src/renderer/        React UI
 apps/cli/
   oms.mjs              the `oms` command (`@motionhub/oms`): install the skill, init, check, still, render, player,
-                       preview
+                       preview, sound, motion, font
   worker.ts            check, still and render: the film built, reviewed and exported with film/ (bundled by
                        apps/desktop/scripts/build-cli.mjs)
   chrome.ts            the pinned chrome-headless-shell it draws in: found or downloaded, checked, driven over a pipe
   ffmpeg.ts            the person's ffmpeg it renders with, checked for what an export uses
+  font.ts              a face from Google Fonts cut to the project's characters, with its licence (oms font)
   web.ts, player.ts    a film as a folder a browser plays without a render: the player's page, the frame's document,
                        the soundtrack, the preview server; the player's clock and controls (ADR 0018)
   skills/oms/          the skill Claude Code or Codex reads
@@ -216,7 +217,7 @@ One engine, the Studio's own ([ADR 0005](../adr/0005-the-studio-has-one-engine-i
 - **Lines and captions**: the runtime times each `<Line>` in its scene (its `at` and `dur`, else an equal share) and
   reports its `start` and `end`; `<Film captions>` makes the runtime draw the line being said as a `<Caption>`, so the
   preview and the export show it alike. Every export also carries the lines as subtitles (`film/captions.ts`): SubRip
-  written beside the MP4 under its name and embedded as a soft `mov_text` track. The timeline draws them on a Lines
+  written beside the MP4 under its name and, unless the film draws them as captions (which would show them twice), embedded as a soft `mov_text` track. The timeline draws them on a Lines
   row; `check` gives each line's times.
 - **Narration** ([ADR 0011](../adr/0011-narration-is-synthesized-per-line-and-times-the-captions.md),
   [ADR 0012](../adr/0012-a-narration-speaks-through-the-persons-own-voice-provider.md)): `<Film voice="provider:name">`

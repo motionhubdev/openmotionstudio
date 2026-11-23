@@ -42,6 +42,25 @@ export async function reviewBuild(
             scene: scene.id,
           });
       }
+    // Layers are boxes of the frame that do not collide (film.md): two placed boxes of a scene that overlap are said, each
+    // pair once. A layer the size of the frame, where a component draws in the frame's own coordinates, is left out.
+    for (const scene of film.scenes) {
+      const placed = scene.layers.filter((l) => !(l.x <= 0 && l.y <= 0 && l.x + l.w >= film.width && l.y + l.h >= film.height));
+      for (const [i, a] of placed.entries())
+        for (const b of placed.slice(i + 1)) {
+          const w = Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x);
+          const h = Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y);
+          if (w <= 0 || h <= 0) continue;
+          review.issues.push({
+            id: `overlap-${scene.id}-${a.id}-${b.id}`,
+            kind: 'layout',
+            severity: 'warning',
+            text: `Layers “${a.id}” and “${b.id}” in scene “${scene.id}” overlap by ${Math.round(w)}×${Math.round(h)} px at x ${Math.round(Math.max(a.x, b.x))}, y ${Math.round(Math.max(a.y, b.y))}. Give each its own part of the frame, or draw what overlaps on purpose in one layer.`,
+            time: scene.start + scene.duration / 2,
+            scene: scene.id,
+          });
+        }
+    }
     // The start, each scene's middle, 85 % of the way through each line (where what it names has appeared), the end.
     const lineTimes = film.scenes.flatMap((s) => s.lines.map((line) => line.start + 0.85 * (line.end - line.start)));
     const times = [...new Set([0, ...film.scenes.map((s) => s.start + s.duration / 2), ...lineTimes, Math.max(0, film.seconds - 1 / film.fps)])]

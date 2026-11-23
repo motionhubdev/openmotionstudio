@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 
 const root = dirname(fileURLToPath(import.meta.url));
-const usage = 'oms install <claude|codex> | init <folder> | check <folder> [--json] | still <folder> --at <seconds> --out <new.png> | render <folder> --out <new.mp4> | player <folder> --out <new folder> | preview <folder> [--port <n>] | motion search <words…> [--json] | motion use <@scope/slug> <folder> | sound <folder> --cues <at:role,…> --seconds <s> --out <new.wav> [--motion <id>]';
+const usage = 'oms install <claude|codex> | init <folder> | check <folder> [--json] | still <folder> --at <seconds> --out <new.png> | render <folder> --out <new.mp4> | player <folder> --out <new folder> | preview <folder> [--port <n>] | motion search <words…> [--json] | motion use <@scope/slug> <folder> | sound <folder> --cues <at:role,…> --seconds <s> --out <new.wav> [--motion <id>] | font <folder> --family <name> [--weights 400,700]';
 
 /** `oms motion search <words…> [--json]` and `oms motion use <@scope/slug> <folder>`: motions from motionhub, on demand. */
 async function motion(args) {
@@ -53,11 +53,35 @@ async function sound(args) {
   for (const cue of report.cues) console.log(`  ${cue.at}s ${cue.role}${cue.dur ? ` (${cue.dur}s)` : ''}: peak ${db(cue.peak)}${cue.silent ? '  <- not heard: its voice made no sound here' : ''}`);
 }
 
+/**
+ * `oms font <folder> --family <name> [--weights 400,700]`: a face from Google Fonts cut to the characters the project
+ * writes, into its media/fonts/ with its licence; run again when the words change.
+ */
+async function font(args) {
+  const { values, positionals } = parseArgs({ args, options: { family: { type: 'string' }, weights: { type: 'string' } }, allowPositionals: true });
+  if (positionals.length !== 1 || !values.family) throw new Error(usage);
+  const dir = resolve(positionals[0]);
+  if (!existsSync(join(dir, 'film.tsx'))) throw new Error(`${dir} holds no film.tsx: name the project folder.`);
+  const weights = (values.weights ?? '400,700').split(',').map((w) => Number(w.trim()));
+  const worker = createRequire(import.meta.url)(join(root, 'dist/worker.cjs'));
+  const { readFile } = await import('node:fs/promises');
+  const { files, characters, licence } = await worker.takeFont(dir, values.family, weights, await readFile(worker.OFL, 'utf8'));
+  const faces = files.filter((file) => file.endsWith('.ttf'));
+  const name = (file) => file.replace(/^.*\//, '').replace(/\.ttf$/, '').replace(/-/g, '_').replace(/^(\d)/, '_$1');
+  console.log(`Wrote ${files.join(', ')}: ${values.family} cut to the ${characters} characters the project writes (${licence}). Run this again when the words change.`);
+  console.log('Declare it where the film draws:');
+  for (const file of faces) console.log(`  import ${name(file)} from './${file}';`);
+  console.log('  <style>{`');
+  for (const file of faces) console.log(`    @font-face { font-family: '${values.family}'; font-weight: ${/-(\d+)\.ttf$/.exec(file)[1]}; src: url(\${${name(file)}}); }`);
+  console.log('  `}</style>');
+}
+
 async function run() {
   const [command, ...args] = process.argv.slice(2);
   if (!command || command === '--help') return console.log(usage);
   if (command === 'motion') return motion(args);
   if (command === 'sound') return sound(args);
+  if (command === 'font') return font(args);
   const options = command === 'still' ? { at: { type: 'string' }, out: { type: 'string' } }
     : command === 'render' || command === 'player' ? { out: { type: 'string' } }
     : command === 'preview' ? { port: { type: 'string' } }

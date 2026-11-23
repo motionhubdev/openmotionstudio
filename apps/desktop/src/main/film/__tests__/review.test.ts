@@ -86,3 +86,22 @@ it("names every layer and character a face draws over the frames drawn, the capt
     "Characters the faces it loads lack fall to this machine's own sans-serif face: layer “cover-title” (“圆缺”), layer “ending-title” (“弦”), the captions (“缺蚀”). Frames differ between machines. Declare a face that has them from the project's files, or use one the motion ships.",
   );
 });
+
+it('says each pair of placed layers of a scene that overlap, not those that only touch or fill the frame', async () => {
+  const s = stage();
+  s.film = {
+    ...film,
+    width: 1920,
+    height: 1080,
+    scenes: [{ ...film.scenes[0]!, id: 'cover', layers: [
+      { id: 'ground', x: 0, y: 0, w: 1920, h: 1080, z: 0 },
+      { id: 'title', x: 80, y: 64, w: 1760, h: 170, z: 1 },
+      { id: 'stage', x: 80, y: 214, w: 1760, h: 760, z: 2 },
+      { id: 'note', x: 80, y: 974, w: 600, h: 60, z: 3 },
+    ] }],
+  };
+  const overlaps = (await reviewBuild({ ok: true, version: 1, errors: [] }, async () => s)).issues.filter((issue) => issue.id.startsWith('overlap-'));
+  expect(overlaps.map((issue) => issue.text)).toEqual([
+    'Layers “title” and “stage” in scene “cover” overlap by 1760×20 px at x 80, y 214. Give each its own part of the frame, or draw what overlaps on purpose in one layer.',
+  ]);
+});

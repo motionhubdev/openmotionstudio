@@ -1,6 +1,6 @@
 # Sound, narration and captions
 
-> **Status:** Plan, slices A, B and C built · **Updated:** 2026-11-19
+> **Status:** Plan, slices A, B and C built · **Updated:** 2026-11-23
 
 How a film gets sound, a spoken narration and captions, in three slices: music and effects that play and export, captions
 drawn from a film's lines, and a narration synthesized line by line whose word times time the captions.
@@ -58,8 +58,8 @@ Captions without any audio: a line's words, shown while it is said.
 
 - A line's time is its `at` and `dur` where the film gives them, else its scene shared evenly among its lines.
 - `<Film captions>` draws the current line with `<Caption>`, burned into the picture.
-- **Export** also writes the captions as a soft subtitle track in the MP4 (`-c:s mov_text`) and, beside it, `.srt`;
-  the export dialog says which.
+- **Export** also writes the lines beside the MP4 as `.srt` and, unless the film draws them as captions (they would
+  show twice), as a soft subtitle track in it (`-c:s mov_text`); the export dialog says which.
 - **Timeline** gains a Lines row, each line a band at its time.
 - **Tests**: line times with and without `at`; the SRT for a film; the export's arguments with captions.
 

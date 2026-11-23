@@ -3,6 +3,14 @@
 Every key change to OpenMotionStudio, newest first, by date. What counts as key and the entry format are in
 `CLAUDE.md`, "The changelog".
 
+## 2026-11-23 — `oms font` takes a face cut to the film's words; a film with captions exports without a second subtitle track; check warns of overlapping layers
+
+- **What:** `oms font <folder> --family <name> [--weights 400,700]` takes a face from Google Fonts cut to the characters the project writes, into `media/fonts/` with its licence (its copyright, and the SIL Open Font License's text when it is under it), and prints the `@font-face` to declare. An export of a film that draws its lines as captions (`<Film captions>`) no longer embeds them as a subtitle track as well; the `.srt` beside it is still written, and the export dialog says so. The check before an export warns of two placed layers of a scene that overlap. The film format says a film's own caption lengths are numbers of pixels.
+- **Why:** A fourth trial of the skill spent most of its look on finding and cutting a Chinese face by hand, got two sets of subtitles in a player that showed the track over the drawn captions, saw its caption padding ignored when written as '14px', and found an overlap between layers only by eye.
+- **Breaking:** An MP4 exported again from a film with `<Film captions>` has no subtitle track; its `.srt` is beside it as before.
+- **Upgrade:** Move the installed `skills/oms` folder aside and run `oms install claude` or `oms install codex` again.
+- **Refs:** `apps/cli/font.ts`, `apps/cli/oms.mjs`, `apps/desktop/src/main/film/capture.ts`, `apps/desktop/src/main/film/review.ts`, `apps/desktop/src/renderer/src/export-dialog.tsx`, `apps/desktop/src/main/film/film.md`, `apps/cli/skills/oms/`, `docs/adr/0016-terminal-agents-author-films-through-the-oms-command.md`.
+
 ## 2026-11-23 — A check names every character a face lacks, captions included; `oms sound` writes where you say and measures each cue alone
 
 - **What:** The check gathers what falls to an unloaded or fallback face over every frame it draws and warns once a face, naming each layer and the captions with all their characters; it had warned once a face at the first layer it saw and never looked at captions. `oms sound --out` is a path from the current directory, as `still`'s and `render`'s are, and must be inside the project; it was a path inside the project. Each cue's printed peak is now its own: measured without the sound's bed and before the next cue begins.

@@ -50,6 +50,12 @@ try {
   assert.throws(() => oms('sound', starter, '--cues', '0.5:bang', '--seconds', '6', '--out', join(starter, 'media/other.wav')), /no cue/);
   assert.throws(() => oms('sound', starter, '--cues', '0.5:land, 2:out', '--seconds', '6', '--out', join(starter, 'media/other.wav')), /has no out: its roles are land, move, draw, count, cut/);
 
+  // A face from Google Fonts, cut to the characters the project writes, with its licence.
+  await writeFile(join(starter, 'parts.tsx'), "export const words = '四季';");
+  assert.match(oms('font', starter, '--family', 'Noto Sans SC', '--weights', '400'), /Wrote media\/fonts\/noto-sans-sc-400\.ttf, media\/fonts\/noto-sans-sc-LICENSE\.txt: Noto Sans SC cut to the \d+ characters the project writes \(SIL Open Font License 1\.1\)/);
+  assert.equal((await readFile(join(starter, 'media/fonts/noto-sans-sc-400.ttf'))).readUInt32BE(0), 0x00010000);
+  assert.match(await readFile(join(starter, 'media/fonts/noto-sans-sc-LICENSE.txt'), 'utf8'), /SIL Open Font License, Version 1\.1/);
+
   // Chinese in a stack whose one loaded face is Latin falls past it to the machine's own face, and is said.
   const mixed = join(scratch, 'Mixed');
   await mkdir(join(mixed, 'media'), { recursive: true });
@@ -131,6 +137,13 @@ export default function Main() {
   for (const stream of [/Video: h264/, /540x960/, /Audio: aac/, /Subtitle: mov_text/, /Duration: 00:00:02\.0/]) assert.match(probe, stream);
   assert.match(await readFile(join(scratch, 'scored.srt'), 'utf8'), /One\.[\s\S]*Two\./);
   assert.throws(() => oms('render', scored, '--out', video), /is there already/);
+  // A film that draws its lines as captions carries no subtitle track as well: they would show twice. Its .srt is beside it.
+  await writeFile(join(scored, 'film.tsx'), (await readFile(join(scored, 'film.tsx'), 'utf8')).replace('<Film>', '<Film captions>'));
+  const captioned = join(scratch, 'captioned.mp4');
+  oms('render', scored, '--out', captioned);
+  const captionedProbe = (() => { try { return execFileSync('ffmpeg', ['-hide_banner', '-i', captioned], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }); } catch (error) { return error.stderr; } })();
+  assert.doesNotMatch(captionedProbe, /Subtitle/);
+  assert.match(await readFile(join(scratch, 'captioned.srt'), 'utf8'), /One\./);
 
   // The same film as a web player: the player, the frame's document, and its sound as one soundtrack as long as the film.
   const web = join(scratch, 'scored-web');
@@ -155,7 +168,7 @@ export default function Main() {
 `);
   assert.throws(() => oms('check', silent, '--json'), error =>
     error.status === 1 && JSON.parse(error.stdout).issues.some(issue => issue.text.includes('media/chime.wav')));
-  console.log('PASS installed skill, starter, editable example, PNG, bounds, a fresh frame, a render, a web player, a motion from motionhub and its sound, and missing audio');
+  console.log('PASS installed skill, starter, editable example, PNG, bounds, a fresh frame, a render (with and without a subtitle track), a web player, a face from Google Fonts, a motion from motionhub and its sound, and missing audio');
 } finally {
   await rm(scratch, { recursive: true, force: true });
 }

@@ -45,6 +45,7 @@ const guide = await readFile(join(desktop, 'src/main/film/film.md'), 'utf8');
 const format = guide.slice(guide.indexOf('# The film'), guide.indexOf('# How you work'));
 await writeFile(join(dist, 'film-format.md'), format.split('\n').filter((line) => !line.startsWith('- **A narration speaks the lines**')).join('\n'));
 await cp(join(desktop, '../../LICENSE'), join(dist, 'LICENSE'));
+await cp(join(cli, 'OFL.txt'), join(dist, 'OFL.txt'));
 
 // The example is apps/cli/example as it is: one film.tsx, drawn from code.
 await cp(join(cli, 'example'), join(dist, 'example'), { recursive: true });
