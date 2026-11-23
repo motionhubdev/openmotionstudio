@@ -3,6 +3,14 @@
 Every key change to OpenMotionStudio, newest first, by date. What counts as key and the entry format are in
 `CLAUDE.md`, "The changelog".
 
+## 2026-11-23 — The check names characters no face on the machine has
+
+- **What:** On a machine with no face at all for a film's characters (Chinese on a Linux server without Chinese fonts), the check before an export and `oms check` said nothing about them, though the film drew them as empty boxes. They are now named like any character the film's faces lack.
+- **Why:** The check compared a character in the film's faces with the generic face's, and a character no face has is drawn as the first face's missing-glyph box, which differs from the generic face's: it read as drawn.
+- **Breaking:** None.
+- **Upgrade:** Nothing.
+- **Refs:** `apps/desktop/src/shared/preview.ts` (the frame's inspection).
+
 ## 2026-11-23 — `oms` is installed from npm
 
 - **What:** `@motionhub/oms` is published on npm (`npm install -g @motionhub/oms`), from a tag `oms-v<version>` on main: the workflow packs the tarball once, drives it installed on Linux, macOS and Windows, and stages it on npm by trusted publishing for a maintainer's approval. Every pull request now packs, installs and drives `oms` on the three platforms too.

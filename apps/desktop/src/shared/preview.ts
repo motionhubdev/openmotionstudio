@@ -164,12 +164,16 @@ export const inspectScript = `(() => {
   };
   const drawn = new Map();
   // Whether the loaded faces draw a character: drawn in them before a generic face, it is the generic face's own glyph,
-  // pixel for pixel, when they lack it. (Widths do not tell: every face draws a Chinese character one em wide.)
+  // pixel for pixel, when they lack it. (Widths do not tell: every face draws a Chinese character one em wide.) On a
+  // machine with no face for it at all, it is drawn as the first face's missing-glyph box instead, which differs from
+  // the generic face's: the box an unassigned code point (U+0378) draws in the same faces.
   const covers = (style, faces, char) => {
     const key = style + '|' + faces + '|' + char;
     if (!drawn.has(key)) {
-      const theirs = pixels(style + ' 40px ' + faces + ', monospace', char), fallback = pixels(style + ' 40px monospace', char);
-      drawn.set(key, theirs.some((value, i) => value !== fallback[i]) || !fallback.some((value) => value));
+      const font = style + ' 40px ' + faces + ', monospace';
+      if (!drawn.has(font)) drawn.set(font, pixels(font, '\\u0378'));
+      const theirs = pixels(font, char), fallback = pixels(style + ' 40px monospace', char), box = drawn.get(font);
+      drawn.set(key, (theirs.some((value, i) => value !== fallback[i]) || !fallback.some((value) => value)) && theirs.some((value, i) => value !== box[i]));
     }
     return drawn.get(key);
   };
