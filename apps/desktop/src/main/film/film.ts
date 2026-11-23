@@ -12,7 +12,7 @@
 import type { BuildContext, BuildOptions, Message, Plugin } from 'esbuild';
 import { createRequire } from 'node:module';
 import { existsSync } from 'node:fs';
-import { copyFile, readFile, writeFile } from 'node:fs/promises';
+import { copyFile, readFile, realpath, writeFile } from 'node:fs/promises';
 import { dirname, join, relative, resolve, sep } from 'node:path';
 import type { BuildResult } from '../../shared/api';
 import { motionFaces } from '../motions';
@@ -219,7 +219,9 @@ export async function located(text: string, bundle: string, dir: string): Promis
     if (!inline) return first!;
     const at = sourceAt(JSON.parse(Buffer.from(inline[1]!, 'base64').toString('utf8')), Number(frame[1]), Number(frame[2]));
     if (!at) return first!;
-    const source = relative(dir, resolve(dirname(bundle), at.source)).split(sep).join('/');
+    // Both by their real paths: a project reached through a link (macOS's /var is /private/var) is still its own.
+    const file = resolve(dirname(bundle), at.source);
+    const source = relative(await realpath(dir), await realpath(file).catch(() => file)).split(sep).join('/');
     return `${first} (at ${source}:${at.line}:${at.column})`;
   } catch {
     return first!;

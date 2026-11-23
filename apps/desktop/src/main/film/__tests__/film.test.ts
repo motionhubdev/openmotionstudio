@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -118,6 +118,13 @@ describe('located', () => {
     const column = lines[line]!.search(/W\d* \* 0\.5/) + 1;
     const stack = `ReferenceError: Cannot access 'W2' before initialization\n    at Cover (https://film.invalid/build/film-1.js:${line + 1}:${column})\n    at renderWithHooks (https://film.invalid/studio/core.js:1:2)`;
     expect(await located(stack, bundle, root)).toBe("ReferenceError: Cannot access 'W2' before initialization (at parts/cover.tsx:2:16)");
+    // The project reached through a link, as macOS's temporary folders are (/var is /private/var).
+    await symlink(root, `${root}-link`);
+    try {
+      expect(await located(stack, bundle, `${root}-link`)).toBe("ReferenceError: Cannot access 'W2' before initialization (at parts/cover.tsx:2:16)");
+    } finally {
+      await rm(`${root}-link`, { force: true });
+    }
     expect(await located("TypeError: x is not a function\n    at f (https://film.invalid/studio/core.js:1:2)", bundle, root)).toBe('TypeError: x is not a function');
     expect(await located('The film did not load.', bundle, root)).toBe('The film did not load.');
   });
