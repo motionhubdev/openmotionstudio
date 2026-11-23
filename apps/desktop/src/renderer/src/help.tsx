@@ -6,7 +6,7 @@ import { reason } from './reason';
 const mod = navigator.platform.startsWith('Mac') ? '⌘' : 'Ctrl';
 const shortcuts = [
   ['New film', [mod, 'N']],
-  ['Open project', [mod, 'O']],
+  ['Import project', [mod, 'O']],
   ['Settings', [mod, ',']],
   ['Search projects', ['/']],
   ['Play or pause', ['Space']],

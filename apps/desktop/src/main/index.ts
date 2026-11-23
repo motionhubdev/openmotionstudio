@@ -9,8 +9,10 @@ import { mkdir, realpath, open as openFile, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { CHANNELS, EVENTS, MAX_BRIEF, type Project, type ProjectTask } from '../shared/api';
 import { keepFilmsInPlace, registerPreviewScheme, SCHEME, servePreview } from './film/preview';
+import { allowSoftwareWebGL } from './film/stage';
 import { startFilm } from './film/film';
 import { openExample } from './examples';
+import { OMS_EXTENSION, takeProject } from './oms-file';
 import { createInWorkspace, duplicateProject, filmName, forgetProject, inLibrary, openProject, projectAt, projectLibrary, rememberProject, renameProject } from './project';
 import { providers, studioTranslator } from './providers';
 import { createWorkspace, type WorkspaceHost } from './workspace';
@@ -384,6 +386,7 @@ async function shutdown(exit: () => void): Promise<void> {
 }
 
 registerPreviewScheme();
+allowSoftwareWebGL();
 const primary = app.requestSingleInstanceLock();
 if (!primary) app.quit();
 else {
@@ -541,11 +544,15 @@ else {
             await startFilm(project.path);
             project = projectAt(project.path);
           } else {
+            // A folder or a film file. Only macOS's dialog picks either, so elsewhere a folder is picked by its film.tsx.
+            const t = await studioTranslator();
             const result = await dialog.showOpenDialog(entry?.host ?? mainWindow, {
-              title: (await studioTranslator())('Open a project folder'), properties: ['openDirectory'],
+              title: t('Import a project'),
+              properties: process.platform === 'darwin' ? ['openFile', 'openDirectory'] : ['openFile'],
+              filters: [{ name: t('Project folder (film.tsx) or film file'), extensions: [OMS_EXTENSION.slice(1), 'tsx'] }],
             });
             if (result.canceled || !result.filePaths[0]) return null;
-            project = await openProject(result.filePaths[0]);
+            project = await takeProject(result.filePaths[0], (await workspaceSettings()).path);
           }
           openInMain(await editorFor(project, brief)); return null;
         }

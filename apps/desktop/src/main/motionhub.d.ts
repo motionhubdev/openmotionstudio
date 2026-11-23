@@ -34,6 +34,8 @@ declare module '@motionhub/cli/hub' {
   export function search(rows: HubMotion[], words: string[]): HubMotion[];
   export function getMotion(id: string, out: string, base?: string, rows?: HubMotion[]): Promise<HubMotion>;
   export function motionPath(id: string, root?: string): string;
+  /** The regular files of a ustar archive, by path; a link or other special entry is refused. */
+  export function untar(tar: Buffer): Map<string, Buffer>;
   export function readLock(root?: string): Lock;
   export function writeLock(lock: Lock, root?: string): void;
 }

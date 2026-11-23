@@ -86,7 +86,7 @@ const SHORTCUTS: [group: string, keys: string[], what: string][] = [
   ['Workspace', ['?'], 'Show these shortcuts'],
   ['Workspace', ['Ctrl/⌘', 'Shift', 'N'], 'Open this film in an editor window'],
   ['App', ['Ctrl/⌘', 'N'], 'Start a new film'],
-  ['App', ['Ctrl/⌘', 'O'], 'Open a project folder'],
+  ['App', ['Ctrl/⌘', 'O'], 'Import project'],
   ['App', ['Ctrl/⌘', ','], 'Open Settings'],
 ];
 

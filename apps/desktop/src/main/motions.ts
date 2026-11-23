@@ -45,10 +45,26 @@ function row(motion: HubMotion, base: string): CatalogueMotion {
   };
 }
 
-/** The catalogue's motions that contain every word (all of them for none). */
+/**
+ * The catalogue's motions with any of the words, those with more of them first and otherwise in the catalogue's order
+ * (all of them for none): a motion's words are its name, line, purpose, catalogues and tags, as motionhub's search reads
+ * them. A search for every word at once found nothing for "chart data" where a motion had "data" alone.
+ */
 export async function searchMotions(words: string, base = HUB): Promise<CatalogueMotion[]> {
   const { search } = await hub();
-  return search(await rows(base), words.split(/\s+/).filter(Boolean)).map((motion) => row(motion, base));
+  const all = await rows(base);
+  const wanted = [...new Set(words.toLowerCase().split(/\s+/).filter(Boolean))];
+  if (!wanted.length) return all.map((motion) => row(motion, base));
+  const matched = new Map<HubMotion, number>();
+  for (const word of wanted) for (const motion of search(all, [word])) matched.set(motion, (matched.get(motion) ?? 0) + 1);
+  return [...matched].sort((a, b) => b[1] - a[1]).map(([motion]) => row(motion, base));
+}
+
+/** The words the catalogue's motions are tagged with, the most used first: what a search can find. */
+export async function motionWords(base = HUB): Promise<string[]> {
+  const counts = new Map<string, number>();
+  for (const motion of await rows(base)) for (const tag of [...motion.tags, ...(motion.catalogs ?? [])]) counts.set(tag, (counts.get(tag) ?? 0) + 1);
+  return [...counts].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([tag]) => tag);
 }
 
 /** Takes the newest version of motion `id` from the catalogue into the project and records it in the lock. */

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { PickedElement } from '../../../shared/preview';
-import { askPlace, changesOf, hex, lookOf, specRequest } from '../preview';
+import { askPlace, changesOf, hex, lookOf, specRequest, weightChoices } from '../preview';
+import { type PickedElement, declaredWeights } from '../../../shared/preview';
 
 const title: PickedElement = {
   path: 'div#root > h1',
@@ -62,5 +62,30 @@ describe('asking the agent for another size or rate', () => {
 
   it('asks for a size and a rate chosen together in one request', () => {
     expect(specRequest(film, { width: 1080, height: 1920, fps: 60 })).toContain('size from 1920×1080 to 1080×1920 and its frame rate from 30 to 60 fps');
+  });
+});
+
+describe('the weights a picked text is offered', () => {
+  const faces = [
+    { family: '"Noto Sans SC"', weight: '400' },
+    { family: 'Noto Sans SC', weight: '900' },
+    { family: 'Inter', weight: '100 900' },
+    { family: 'Serif Book', weight: 'normal' },
+    { family: 'Serif Book', weight: 'bold' },
+  ];
+
+  it('are those its face is declared in, a variable face giving each hundred of its range', () => {
+    expect(declaredWeights("'Noto Sans SC', sans-serif", faces)).toEqual(['400', '900']);
+    expect(declaredWeights('Inter', faces)).toEqual(['100', '200', '300', '400', '500', '600', '700', '800', '900']);
+    expect(declaredWeights('"Serif Book"', faces)).toEqual(['400', '700']);
+    // A face the film does not declare draws in whatever the machine has.
+    expect(declaredWeights('system-ui, sans-serif', faces)).toBeUndefined();
+  });
+
+  it('keep its own weight among them, and offer every weight for a face the film does not declare', () => {
+    const text = { path: 'div', text: '几万 °C', attributes: {}, styles: {} };
+    expect(weightChoices({ ...text, weights: ['400', '900'] }, '900')).toEqual(['400', '900']);
+    expect(weightChoices({ ...text, weights: ['400', '900'] }, '700')).toEqual(['700', '400', '900']);
+    expect(weightChoices(text, '400')).toHaveLength(9);
   });
 });

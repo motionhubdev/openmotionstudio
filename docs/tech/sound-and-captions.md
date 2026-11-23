@@ -1,6 +1,6 @@
 # Sound, narration and captions
 
-> **Status:** Plan, slices A, B and C built · **Updated:** 2026-11-19
+> **Status:** Plan, slices A, B and C built · **Updated:** 2026-11-23
 
 How a film gets sound, a spoken narration and captions, in three slices: music and effects that play and export, captions
 drawn from a film's lines, and a narration synthesized line by line whose word times time the captions.
@@ -58,8 +58,8 @@ Captions without any audio: a line's words, shown while it is said.
 
 - A line's time is its `at` and `dur` where the film gives them, else its scene shared evenly among its lines.
 - `<Film captions>` draws the current line with `<Caption>`, burned into the picture.
-- **Export** also writes the captions as a soft subtitle track in the MP4 (`-c:s mov_text`) and, beside it, `.srt`;
-  the export dialog says which.
+- **Export** also writes the lines beside the MP4 as `.srt` and, unless the film draws them as captions (they would
+  show twice), as a soft subtitle track in it (`-c:s mov_text`); the export dialog says which.
 - **Timeline** gains a Lines row, each line a band at its time.
 - **Tests**: line times with and without `at`; the SRT for a film; the export's arguments with captions.
 
@@ -92,8 +92,14 @@ A voice says each line; its words time the captions.
 - **Tests**: each provider's request and words read into one shape (fixtures); the clip's key, what voicing keeps and
   removes; ducking measured in the mix; the agent's `list_voices`, `voice_lines` and `check` notes.
 
-Later: a narration from the person's own recording, its words from a provider's transcription, through the same
-captions.
+A narration from the person's own recording (`recording.ts`, `oms voice --recording`; the Studio plays it, and its
+Voice view says the film speaks from a recording and offers no provider to speak over it, but cannot import one): one take of the film's lines, read as written, in a film whose voice is `recording:<name>`. It is transcribed
+with each word's time by MiniMax, OpenAI or ElevenLabs (kept by the file's hash), matched to the lines character by
+character, and cut into `voice/` one clip a line, as a spoken narration's are, each word the script's own text timed by
+the characters heard for it. A line heard less than 75 % as written stops the import, which writes nothing. Every
+other line read otherwise is cut and listed with each difference, written against heard, and words said between the
+lines (no line holds them, so no clip does) are listed with their times; the import also says who transcribed the take
+and whether the kept transcript was used.
 
 ## Order
 

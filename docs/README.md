@@ -31,9 +31,13 @@ Read [positioning](prd/positioning.md) first, then [the architecture](tech/archi
 - [0007 Local checkpoints track agent source writes](adr/0007-local-checkpoints-track-agent-source-writes.md) — safe, local recovery without Git.
 - [0008 The person's own coding agent, through its own headless protocol](adr/0008-the-persons-own-coding-agent.md) — Claude Code or Codex as a second way in, with the person's sign-in.
 - [0009 Each turn is logged with its tokens and time](adr/0009-each-turn-is-logged-with-its-tokens-and-time.md) — one line a turn in `.motion-studio/usage.jsonl`, tokens on one footing.
-- [0010 A film's sound is `<Sound>` elements, mixed on export](adr/0010-a-films-sound-is-sound-elements-mixed-on-export.md) — dB and seconds in the scene tree; one ffmpeg filter graph, AAC.
+- [0010 A film's sound is `<Sound>` elements, mixed on export](adr/0010-a-films-sound-is-sound-elements-mixed-on-export.md) — dB and seconds in the scene tree, AAC; amended by 0017.
 - [0011 Narration is synthesized per line, and times the captions](adr/0011-narration-is-synthesized-per-line-and-times-the-captions.md) — voices in Models, speech in `voice/`, captions from word times; amends 0006; amended by 0012.
 - [0012 A narration speaks through the person's own voice provider](adr/0012-a-narration-speaks-through-the-persons-own-voice-provider.md) — no default voice: Azure, ElevenLabs, MiniMax or OpenAI, set up at the first narration; not Edge's guarded service.
 - [0013 Each window owns a project](adr/0013-each-window-owns-a-project.md) — independent tasks and preview sessions; superseded by 0014.
 - [0014 Project sessions outlive editor windows](adr/0014-project-sessions-outlive-editor-windows.md) — one tray-backed main window, movable dedicated editors, and background tasks on Home.
 - [0015 New projects live in a default workspace](adr/0015-new-projects-live-in-a-default-workspace.md) — a configurable Documents location and a fresh directory for every new film or template copy.
+- [0016 Terminal agents author films through the OMS command](adr/0016-terminal-agents-author-films-through-the-oms-command.md) — `oms` and a skill for Claude Code and Codex, on the Studio's own build and player.
+- [0017 An export is encoded in segments and mixed in blocks](adr/0017-an-export-is-encoded-in-segments-and-mixed-in-blocks.md) — segments joined as they are, which `oms` resumes; sounds summed in JavaScript.
+- [0018 A film plays on the web from a static folder](adr/0018-a-film-plays-on-the-web-from-a-static-folder.md) — `oms player` and `oms preview`: the preview core written whole into a sandboxed frame that loads nothing, kept to one mixed soundtrack.
+- [0019 A film travels as one .oms file](adr/0019-a-film-travels-as-one-oms-file.md) — `oms pack` and Home's Import project: the project's own files in a motion package's reproducible tar, checked before they reach the disk.

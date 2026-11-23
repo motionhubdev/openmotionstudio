@@ -53,7 +53,7 @@ describe('runTurn', () => {
     await runTurn(turn, String);
     expect(call).toHaveBeenCalledTimes(2);
     expect(messages.map((m) => m.role)).toEqual(['user', 'assistant', 'user', 'assistant']);
-    expect(messages[2]!.content).toEqual([{ type: 'tool_result', tool_use_id: 't1', content: 'No motion has all of those words.' }]);
+    expect(messages[2]!.content).toEqual([{ type: 'tool_result', tool_use_id: 't1', content: 'No motion has any of those words. Search with none to list them all.' }]);
     // The turn's account: its two calls' tokens added up, and its time.
     expect(events.at(-1)).toEqual({
       type: 'end',

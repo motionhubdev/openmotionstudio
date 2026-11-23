@@ -6,7 +6,11 @@
 //
 //   - In the Studio's preview it plays on its own clock and obeys play, pause and seek.
 //   - With ?render=1 it holds still and exposes window.__oms.seek(t) for the exporter and
-//     for stills, which resolves once the frame at t is painted.
+//     for stills, which resolves once the frame at t is committed; a DevTools screenshot then
+//     draws it. Its parent may move it too (oms:seek), and hears each frame drawn (oms:time) and
+//     whether an image it shows is still loading.
+//   - In oms's web player (apps/cli/web.ts) the page is a document of its own, written into a
+//     sandboxed frame whole: the film comes in it (window.__omsInline), and it is a still the player moves.
 //
 // Built by scripts/build-preview.mjs into resources/preview/core.js.
 
@@ -22,10 +26,12 @@ import { FilmAudio } from './sound';
 
 declare global {
   interface Window {
-    /** In a render (?render=1): the film's size and length, and seek(t), resolved once the frame at t is painted. */
+    /** In a render (?render=1): the film's size and length, and seek(t), resolved once the frame at t is committed (a DevTools screenshot then draws it). */
     __oms?: FilmInfo & { seek(t: number): Promise<number> };
     /** In a render: the first error the page met, for the main process to report. */
     __omsError?: string;
+    /** The film's bundle, carried in the page by oms's web player: run once React and the runtime are provided. */
+    __omsInline?: () => unknown;
     /** The film's size, for studio/pick.js. */
     __omsFrame?: FilmInfo;
     require?: (name: string) => unknown;
@@ -72,6 +78,9 @@ interface Spoken {
 
 /** The project's narration, read from voice/ through the scheme; null when it has none, or a clip will not read (said in the console). */
 async function spoken(): Promise<Spoken | null> {
+  // A page that carries its narration (oms's web player, on hosts a sandboxed frame cannot fetch from) gives it here.
+  const carried = document.getElementById('oms-voice');
+  if (carried) return JSON.parse(carried.textContent ?? 'null') as Spoken | null;
   const response = await fetch('project/voice/lines.json');
   if (!response.ok) return null;
   try {
@@ -269,24 +278,50 @@ function Player({ Film, film }: { Film: ComponentType; film: FilmInfo }) {
   return <Frame Film={Film} film={film} t={t} scale={scale} />;
 }
 
+/** Whether an image the page shows has not loaded yet. */
+const loadingImages = () => [...document.images].some((image) => !image.complete);
+
 function Still({ Film, film }: { Film: ComponentType; film: FilmInfo }) {
-  const [at, setAt] = useState({ t: 0, n: 0 });
+  const [at, setAt] = useState({ t: 0, n: 0, told: false });
   const painted = useRef<((t: number) => void) | null>(null);
+  useEffect(() => {
+    const onMessage = (event: MessageEvent<ToPreview>) => {
+      if (event.source !== parent || parent === window || event.data?.type !== 'oms:seek' || !Number.isFinite(event.data.t)) return;
+      const t = Math.max(0, Math.min(film.seconds, event.data.t));
+      setAt((a) => ({ t, n: a.n + 1, told: true }));
+    };
+    // An image that finishes loading may be the last one the frame waits for.
+    const onLoad = (event: Event) => {
+      if (parent !== window && event.target instanceof HTMLImageElement && !loadingImages()) post({ type: 'oms:time', t: atRef.current, playing: false, loading: false });
+    };
+    addEventListener('message', onMessage);
+    addEventListener('load', onLoad, true);
+    addEventListener('error', onLoad, true);
+    return () => {
+      removeEventListener('message', onMessage);
+      removeEventListener('load', onLoad, true);
+      removeEventListener('error', onLoad, true);
+    };
+  }, [film]);
+  const atRef = useRef(0);
+  atRef.current = at.t;
   useEffect(() => {
     window.__oms = {
       ...film,
       seek: (t) =>
         new Promise((done) => {
           painted.current = done;
-          setAt((a) => ({ t, n: a.n + 1 }));
+          setAt((a) => ({ t, n: a.n + 1, told: false }));
         }),
     };
   }, [film]);
   useEffect(() => {
+    if (at.told) post({ type: 'oms:time', t: at.t, playing: false, loading: loadingImages() });
     const done = painted.current;
     if (!done) return;
     painted.current = null;
-    requestAnimationFrame(() => requestAnimationFrame(() => done(at.t)));
+    // Committed: the DevTools screenshot that follows draws a frame from the page as it now is.
+    done(at.t);
   }, [at]);
   return <Frame Film={Film} film={film} t={at.t} scale={1} />;
 }
@@ -328,12 +363,16 @@ async function loadFaces(): Promise<void> {
 
 async function start(): Promise<void> {
   reportErrors();
-  const render = new URLSearchParams(location.search).get('render') === '1';
+  const inline = window.__omsInline;
+  const render = inline !== undefined || new URLSearchParams(location.search).get('render') === '1';
   const version = new URLSearchParams(location.search).get('v') ?? '';
   try {
-    await motionFaces();
-    await loadFaces();
-    await load(`build/film-${Number(version)}.js`);
+    if (inline) (globalThis as { __omsFilm?: unknown }).__omsFilm = inline();
+    else {
+      await motionFaces();
+      await loadFaces();
+      await load(`build/film-${Number(version)}.js`);
+    }
     const module = (globalThis as { __omsFilm?: FilmModule }).__omsFilm;
     if (!module) throw new Error('The film did not load.');
     const film = info(module, await spoken());
@@ -344,7 +383,8 @@ async function start(): Promise<void> {
     window.__omsFrame = film;
     post({ type: 'oms:ready', film });
   } catch (error) {
-    post({ type: 'oms:error', message: error instanceof Error ? error.message : String(error) });
+    // With its stack, which the Studio and oms map back to the project's sources.
+    post({ type: 'oms:error', message: error instanceof Error ? (error.stack ?? error.message) : String(error) });
     throw error;
   }
 }

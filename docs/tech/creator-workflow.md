@@ -1,6 +1,6 @@
 # The creator's workflow
 
-> **Status:** Current · **Updated:** 2026-11-17
+> **Status:** Current · **Updated:** 2026-11-23
 
 How a creator explores a film, points at a change, checks the result and returns to earlier source.
 
@@ -15,7 +15,11 @@ person scrolling it takes it over), and shows the last check's issues on its rul
 Home offers three bundled starting points. Each click creates a fresh ordinary project in the default
 workspace, copying the bundled source and preserving earlier projects. New film also creates its own workspace
 directory without a folder picker. The workspace defaults to Documents/OpenMotionStudio and can be changed in
-Settings → General → Workspace; existing projects stay where they are. Open folder and Recent reopen existing projects.
+Settings → General → Workspace; existing projects stay where they are. Recent reopens existing projects.
+Import project (at the right of the prompt's foot, or Ctrl/⌘ O) takes what the person picks: a project folder, opened
+where it is (on Windows and Linux, whose dialogs pick files or folders but not either, by its `film.tsx`), or a `.oms`
+an agent packed with `oms pack`, taken into a new folder in the workspace and opened
+([ADR 0019](../adr/0019-a-film-travels-as-one-oms-file.md)).
 No provider is needed to play, inspect, check or export a starting point. The assistant's brief prepares a message with the subject, audience,
 length and aspect ratio; it never sends a message or edits the film by itself.
 
@@ -127,4 +131,4 @@ picture annotations, in both system themes.
 
 OpenMotionStudio captures film frames in an offscreen Electron window. The desktop app normally lets Chromium choose its graphics backend. To explicitly request GPU rasterization, launch a new Studio process with `OMS_RENDER_GPU=1`. The setting selects ANGLE with D3D11 on Windows, Metal on macOS, or EGL on Linux and applies to the entire Studio process.
 
-The local `graphics.status` log records Chromium's compositing, rasterization, and WebGL status. Chromium can use software rendering when hardware acceleration is unavailable. MP4 export encodes the captured frames with FFmpeg's `libx264`.
+The local `graphics.status` log records Chromium's compositing, rasterization, and WebGL status. Chromium can use software rendering when hardware acceleration is unavailable; for WebGL (a three.js film) the Studio and `oms` turn on SwiftShader, Chromium's software renderer, which Chromium no longer falls back to by itself (`allowSoftwareWebGL` in `film/stage.ts`, and `apps/cli/chrome.ts`). MP4 export encodes the captured frames with FFmpeg's `libx264`.

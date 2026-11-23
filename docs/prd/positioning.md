@@ -1,6 +1,6 @@
 # Positioning
 
-> **Status:** Plan · **Updated:** 2026-11-19
+> **Status:** Plan · **Updated:** 2026-11-22
 
 What OpenMotionStudio is, who it is for, what it is instead of, what it will not do, and the smallest version worth shipping.
 
@@ -21,13 +21,25 @@ It is for people who make short explainers, product clips, social video and moti
 the drawing: people who make video rather than write code, who do not want to wire a terminal agent, a preview server and
 a render script together by hand, and who want to choose (and pay for) their own model.
 
+## Two ways in: the Studio and `oms`
+
+The same film is made in either, and opened in the other as it is:
+
+- **The Studio**, the desktop app, for a person who wants to watch, point and ask.
+- **`oms`** (`@motionhub/oms`, [ADR 0016](../adr/0016-terminal-agents-author-films-through-the-oms-command.md)), a
+  command and a skill for Claude Code or Codex, for an agent in the person's terminal or on a server. It goes from a
+  brief to a finished MP4 on its own, as Remotion's or HyperFrames' command line does: it writes the film, checks it,
+  photographs it and renders it, with the Studio's own build, preview core and export, in a pinned headless Chrome and
+  the person's own ffmpeg. Opening the folder in the Studio, to refine it by hand and eye, is a choice, not a step.
+
 ## What it is instead of
 
 - **Remotion Studio**: a preview and render UI for developers, with no agent, under a licence that companies pay for.
 - **HyperFrames Studio**: a preview and editor for HTML compositions; its agent lives outside it, in a terminal.
 - **A terminal agent beside a browser tab**: Claude Code or Codex writing files while a dev server reloads. It works, and
   it is what the Studio replaces: the agent cannot see what the person points at, the person cannot see what the agent
-  looked at, and the model is the agent vendor's.
+  looked at, and the model is the agent vendor's. For a person who wants the terminal anyway, `oms` gives that agent the
+  Studio's format, checks and render instead of a dev server.
 - **A hosted AI video service**: the Studio has no account, no credits and no server. The files stay on the person's disk
   and the model calls go from their machine to their provider.
 

@@ -1,12 +1,21 @@
 import type { BuildResult, FilmReview } from '../../shared/api';
-import type { Stage } from './capture';
+import { located } from './film';
+import type { PhotoStage } from './stage';
 
-/** Checks a fixed bundle. Sampling catches rendering failures, not every possible visual defect. */
+/**
+ * Checks a fixed bundle. Sampling catches rendering failures, not every possible visual defect. With `bundle`, the
+ * build's script, and `dir`, the project's folder, a page's error says where in the project's sources it was thrown.
+ */
 export async function reviewBuild(
   build: BuildResult | null,
-  open: (version: number) => Promise<Stage>,
+  open: (version: number) => Promise<PhotoStage>,
   signal?: AbortSignal,
+  where?: { bundle: string; dir: string },
 ): Promise<FilmReview> {
+  const told = async (error: unknown) => {
+    const text = error instanceof Error ? error.message : String(error);
+    return where ? located(text, where.bundle, where.dir) : text;
+  };
   const review: FilmReview = { version: build?.version ?? 0, checkedFrames: 0, issues: [] };
   if (!build?.ok) {
     review.issues = (build?.errors.length ? build.errors : ['The film is not ready yet.']).map((text, i) => ({
@@ -17,7 +26,7 @@ export async function reviewBuild(
     }));
     return review;
   }
-  let stage: Stage | undefined;
+  let stage: PhotoStage | undefined;
   try {
     signal?.throwIfAborted();
     stage = await open(build.version);
@@ -42,30 +51,122 @@ export async function reviewBuild(
             scene: scene.id,
           });
       }
-    const times = [...new Set([0, ...film.scenes.map((s) => s.start + s.duration / 2), Math.max(0, film.seconds - 1 / film.fps)])];
+    // Layers are boxes of the frame that do not collide (film.md): two placed boxes of a scene that overlap are said, each
+    // pair once. A layer the size of the frame, where a component draws in the frame's own coordinates, is left out.
+    for (const scene of film.scenes) {
+      const placed = scene.layers.filter((l) => !(l.x <= 0 && l.y <= 0 && l.x + l.w >= film.width && l.y + l.h >= film.height));
+      for (const [i, a] of placed.entries())
+        for (const b of placed.slice(i + 1)) {
+          const w = Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x);
+          const h = Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y);
+          if (w <= 0 || h <= 0) continue;
+          review.issues.push({
+            id: `overlap-${scene.id}-${a.id}-${b.id}`,
+            kind: 'layout',
+            severity: 'warning',
+            text: `Layers “${a.id}” and “${b.id}” in scene “${scene.id}” overlap by ${Math.round(w)}×${Math.round(h)} px at x ${Math.round(Math.max(a.x, b.x))}, y ${Math.round(Math.max(a.y, b.y))}. Give each its own part of the frame, or draw what overlaps on purpose in one layer.`,
+            time: scene.start + scene.duration / 2,
+            scene: scene.id,
+          });
+        }
+    }
+    // Each scene once it has entered and at its middle, 85 % of the way through each line (where what it names has appeared), the end.
+    const lineTimes = film.scenes.flatMap((s) => s.lines.map((line) => line.start + 0.85 * (line.end - line.start)));
+    // Half a second into each scene (a quarter of a short one), once it has entered from the film's ground.
+    const entered = new Map(film.scenes.map((s) => [s.start + Math.min(0.5, s.duration / 4), s] as const));
+    const times = [...new Set([0, ...entered.keys(), ...film.scenes.map((s) => s.start + s.duration / 2), ...lineTimes, Math.max(0, film.seconds - 1 / film.fps)])]
+      .filter((time) => time >= 0 && time < film.seconds)
+      .sort((a, b) => a - b);
+    /** In a face's characters: a whole text set in it. */
+    const WHOLE = '';
+    const GENERIC = new Set(['serif', 'sans-serif', 'monospace', 'cursive', 'fantasy', 'system-ui', 'ui-serif', 'ui-sans-serif', 'ui-monospace', 'ui-rounded', 'math', 'emoji', 'fangsong']);
+    const sceneAt = (time: number) => film.scenes.find((s) => time >= s.start && time < s.start + s.duration)?.id;
+    const said = new Set<string>();
+    // Each face text falls to, gathered over every frame drawn: by layer, the characters it draws ('' for whole texts).
+    const faces = new Map<string, { family: string; layers: Map<string, Set<string>>; time: number }>();
     for (const time of times) {
       signal?.throwIfAborted();
       try {
-        await stage.frame(time);
+        await stage.png(time);
         review.checkedFrames++;
+        const seen = await stage.inspect();
+        // A scene enters from the film's ground over about half a second (film.md); one that still shows none of its own
+        // layers then holds the ground alone.
+        const opening = entered.get(time);
+        if (opening && opening.layers.length && seen.shown && !opening.layers.some((layer) => seen.shown!.includes(layer.id)))
+          review.issues.push({
+            id: `empty-${opening.id}`,
+            kind: 'layout',
+            severity: 'warning',
+            text: `Scene “${opening.id}” still shows none of its layers at ${time.toFixed(2)} s, ${(time - opening.start).toFixed(2)} s after it opens: the film's ground alone. Have its picture in by then, and bring in later only what its lines add.`,
+            time,
+            scene: opening.id,
+          });
+        // One warning a layer, at the first frame it shows in: its first words, and every edge any of its text crosses.
+        for (const layer of new Set(seen.outside.map((o) => o.layer))) {
+          if (said.has(`outside|${layer}`)) continue;
+          said.add(`outside|${layer}`);
+          const texts = seen.outside.filter((o) => o.layer === layer);
+          const edges = [...new Set(texts.flatMap((o) => o.edges))];
+          const more = texts.length > 1 ? ` and ${texts.length - 1} more` : '';
+          review.issues.push({
+            id: `outside-${layer}`,
+            kind: 'layout',
+            severity: 'warning',
+            text: `Text in layer “${layer}” (“${texts[0]!.text}”${more}) runs past the frame's ${edges.join(' and ')} edge at ${time.toFixed(2)} s. A component's coordinates are its layer's, not the frame's.`,
+            time,
+            scene: sceneAt(time),
+          });
+        }
+        for (const { layer, family, chars } of seen.unloaded) {
+          const key = family.toLowerCase();
+          const face = faces.get(key) ?? { family, layers: new Map<string, Set<string>>(), time };
+          faces.set(key, face);
+          const drawn = face.layers.get(layer) ?? new Set<string>();
+          face.layers.set(layer, drawn);
+          if (!chars) drawn.add(WHOLE);
+          for (const char of chars) drawn.add(char);
+        }
       } catch (error) {
         if (signal?.aborted) throw error;
         review.issues.push({
           id: 'drawing',
           kind: 'runtime',
           severity: 'error',
-          text: error instanceof Error ? error.message : String(error),
+          text: await told(error),
           time,
           scene: film.scenes.find((s) => time >= s.start && time < s.start + s.duration)?.id,
         });
         break;
       }
     }
+    // One warning a face, at the first frame it was seen in, naming every layer and every character that falls to it.
+    for (const [key, { family, layers, time }] of faces) {
+      const where = GENERIC.has(key) ? `this machine's own ${family} face` : `“${family}”, which neither the film nor its motion loads, so to this machine's fallback`;
+      const place = (layer: string) => (layer === 'captions' ? 'the captions' : `layer “${layer}”`);
+      const lacking = [...layers].filter(([, drawn]) => [...drawn].some((char) => char !== WHOLE)).map(([layer, drawn]) => {
+        const chars = [...drawn].filter((char) => char !== WHOLE);
+        return `${place(layer)} (“${chars.slice(0, 40).join('')}”${chars.length > 40 ? ` and ${chars.length - 40} more` : ''})`;
+      });
+      const whole = [...layers].filter(([, drawn]) => drawn.has(WHOLE)).map(([layer]) => place(layer));
+      const said = [
+        ...(lacking.length ? [`Characters the faces it loads lack fall to ${where}: ${lacking.join(', ')}.`] : []),
+        ...(whole.length ? [`${whole.join(', ').replace(/^./, (c) => c.toUpperCase())} ${whole.length > 1 || whole[0] === 'the captions' ? 'set' : 'sets'} text in ${where}.`] : []),
+      ];
+      review.issues.push({
+        id: `face-${key}`,
+        kind: 'layout',
+        severity: 'warning',
+        text: `${said.join(' ')} Frames differ between machines. Declare a face that has them from the project's files, or use one the motion ships.`,
+        time,
+        scene: sceneAt(time),
+      });
+    }
   } catch (error) {
     if (signal?.aborted) throw error;
-    review.issues.push({ id: 'preview', kind: 'runtime', severity: 'error', text: error instanceof Error ? error.message : String(error) });
+    review.issues.push({ id: 'preview', kind: 'runtime', severity: 'error', text: await told(error) });
   } finally {
-    stage?.close();
+    await stage?.close();
   }
   return review;
 }

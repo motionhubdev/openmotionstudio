@@ -3,6 +3,166 @@
 Every key change to OpenMotionStudio, newest first, by date. What counts as key and the entry format are in
 `CLAUDE.md`, "The changelog".
 
+## 2026-11-23 — A film travels as one `.oms` file: `oms pack`, and Import project in the Studio
+
+- **What:** `oms pack <folder> [--out <file.oms>]` writes a project as one film file (`<folder>.oms` beside it by default): the project's own files in a gzipped tar, the format of a motion's package, without renders, stills, `.git`, `node_modules` or the Studio's state (`.motion-studio/`, which holds conversations). Home's Open project becomes **Import project**, at the right of the prompt's foot (and Ctrl/⌘ O): it opens a project folder where it is (picked by its `film.tsx` on Windows and Linux), or takes a film file into a new folder in the workspace named after it and opens it; a file holding a path outside its project, a link or no `film.tsx` is refused and leaves nothing behind.
+- **Why:** A film an agent made in a terminal reaches the Studio, or another person, as one file a chat or a mail can carry.
+- **Breaking:** None: a new file format beside the folder, which stays the truth.
+- **Upgrade:** Move the installed `skills/oms` folder aside and run `oms install claude` or `oms install codex` again.
+- **Refs:** [ADR 0019](docs/adr/0019-a-film-travels-as-one-oms-file.md), `apps/desktop/src/main/oms-file.ts`, `apps/cli/worker.ts`, `apps/cli/oms.mjs`.
+
+## 2026-11-23 — The Studio keeps a recorded narration, and offers only the weights a face has
+
+- **What:** A film narrated from the person's own recording (`voice="recording:<name>"`, from `oms voice --recording`) opens in the Studio with a Voice view that says so, lists any line missing from the take, and no longer asks to choose a provider, whose voice would have replaced the recording. A text picked on the picture is offered only the weights its face is declared in (a film's Noto Sans SC at 400 and 900 offers those two), not all nine.
+- **Why:** Opening an `oms` project in the Studio, the Voice view invited the person to speak over their own recording, and a weight the film's face lacks drew in a fallback face.
+- **Breaking:** None.
+- **Upgrade:** Nothing.
+- **Refs:** `apps/desktop/src/renderer/src/voice-view.tsx`, `apps/desktop/src/renderer/src/preview.tsx`, `apps/desktop/src/preview/pick.ts`, `apps/desktop/src/shared/preview.ts`, `docs/tech/sound-and-captions.md`.
+
+## 2026-11-23 — `oms voice --recording` says every difference from the script
+
+- **What:** Importing a recording now says who transcribed it, and when the transcript kept from an earlier import was used (nothing paid); lists every line that was cut though read otherwise than written, each difference as written against heard (`"一瞬间" heard as "一眨眼"`, `added "嗯"`), since its caption shows the written words; and lists the words said between the lines, which no clip holds, with their times. `oms voice --list` puts a tab after each voice, whose name may hold blanks. A web player opened from disk no longer logs an error for the soundtrack it cannot fetch. The skill says what to ask the person to record, what `recording:<name>` names, how to read the import, that a voiced line may take `at`, and how long a narrated film runs past its speech.
+- **Why:** A trial import cut a line with a word changed at 97 % and said nothing, so the caption showed a word the narration did not say; and it gave no way to tell who transcribed the take or whether it was paid for again.
+- **Breaking:** None. A script that read `oms voice --list` by its two blanks reads a tab now.
+- **Upgrade:** Move the installed `skills/oms` folder aside and run `oms install claude` or `oms install codex` again.
+- **Refs:** `apps/desktop/src/main/recording.ts`, `apps/cli/worker.ts`, `apps/cli/oms.mjs`, `apps/cli/player.ts`, `apps/cli/skills/oms/`, `docs/tech/sound-and-captions.md`.
+
+## 2026-11-23 — Films draw with `@motionhub/runtime` 0.8.1
+
+- **What:** The Studio, `oms` and an exported Remotion project draw with `@motionhub/runtime` 0.8.1: word captions in Chinese and Japanese join without blanks, a caption's lengths are pixels in either form, a caption with no colour of its own is white on a dark ground and keeps 64 px from the frame's sides, and a film's voice may name a provider's voice with blanks and brackets (`minimax:Chinese (Mandarin)_News_Anchor`).
+- **Why:** What OpenMotionStudio's film trials found wrong in captions and voices, fixed in the runtime.
+- **Breaking:** None.
+- **Upgrade:** Nothing; `oms` takes it with the next install.
+- **Refs:** motionhubdev/motionhub#117, `apps/desktop/package.json`, `apps/desktop/src/main/film/remotion-export.ts`.
+
+## 2026-11-23 — `oms voice --recording` takes a narration from the person's own take
+
+- **What:** `oms voice <folder> --recording <file>` takes a film's narration from one take of its lines, read by the person as written, in a film whose voice is `recording:<name>`: the take is transcribed with each word's time by MiniMax, OpenAI or ElevenLabs (`--transcribe`, else the first whose key the environment holds; kept by the file's hash in `~/.cache/oms/transcripts`), matched to the lines character by character, and cut into `voice/` one clip a line, as a spoken narration's are. Each caption word is the script's own text, timed by what was heard for it. A line heard less than 75 % as written stops the import with what was heard, and nothing is written.
+- **Why:** A person often wants their own voice on a film an agent wrote; read from the script, the take times the film and its captions as a synthesized voice does.
+- **Breaking:** None.
+- **Upgrade:** Move the installed `skills/oms` folder aside and run `oms install claude` or `oms install codex` again.
+- **Refs:** `apps/desktop/src/main/recording.ts`, `apps/desktop/src/main/narration.ts`, `apps/cli/worker.ts`, `apps/cli/oms.mjs`, `apps/cli/skills/oms/`, `docs/tech/sound-and-captions.md`, `docs/adr/0016-terminal-agents-author-films-through-the-oms-command.md`.
+
+## 2026-11-23 — `oms voice` speaks a film's narration
+
+- **What:** `oms voice <folder>` speaks the film's lines in its `<Film voice>` into `voice/`, as the Studio's Voice the film does: only lines whose words changed are spoken, and each voiced line then lasts as long as its speech in the preview, `oms render` and the web player. The key is read from the environment oms runs in (`MINIMAX_API_KEY`, with `MINIMAX_REGION=china` or `MINIMAX_BASE_URL` for an account on minimaxi.com; `ELEVENLABS_API_KEY`; `OPENAI_API_KEY`; `AZURE_SPEECH_KEY` with `AZURE_SPEECH_REGION`), never written or printed. `oms voice --list <provider>` gives its voices. `oms check` says which lines are not yet spoken and which speech is cut short. The film format `oms install` puts beside the skill keeps its narration rule, and the skill says how to write and time a narration.
+- **Why:** A film made with `oms` could only be captioned; the Studio already speaks a film's lines, and `oms` now uses the same code and the same `voice/`.
+- **Breaking:** None. A project voiced by `oms` opens in the Studio as it is.
+- **Upgrade:** Move the installed `skills/oms` folder aside and run `oms install claude` or `oms install codex` again. A MiniMax voice whose name has blanks (`Chinese (Mandarin)_News_Anchor`) needs `@motionhub/runtime` 0.8.1.
+- **Refs:** `apps/cli/worker.ts`, `apps/cli/oms.mjs`, `apps/desktop/src/main/voice.ts`, `apps/desktop/src/main/narration.ts`, `apps/desktop/scripts/build-cli.mjs`, `apps/cli/skills/oms/`, `docs/adr/0016-terminal-agents-author-films-through-the-oms-command.md`.
+
+## 2026-11-23 — Motion search finds any of its words; a web player seeks on any host; a check names every face a stack lacks
+
+- **What:** A motion search (`oms motion search`, the Studio agent's `search_motions`) gives the motions with any of its words, those with more of them first, where it gave only those with every word; `oms motion search` with nothing found lists the words motions are tagged with. A web player takes its whole soundtrack into memory, so it seeks on a host that answers no range requests. A check names every face of a stack it reaches before a loaded or generic one, not only the first. `oms font` takes several families at once (`--family` again, each `Name` or `Name:400,700`). The film format and the skill say a motion's own components are drawn as it made them, and that a check does not see what overlaps inside one layer.
+- **Why:** A sixth trial of the skill, a data film in a motion it was asked to use, found no motion for "chart data", saw a web player's seek jump back to its start on a plain static server, needed a second check to learn its Chinese face was missing, ran `oms font` once a family three times over, and met a motion component that seemed to break the motion's own rule.
+- **Breaking:** None. A search that found nothing may now find motions with some of its words.
+- **Upgrade:** Move the installed `skills/oms` folder aside and run `oms install claude` or `oms install codex` again.
+- **Refs:** `apps/desktop/src/main/motions.ts`, `apps/desktop/src/main/agent/tools.ts`, `apps/cli/player.ts`, `apps/desktop/src/shared/preview.ts`, `apps/cli/oms.mjs`, `apps/desktop/src/main/film/film.md`, `apps/cli/skills/oms/`.
+
+## 2026-11-23 — A check says where an error was thrown and warns of a scene still empty after it enters; `oms init` ignores renders
+
+- **What:** An error a film's page throws, in the check before an export, in `oms check` and in `oms still`, now names the project file, line and column it was thrown at, from the bundle's source map, instead of a bundled name alone (`Cannot access 'W' before initialization (at parts/cover.tsx:5:16)`). The check also draws each scene half a second after it opens and warns when none of its layers shows anything yet. `oms init` writes a `.gitignore` for the renders, subtitles and stills at the top of the folder and the Studio's state. The skill gives a portrait film's layout and caption numbers, takes the film's length for `oms sound` from `oms check`, says the first run downloads Chrome, and holds the second scene until the first has been checked and looked at.
+- **Why:** A fifth trial of the skill, a portrait film, met an error named only by a bundled variable, contradictory portrait numbers, and captions running to the frame's edges, and drew all its scenes before looking at one.
+- **Breaking:** None. A check draws one more frame a scene.
+- **Upgrade:** Move the installed `skills/oms` folder aside and run `oms install claude` or `oms install codex` again.
+- **Refs:** `apps/desktop/src/main/film/film.ts`, `apps/desktop/src/main/film/review.ts`, `apps/desktop/src/shared/preview.ts`, `apps/desktop/src/preview/core.tsx`, `apps/cli/oms.mjs`, `apps/cli/worker.ts`, `apps/desktop/src/main/film/film.md`, `apps/cli/skills/oms/`.
+
+## 2026-11-23 — `oms font` takes a face cut to the film's words; a film with captions exports without a second subtitle track; check warns of overlapping layers
+
+- **What:** `oms font <folder> --family <name> [--weights 400,700]` takes a face from Google Fonts cut to the characters the project writes, into `media/fonts/` with its licence (its copyright, and the SIL Open Font License's text when it is under it), and prints the `@font-face` to declare. An export of a film that draws its lines as captions (`<Film captions>`) no longer embeds them as a subtitle track as well; the `.srt` beside it is still written, and the export dialog says so. The check before an export warns of two placed layers of a scene that overlap. The film format says a film's own caption lengths are numbers of pixels.
+- **Why:** A fourth trial of the skill spent most of its look on finding and cutting a Chinese face by hand, got two sets of subtitles in a player that showed the track over the drawn captions, saw its caption padding ignored when written as '14px', and found an overlap between layers only by eye.
+- **Breaking:** An MP4 exported again from a film with `<Film captions>` has no subtitle track; its `.srt` is beside it as before.
+- **Upgrade:** Move the installed `skills/oms` folder aside and run `oms install claude` or `oms install codex` again.
+- **Refs:** `apps/cli/font.ts`, `apps/cli/oms.mjs`, `apps/desktop/src/main/film/capture.ts`, `apps/desktop/src/main/film/review.ts`, `apps/desktop/src/renderer/src/export-dialog.tsx`, `apps/desktop/src/main/film/film.md`, `apps/cli/skills/oms/`, `docs/adr/0016-terminal-agents-author-films-through-the-oms-command.md`.
+
+## 2026-11-23 — A check names every character a face lacks, captions included; `oms sound` writes where you say and measures each cue alone
+
+- **What:** The check gathers what falls to an unloaded or fallback face over every frame it draws and warns once a face, naming each layer and the captions with all their characters; it had warned once a face at the first layer it saw and never looked at captions. `oms sound --out` is a path from the current directory, as `still`'s and `render`'s are, and must be inside the project; it was a path inside the project. Each cue's printed peak is now its own: measured without the sound's bed and before the next cue begins.
+- **Why:** A third trial of the skill missed characters lacking in a later title and in its captions, wrote its effects track to a doubled path, and read cue levels that were the bed's and their neighbours'.
+- **Breaking:** `oms sound --out media/effects.wav` run from outside the project now refuses the path; give it from where you run it, as `--out "<folder>/media/effects.wav"`.
+- **Upgrade:** Move the installed `skills/oms` folder aside and run `oms install claude` or `oms install codex` again.
+- **Refs:** `apps/desktop/src/shared/preview.ts`, `apps/desktop/src/main/film/review.ts`, `apps/desktop/src/main/film/effects.ts`, `apps/cli/oms.mjs`, `apps/cli/skills/oms/`.
+
+## 2026-11-23 — The skill draws a film in a look of its own unless a motion is asked for, and `oms sound` has a sound of its own
+
+- **What:** The skill's look step no longer searches motionhub by default: a film gets a look of its own in `parts/kit.tsx`, and `oms motion search` and `oms motion use` run only when the project already has a motion or the person asks for one. `oms sound` in a project with no motion that has a sound renders oms's own sound (every role from `land` to `out`, no bed) instead of refusing. The film format and the skill say how a film in no motion styles its captions (its own `caption` tokens in a `<MotionScope>` around the `<Film>`), since without a motion `<Film captions>` draws black text on nothing.
+- **Why:** A film's look should come from its subject, as VisoTalk's did, not from whichever motion a search turns up; a film in a look of its own still needs its effects, and a trial in one drew its captions black on a dark ground.
+- **Breaking:** None. A project with no motion now gets a track from `oms sound` where it got an error.
+- **Upgrade:** Move the installed `skills/oms` folder aside and run `oms install claude` or `oms install codex` again.
+- **Refs:** `apps/cli/skills/oms/`, `apps/desktop/src/main/film/effects.ts`, `apps/desktop/src/main/film/film.md`, `docs/tech/architecture.md`.
+
+## 2026-11-23 — `oms player` and `oms preview` play a film in a browser without rendering it
+
+- **What:** `oms player <folder> --out <new folder>` writes a folder any static web host plays: a player page with motionhub's reel controls, and the film drawn by the Studio's preview core in a sandboxed frame that loads nothing from the host (its document, with the film, its faces and its images, is in `frame.js`), so it plays on hosts that refuse cross-origin loads, such as artifacts, and opened from disk. Its sounds are one soundtrack mixed as its MP4's, which keeps the clock. A stalled soundtrack or an image still loading holds the picture, an image for at most five seconds. A browser that refuses sound plays the film muted with a "Tap for sound" button. `oms preview <folder>` plays the same at http://127.0.0.1:4173/ and reloads it at its time when a project file changes. The preview core's still page can now be moved by its parent (`oms:seek`), says whether an image it shows is loading, and takes a film and a narration carried in its page.
+- **Why:** A film made with `oms` could only be watched once rendered; a web page lets it be shared and watched at once, as VisoTalk's works could.
+- **Breaking:** None.
+- **Upgrade:** Move the installed `skills/oms` folder aside and run `oms install claude` or `oms install codex` again, for the skill's note on the web player.
+- **Refs:** `apps/cli/web.ts`, `apps/cli/player.ts`, `apps/cli/oms.mjs`, `apps/cli/worker.ts`, `apps/desktop/src/preview/core.tsx`, `apps/desktop/src/shared/preview.ts`, `docs/adr/0018-a-film-plays-on-the-web-from-a-static-folder.md`.
+
+## 2026-11-23 — A check finds characters no loaded face draws, and `oms sound` says what it made
+
+- **What:** The check before an export (and `oms check`) also warns when characters of a text fall past the faces the film loads to a face it never loaded (Chinese after a Latin face), naming them; it had looked only at the first face of each stack. `oms sound` refuses a cue in a role the motion's sound does not have, naming the roles it has, where it had rendered silence, and prints the track's peak and average level and each cue's peak, marking a cue that made no sound. The film format and the skill put a motion's own rules (its type sizes, how its components are placed) before their defaults, place a component drawn in the frame's coordinates in a layer the size of the frame, explain how loud to play a motion's effects track and its bed, and allow fonts under the SIL Open Font License.
+- **Why:** A second trial of the skill heard nothing at a cue in a role its motion lacked, could check its effects only by measuring the WAV itself, got no warning for Chinese set past a loaded Latin face, and met film-format rules its motion contradicted.
+- **Breaking:** None. A command that passed `oms sound` a role its motion lacks now fails instead of writing a track with a silence there.
+- **Upgrade:** Move the installed `skills/oms` folder aside and run `oms install claude` or `oms install codex` again.
+- **Refs:** `apps/desktop/src/shared/preview.ts`, `apps/desktop/src/main/film/review.ts`, `apps/desktop/src/main/film/effects.ts`, `apps/desktop/src/main/film/film.md`, `apps/cli/oms.mjs`, `apps/cli/skills/oms/`.
+
+## 2026-11-22 — A check finds text past the frame and faces never loaded, and `oms sound` makes effects
+
+- **What:** The check before an export (and `oms check`) also draws each line 85 % of the way through and inspects every frame it draws: text running past the frame's edge, and text set in a face that neither the film nor its motion loads (so it draws in the machine's fallback), each said once as a warning. `oms sound <folder> --cues <at:role,…> --seconds <s> --out <new.wav>` renders the project's motion's sound (`react/sound.json`) for the film's cues into a WAV a `<Sound>` plays, with the synth motionhub.dev gives reels. The skill gains a sound step and sound craft for films without narration, and the film format `oms install` puts beside it leaves narration out.
+- **Why:** A trial of the skill drew two figure cards outside the frame and set a whole Chinese film in a fallback face, and `oms check` said nothing of either; it also had no way to make the sound effects a motion describes.
+- **Breaking:** None. A check takes a little longer: it draws a frame for each line.
+- **Upgrade:** Move the installed `skills/oms` folder aside and run `oms install claude` or `oms install codex` again.
+- **Refs:** `apps/desktop/src/main/film/review.ts`, `apps/desktop/src/shared/preview.ts`, `apps/desktop/src/main/film/effects.ts`, `apps/cli/oms.mjs`, `apps/cli/skills/oms/`, `docs/adr/0016-terminal-agents-author-films-through-the-oms-command.md`.
+
+## 2026-11-22 — A mono sound exports as loud as the preview plays it
+
+- **What:** An export puts a mono sound in both channels at its own level, as the preview's Web Audio plays it. ffmpeg's conversion to stereo had taken 3 dB off each channel, so mono music, effects and narration were quieter in the MP4 than in the preview.
+- **Why:** What the person hears in the preview is what the MP4 holds.
+- **Breaking:** A film with mono sounds or a synthesized narration, exported again, is 3 dB louder in those parts than its earlier export.
+- **Upgrade:** Export again to match the preview; lower a mono sound's `volume` by 3 dB to keep an earlier export's balance.
+- **Refs:** `apps/desktop/src/main/film/mix.ts`, `docs/adr/0017-an-export-is-encoded-in-segments-and-mixed-in-blocks.md`.
+
+## 2026-11-22 — `oms` draws on demand, renders resume, and sounds mix in blocks
+
+- **What:** On Linux, `oms` drives its headless Chrome frame by frame (`HeadlessExperimental.beginFrame`): a plain 20-second film renders in 7.7 s with one Chrome instead of 21.6 s, with the same frames. Every export, the Studio's and `oms render`'s, now encodes its picture in segments of 3,000 frames joined as they are, and mixes its sounds in JavaScript, 30 seconds at a time, instead of one ffmpeg filter graph: five minutes with 151 sounds mix in 1.0 s instead of 7.8 s, to the same sound within the AAC's own error. `oms render` keeps its finished segments in `~/.cache/oms/renders` until the video is whole, so the same render started again after Ctrl-C or a crash draws only what is missing; Ctrl-C now stops a render cleanly.
+- **Why:** VisoTalk's exporter, which oms takes over from, works this way; long renders on servers need to survive an interruption.
+- **Breaking:** None. A sound under the narration is now ducked sample by sample, by the curve the preview plays, instead of once an audio frame.
+- **Upgrade:** Nothing. `oms` may keep up to a week of an unfinished render's segments in `~/.cache/oms/renders`.
+- **Refs:** `apps/desktop/src/main/film/capture.ts`, `apps/desktop/src/main/film/mix.ts`, `apps/cli/chrome.ts`, `apps/cli/worker.ts`, `apps/cli/oms.mjs`, `docs/adr/0017-an-export-is-encoded-in-segments-and-mixed-in-blocks.md`, `docs/adr/0010-a-films-sound-is-sound-elements-mixed-on-export.md`.
+
+## 2026-11-22 — The OMS skill carries VisoTalk's craft, and both agents get three more rules
+
+- **What:** `oms install` now puts five references beside the skill (`craft.md`, `look.md`, `drawing.md`, `review.md`, `assets.md`) and the example film, and the skill gives an order of work: facts and script, a board per scene, the look, one scene drawn and looked at before the rest, at most three review rounds, then the render. They carry VisoTalk's tuned guidance on scripting to length, motion that means something, pacing, the cover frame, type and colour, portrait films, honest figures, licences and an independent reviewer, rewritten for `film.tsx`. The film format, which the Studio's agent reads too, adds three rules: name layers for what they show; a scene's picture is there from its first frame, eased, entering over half a second and holding before its end; four or five type sizes, clear of the caption.
+- **Why:** VisoTalk is retiring in favour of OMS; its skill text was tuned on many films.
+- **Breaking:** None.
+- **Upgrade:** Move the installed `skills/oms` folder aside and run `oms install claude` or `oms install codex` again.
+- **Refs:** `apps/cli/skills/oms/`, `apps/cli/example/film.tsx`, `apps/cli/oms.mjs`, `apps/desktop/src/main/film/film.md`.
+
+## 2026-11-22 — Exports are faster, and `oms render` draws with several Chromes
+
+- **What:** Each exported frame costs one round trip to the page instead of four, is passed to ffmpeg as the PNG DevTools made instead of decoded and encoded again, and no longer waits two animation frames after a seek: a plain film exports about a quarter faster in the Studio and with `oms`. `oms render` also draws with several Chromes at once, one a core as memory allows: on four cores a plain 20-second film rendered in 9 s instead of 28 s, and a heavily blurred one in 19 s instead of 51 s (Linux, no GPU). The same film renders to the same frames however many Chromes draw it.
+- **Why:** VisoTalk's exporter, which oms takes over from, renders in parallel; most of a frame's cost in a plain film was waiting, not drawing.
+- **Breaking:** None. Frames from `oms` are rastered whole, so a film with fine anti-aliased motion may differ from an earlier render by invisible amounts (PSNR above 58 dB in the films measured).
+- **Upgrade:** Nothing.
+- **Refs:** `apps/desktop/src/main/film/capture.ts`, `apps/desktop/src/main/film/stage.ts`, `apps/desktop/src/shared/preview.ts`, `apps/desktop/src/preview/core.tsx`, `apps/cli/chrome.ts`, `apps/cli/worker.ts`, `docs/adr/0016-terminal-agents-author-films-through-the-oms-command.md`.
+
+## 2026-11-22 — Every still and exported frame is the frame at its time, and three.js films draw without a GPU
+
+- **What:** Stills, the timeline's frames, checks and MP4 exports photograph each frame through DevTools' screenshot instead of the offscreen window's last painted frame. A film heavy to draw (large blurs, backdrop filters, many blended layers) was photographed a frame behind, or at the previous seek's time, and could fail with `UnknownVizError` on its first frame. The Studio and `oms` also let Chromium draw WebGL with SwiftShader where no GPU can, so a three.js film no longer fails to start on a virtual machine, in CI or over a remote desktop.
+- **Why:** An export must show what the timeline shows at each time.
+- **Breaking:** None. An export takes longer per frame: about 40 ms more for a plain 540×960 film and about 80 ms more for a 1080p three.js film in software rendering, measured on Linux without a GPU.
+- **Upgrade:** Nothing. Export a heavy film again to replace one made before.
+- **Refs:** `apps/desktop/src/main/film/stage.ts`, `apps/desktop/src/main/index.ts`, `apps/cli/worker.ts`, `apps/cli/scripts/test-installed.mjs`, `docs/tech/architecture.md`, `docs/tech/creator-workflow.md`.
+
+## 2026-11-22 — Claude Code and Codex make films end to end with `oms`
+
+- **What:** A new package, `apps/cli` (`@motionhub/oms`), holds the `oms` command and an OMS skill for Claude Code and Codex, which make a film end to end. `oms install claude` or `oms install codex` puts the skill in the host's user skills directory; `oms init`, `oms check [--json]`, `oms still --at <s> --out <new.png>` and `oms render --out <new.mp4>` start, check, draw and render a film (the MP4 with the person's own ffmpeg), and `oms motion search` and `oms motion use` take a motion from motionhub into it when a film asks for one with the Studio's own build and preview core, in the chrome-headless-shell build HyperFrames pins: one HyperFrames or Puppeteer already downloaded, else downloaded once into `~/.cache/puppeteer`. It needs no display, and runs Chrome without its sandbox, with a warning, as root or in a container. The folder opens in the Studio as it is. The package is built with `npm pack` and is not published yet.
+- **Why:** People who already work in a terminal agent can make a film there, then refine and export it in the Studio.
+- **Breaking:** None.
+- **Upgrade:** Nothing. To use it, follow `apps/cli/README.md`.
+- **Refs:** `apps/cli/`, `apps/desktop/scripts/build-cli.mjs`, `apps/desktop/src/main/film/stage.ts`, `apps/desktop/src/main/film/film.ts`, `docs/adr/0016-terminal-agents-author-films-through-the-oms-command.md`, `docs/tech/architecture.md`, `README.md`.
+
 ## 2026-11-22 — The website moves out of this repository
 
 - **What:** openmotion.studio's pages, media, Worker and deploy, with the docs on its design and its examples, are now kept in the private `motionhubdev/openmotionstudio-web`, and their history is taken out of this one; this repository holds the Studio alone. `pnpm dev:site` is gone. Publishing a release here now sends it to the website (`.github/workflows/site.yml`), which points its downloads at it and deploys.

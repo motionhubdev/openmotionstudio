@@ -47,7 +47,9 @@ import { type MessageParam, caller, failure } from './agent/model';
 import { testProvider } from './agent/test-connection';
 import { TOOLS, type ToolContext, projectPath } from './agent/tools';
 import type { BuildContext } from 'esbuild';
-import { exportFrames, ffmpegPath, openStage as captureStage, sceneStills, type Stage } from './film/capture';
+import { exportFrames, sceneStills, type Stage } from './film/capture';
+import { openStage as captureStage } from './film/stage';
+import ffmpegStatic from 'ffmpeg-static';
 import { soundPeaks } from './film/mix';
 import { voiceFilm } from './narration';
 import { speak, voicesOf } from './voice';
@@ -56,7 +58,7 @@ import { ASSET_EXTENSIONS, importAssets, projectAssets, renameAsset, trashAsset 
 import { projectFileToOpen, projectFiles, readProjectFile } from './files';
 import { archiveConversation, pastConversation, pastConversations } from './conversations';
 import { reviewBuild } from './film/review';
-import { FILM, FILM_SKILL, startFilm, watchFilm } from './film/film';
+import { FILM, FILM_SKILL, buildDir, startFilm, watchFilm } from './film/film';
 import { type ExportedSpeech, exportedSpeech, writeRemotionProject } from './film/remotion-export';
 import { motionDetail, motionReel, projectMotions, searchMotions, useMotion, removeMotion } from './motions';
 import { STATE_DIR, projectAt, rememberProject } from './project';
@@ -67,6 +69,12 @@ import { NO_TOKENS, type Spent, readUsage, recordUsage, totals } from './usage';
 import { randomUUID } from 'node:crypto';
 import { isAbsolute, relative, resolve } from 'node:path';
 import { ProviderStore, providers } from './providers';
+
+/** The ffmpeg shipped with the app; inside a package it is unpacked beside the archive. */
+export function ffmpegPath(): string {
+  if (!ffmpegStatic) throw new Error('No ffmpeg is available for this platform.');
+  return app.isPackaged ? ffmpegStatic.replace('app.asar', 'app.asar.unpacked') : ffmpegStatic;
+}
 
 const libraryFile = (): string => join(app.getPath('userData'), 'projects.json');
 
@@ -688,7 +696,7 @@ export function createWorkspace(host: WorkspaceHost, renderSession: Session, cha
       const controller = new AbortController();
       working = controller;
       try {
-        const result = await reviewBuild(state.build, openStage, controller.signal);
+        const result = await reviewBuild(state.build, openStage, controller.signal, { bundle: join(buildDir(state.project.path), `film-${state.build?.version ?? 0}.js`), dir: state.project.path });
         if (open !== state || state.build?.version !== result.version) throw new Error('The film changed during the check. Check it again.');
         return result;
       } finally {
@@ -1029,7 +1037,7 @@ export function createWorkspace(host: WorkspaceHost, renderSession: Session, cha
       const controller = new AbortController();
       exporting = controller;
       try {
-        const review = await reviewBuild(build, openStage, controller.signal);
+        const review = await reviewBuild(build, openStage, controller.signal, { bundle: join(buildDir(state.project.path), `film-${build.version}.js`), dir: state.project.path });
         const errors = review.issues.filter((issue) => issue.severity === 'error');
         if (errors.length) throw new Error(`Before exporting: ${errors.map((issue) => issue.text).join('\n')}`);
         const window = host.window?.() ?? BrowserWindow.fromWebContents(event.sender);
@@ -1043,7 +1051,7 @@ export function createWorkspace(host: WorkspaceHost, renderSession: Session, cha
         controller.signal.throwIfAborted();
         if (open !== state || state.build?.version !== build.version)
           throw new Error('The film changed before export. Review the latest preview and export again.');
-        await exportFrames(state.project.path, build.version, result.filePath, (done) => send(EVENTS.exportProgress, done), controller.signal, openStage);
+        await exportFrames(state.project.path, build.version, result.filePath, (done) => send(EVENTS.exportProgress, done), controller.signal, openStage, ffmpegPath());
         exported = result.filePath;
         return result.filePath;
       } finally {

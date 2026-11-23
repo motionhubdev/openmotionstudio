@@ -1,6 +1,6 @@
 # 10. A film's sound is `<Sound>` elements, mixed on export
 
-> **Status:** Accepted · **Date:** 2026-11-14
+> **Status:** Accepted, amended by [0017](0017-an-export-is-encoded-in-segments-and-mixed-in-blocks.md) (mixed in blocks, not a filter graph) · **Date:** 2026-11-14
 
 How a film says what it plays, and how the Studio plays it and puts it in the MP4.
 

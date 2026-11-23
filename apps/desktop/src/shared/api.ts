@@ -559,7 +559,10 @@ export interface StudioApi {
    * and the conversation as it was before the person's message, whose words come back to put in the composer.
    */
   undoTurn(checkpoint: string): Promise<{ text: string }>;
-  /** Asks for a folder and opens it; null when the person cancels. */
+  /**
+   * Asks for a project the person already has and opens it: a folder (on Windows and Linux, picked by its film.tsx),
+   * opened where it is, or a film file (.oms), taken into a new folder in the workspace. Null when the person cancels.
+   */
   openProject(): Promise<Project | null>;
   /**
    * Creates a fresh film folder in the configured workspace and opens it. With a brief (what the person wants to make,

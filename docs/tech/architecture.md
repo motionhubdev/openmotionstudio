@@ -1,6 +1,6 @@
 # Architecture
 
-> **Status:** Plan — steps 1 to 3 and 6 built, 7 under way; signing waits for its accounts · **Updated:** 2026-11-22
+> **Status:** Plan — steps 1 to 3 and 6 built, 7 under way; signing waits for its accounts · **Updated:** 2026-11-23
 
 The components of the Studio and what each owns, the film, the agent and its providers, what is expensive to change, and the order of work.
 
@@ -22,7 +22,8 @@ local materials and sampled export checks without changing the film format.
 
 ## Components
 
-One Electron app. Packages are split out only when something is published on its own.
+One Electron app, and the `oms` command beside it ([ADR 0016](../adr/0016-terminal-agents-author-films-through-the-oms-command.md)).
+Packages are split out only when something is published on its own.
 
 ```
 apps/desktop/
@@ -30,6 +31,7 @@ apps/desktop/
     index.ts           the tray-backed main window, retained editor views, dedicated windows and IPC routing
     workspace.ts       a project's handlers, bundler, agent sessions, tasks and outgoing events (ADR 0014)
     project.ts         open / create a folder, whether it holds a film, the project library
+    oms-file.ts        a project as one film file (.oms) and back: `oms pack`, and Home's Import (ADR 0019)
     history.ts         local checkpoints of the agent's source writes in .motion-studio/history.json, and restoring
                        one only when no file it touches was changed since (ADR 0007)
     examples.ts        the bundled starting films, copied into a fresh project in the default workspace on each click
@@ -39,15 +41,19 @@ apps/desktop/
       film.ts          film.tsx: start one, bundle it with esbuild on every change; film.md is the agent's skill
       preview.ts       the oms-preview: scheme the film's page, the Studio's preview scripts, the film's bundle and
                        the project's own files are served on
-      capture.ts       an offscreen window that photographs the film: stills, the timeline's scene frames, and export through ffmpeg
-      mix.ts           a film's sounds for the export: each <Sound>'s file found in the project, read by ffmpeg, and
-                       one filter graph that mixes them (ADR 0010); and each file's waveform for the timeline
+      serve.ts         those files and their policy, without Electron, for the scheme and for oms's Chrome
+      stage.ts         an offscreen window that photographs the film at a time, through DevTools' screenshot
+      capture.ts       stills, the timeline's scene frames, and export through ffmpeg, from a stage
+      effects.ts       a film's sound effects: its motion's sound.json, or oms's own, rendered for cues into a WAV (oms sound)
+      mix.ts           a film's sounds for the export: each <Sound>'s file found in the project, decoded by ffmpeg
+                       and mixed in blocks (ADR 0010, 0017); and each file's waveform for the timeline
       remotion-export.ts  the film written as a Remotion project
     voice.ts           a line spoken through Azure, ElevenLabs, MiniMax or OpenAI, with its words' times, and the
                        voices each offers (ADR 0012)
     narration.ts       a film's lines voiced into the project's voice/, each clip once per voice, model and words
       review.ts        the sampled check before an export: build errors, a size MP4 refuses, layers past the frame,
-                       and a draw of the start, each scene's middle and the end
+                       and a draw of the start, each scene's middle, 85 % through each line and the end, in which
+                       text past the frame's edge and faces never loaded are found
     agent/
       loop.ts          one turn: call the model, run the tools it asks for, until it ends its turn
       model.ts         a call to the model: a Messages server through the official SDK, or Chat Completions
@@ -65,6 +71,17 @@ apps/desktop/
   src/shared/          what both sides agree on: StudioApi, the preview bridge's messages, and the interface's
                        messages in Chinese (i18n.ts, translations.ts)
   src/renderer/        React UI
+apps/cli/
+  oms.mjs              the `oms` command (`@motionhub/oms`): install the skill, init, check, still, render, player,
+                       preview, sound, motion, font, voice
+  worker.ts            check, still and render: the film built, reviewed and exported with film/ (bundled by
+                       apps/desktop/scripts/build-cli.mjs)
+  chrome.ts            the pinned chrome-headless-shell it draws in: found or downloaded, checked, driven over a pipe
+  ffmpeg.ts            the person's ffmpeg it renders with, checked for what an export uses
+  font.ts              a face from Google Fonts cut to the project's characters, with its licence (oms font)
+  web.ts, player.ts    a film as a folder a browser plays without a render: the player's page, the frame's document,
+                       the soundtrack, the preview server; the player's clock and controls (ADR 0018)
+  skills/oms/          the skill Claude Code or Codex reads
 ```
 
 | Component | Owns | Never does |
@@ -174,9 +191,13 @@ One engine, the Studio's own ([ADR 0005](../adr/0005-the-studio-has-one-engine-i
   scheme alone, and answers with `access-control-allow-origin: *`, since a sandboxed frame's origin is null and its fonts
   are CORS requests.
 - **Playing, stills and export**: the Studio plays the film on the core's own clock; a still or an export opens the page
-  with `?render=1` in an offscreen window, moves it to each frame's time (`window.__oms.seek`) and photographs it, and
+  with `?render=1` in an offscreen window, moves it to each frame's time (`window.__oms.seek`; oms's web player writes
+  the same page whole into a sandboxed frame and moves it from its parent with `oms:seek`, [ADR 0018](../adr/0018-a-film-plays-on-the-web-from-a-static-folder.md)) and photographs it with
+  DevTools' `Page.captureScreenshot`, which waits for a frame drawn from the page as it is (`capturePage` returned the
+  last painted frame, a frame behind while a heavy one was still rasterizing), passing its PNG on as it is, and
   export pipes the frames to ffmpeg (shipped with the app) as H.264 High at level 4.1, BT.709, a key frame every two
-  seconds, faststart.
+  seconds, faststart, in segments joined as they are, with the sound mixed in blocks and added after
+  ([ADR 0017](../adr/0017-an-export-is-encoded-in-segments-and-mixed-in-blocks.md)).
 - **Sound** ([ADR 0010](../adr/0010-a-films-sound-is-sound-elements-mixed-on-export.md)): `<Film>` reports each
   `<Sound>` with the scenes, in the film's seconds (`FilmInfo.sounds`); `shared/sound.ts` says, once for the preview, the
   export and the timeline, where its file is (a path in the project, or a file the film imported, under `build/`), how
@@ -197,7 +218,7 @@ One engine, the Studio's own ([ADR 0005](../adr/0005-the-studio-has-one-engine-i
 - **Lines and captions**: the runtime times each `<Line>` in its scene (its `at` and `dur`, else an equal share) and
   reports its `start` and `end`; `<Film captions>` makes the runtime draw the line being said as a `<Caption>`, so the
   preview and the export show it alike. Every export also carries the lines as subtitles (`film/captions.ts`): SubRip
-  written beside the MP4 under its name and embedded as a soft `mov_text` track. The timeline draws them on a Lines
+  written beside the MP4 under its name and, unless the film draws them as captions (which would show them twice), embedded as a soft `mov_text` track. The timeline draws them on a Lines
   row; `check` gives each line's times.
 - **Narration** ([ADR 0011](../adr/0011-narration-is-synthesized-per-line-and-times-the-captions.md),
   [ADR 0012](../adr/0012-a-narration-speaks-through-the-persons-own-voice-provider.md)): `<Film voice="provider:name">`

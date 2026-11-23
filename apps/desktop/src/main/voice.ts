@@ -10,6 +10,10 @@
 import { randomUUID } from 'node:crypto';
 import type { VoiceChoice, VoiceKind } from '../shared/api';
 
+/** The voice providers a film can speak through, and their names. */
+export const VOICE_KINDS: VoiceKind[] = ['azure', 'elevenlabs', 'minimax', 'openai'];
+export const VOICE_NAMES: Record<VoiceKind, string> = { azure: 'Azure', elevenlabs: 'ElevenLabs', minimax: 'MiniMax', openai: 'OpenAI' };
+
 export interface Word {
   text: string;
   start: number;

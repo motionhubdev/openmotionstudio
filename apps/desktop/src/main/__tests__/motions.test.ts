@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { gzipSync } from 'node:zlib';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { catalogueResource, motionDetail, motionFaces, motionReel, projectMotions, removeMotion, searchMotions, useMotion } from '../motions';
+import { catalogueResource, motionDetail, motionFaces, motionReel, motionWords, projectMotions, removeMotion, searchMotions, useMotion } from '../motions';
 
 const ID = '@someone/paper-cut';
 let root: string;
@@ -60,6 +60,7 @@ beforeAll(async () => {
         reel: `/m/${ID}/reel.mp4`,
         package: { url: `/m/${ID}/1.2.0.tgz`, sha256: createHash('sha256').update(tgzFile).digest('hex'), bytes: tgzFile.length },
       },
+      { slug: '@someone/stage-light', version: '1.0.0', name: { en: 'Stage Light' }, line: { en: 'Numbers under a spotlight.' }, tags: ['data', 'light'] },
     ],
   };
   server = createServer((request, response) => {
@@ -89,6 +90,14 @@ describe('searchMotions', () => {
     const [found] = await searchMotions('paper light', base);
     expect(found).toMatchObject({ id: ID, name: 'Paper Cut', version: '1.2.0', poster: `${base}/m/${ID}/poster.jpg` });
     expect(await searchMotions('ocean', base)).toEqual([]);
+  });
+
+  it('finds motions with any of the words, those with more of them first, and says the words motions are tagged with', async () => {
+    expect((await searchMotions('chart data', base)).map((m) => m.id)).toEqual(['@someone/stage-light']);
+    expect((await searchMotions('paper light', base)).map((m) => m.id)).toEqual([ID, '@someone/stage-light']);
+    expect((await searchMotions('light DATA', base)).map((m) => m.id)).toEqual(['@someone/stage-light', ID]);
+    expect((await searchMotions('', base)).length).toBe(2);
+    expect(await motionWords(base)).toEqual(['light', 'data', 'paper']);
   });
 });
 

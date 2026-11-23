@@ -2,13 +2,14 @@
 // before a copy is made, the tasks still running in the background, and a first-run walk through appearance, the
 // workspace and an assistant. A project's name and a template's film are content: they are never translated.
 
-import { type CSSProperties, type FormEvent, type RefObject, useEffect, useRef, useState } from 'react';
+import { type CSSProperties, type FormEvent, type ReactNode, type RefObject, useEffect, useRef, useState } from 'react';
 import {
   ArrowLeft,
   ArrowRight,
   Check,
   CircleHelp,
   Clapperboard,
+  FileInput,
   Folder,
   FolderOpen,
   Home as HomeIcon,
@@ -30,6 +31,7 @@ import {
 import { MAX_BRIEF } from '../../shared/api';
 import type { Agents, Example, LibraryProject, Project, ProjectTask, Providers, VoiceKind, WorkspaceSettings } from '../../shared/api';
 import { Logo, Wordmark } from './logo';
+import { AgentLogo } from './agent-logo';
 import { InstalledVersion } from './updates';
 import { HelpPage } from './help';
 import { SETTINGS_SECTIONS, Settings, type SettingsSection } from './settings';
@@ -434,14 +436,16 @@ const STARTERS = ['A 15-second launch teaser for ', 'A 30-second explainer on ho
  * What the person wants to make, in their words: a new project named from it, opened, with the words as the agent's
  * first message. Without an assistant they wait in the project's composer.
  */
-function Prompt({ field, available, disabled, onCreate, onOpen, onSetUp }: {
+function Prompt({ field, available, assistants, disabled, onCreate, onImport, onSetUp }: {
   field: RefObject<HTMLTextAreaElement | null>;
   available: boolean;
+  /** The assistants ready to take a film, each its name and its mark: shown at the foot's left once any is. */
+  assistants: { id: string; name: string; mark: ReactNode }[];
   disabled: boolean;
   /** Creates the project; the words stay in the field until it has. */
   onCreate(brief: string): Promise<boolean>;
-  /** Opens a folder the person already has, the other way to start. */
-  onOpen(): void;
+  /** A film the person already has: a project folder, or a film file an agent packed (.oms). */
+  onImport(): void;
   onSetUp(): void;
 }) {
   const { t } = usePreferences();
@@ -483,23 +487,33 @@ function Prompt({ field, available, disabled, onCreate, onOpen, onSetUp }: {
             </button>
           ))}
         </div>
-        <button type="button" className="button" disabled={disabled} onClick={onOpen}>
-          <Folder size={15} />
-          {t('Open project')}
-        </button>
         <button className="button primary" type="submit" disabled={disabled || !brief.trim()}>
           {t('Start creating')}
           <ArrowRight size={15} />
         </button>
       </div>
-      {!available && (
-        <p className="note home-prompt-note">
-          {t('No assistant is connected yet: your description will wait in the new project.')}{' '}
-          <button type="button" className="quiet" onClick={onSetUp}>
-            {t('Connect an assistant')}
-          </button>
-        </p>
-      )}
+      <div className="note home-prompt-note">
+        {available ? (
+          <span className="home-assistants" aria-label={t('Connected assistants')}>
+            {assistants.map((assistant) => (
+              <span key={assistant.id} className="home-assistant" role="img" aria-label={assistant.name} data-tip={assistant.name}>
+                {assistant.mark}
+              </span>
+            ))}
+          </span>
+        ) : (
+          <span>
+            {t('No assistant is connected yet: your description will wait in the new project.')}{' '}
+            <button type="button" className="quiet" onClick={onSetUp}>
+              {t('Connect an assistant')}
+            </button>
+          </span>
+        )}
+        <button type="button" className="quiet home-import" disabled={disabled} onClick={onImport} data-tip={t('A project folder, or a film file (.oms)')}>
+          <FileInput size={14} />
+          {t('Import project')}
+        </button>
+      </div>
     </form>
   );
 }
@@ -599,6 +613,12 @@ export function Home({ providers, workspace, tasks, examples, busy, error, revis
 
   const firstRun = ready && library !== null && !preferences.onboardingComplete && library.length === 0;
   const available = !!providers?.providers.some((p) => p.ready) || !!agents?.harnesses.some((a) => a.state === 'ready');
+  // The built-in agent on the model in use (or the first ready one), then each coding agent of the person's that is ready.
+  const model = providers?.providers.find((p) => p.id === providers.active && p.ready) ?? providers?.providers.find((p) => p.ready);
+  const assistants = [
+    ...(model ? [{ id: 'built-in', name: `${model.model} · ${model.name}`, mark: <Bot size={14} /> }] : []),
+    ...(agents?.harnesses.filter((h) => h.state === 'ready').map((h) => ({ id: h.kind, name: h.name, mark: <AgentLogo kind={h.kind} /> })) ?? []),
+  ];
   const active = tasks
     .filter((task) => task.status === 'waiting' || task.status === 'running')
     .sort((a, b) => Number(b.status === 'waiting') - Number(a.status === 'waiting'));
@@ -759,9 +779,10 @@ export function Home({ providers, workspace, tasks, examples, busy, error, revis
             <Prompt
               field={prompt}
               available={available}
+              assistants={assistants}
               disabled={disabled}
               onCreate={(brief) => onAction(() => window.studio.createProject(brief))}
-              onOpen={() => void onAction(window.studio.openProject)}
+              onImport={() => void onAction(window.studio.openProject)}
               onSetUp={() => onSettings({ models: true })}
             />
           </section>

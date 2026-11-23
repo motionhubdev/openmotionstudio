@@ -10,7 +10,7 @@ import { randomUUID } from 'node:crypto';
 import { readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { isAbsolute, join, resolve } from 'node:path';
 import type { StudioPreferences, AgentSettings, Protocol, ProviderInput, ProviderView, Providers, VoiceInput, VoiceKind, VoiceView } from '../shared/api';
-import type { VoiceSetup } from './voice';
+import { VOICE_KINDS, VOICE_NAMES, type VoiceSetup } from './voice';
 import { CLAUDE_EFFORTS } from './agent/harness';
 
 interface StoredProvider {
@@ -32,8 +32,6 @@ interface Settings {
   voices?: Partial<Record<VoiceKind, Omit<VoiceInput, 'kind' | 'key'>>>;
 }
 
-export const VOICE_KINDS: VoiceKind[] = ['azure', 'elevenlabs', 'minimax', 'openai'];
-export const VOICE_NAMES: Record<VoiceKind, string> = { azure: 'Azure', elevenlabs: 'ElevenLabs', minimax: 'MiniMax', openai: 'OpenAI' };
 
 /** A voice provider as the form gave it, checked: what each kind needs beside its key, and nothing a URL could carry. */
 function cleanVoice(input: unknown): VoiceInput {

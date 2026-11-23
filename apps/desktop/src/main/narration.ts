@@ -15,8 +15,7 @@ import { join } from 'node:path';
 import type { VoiceKind, VoicedFilm } from '../shared/api';
 import type { FilmInfo } from '../shared/preview';
 import { mediaSeconds } from './film/mix';
-import { VOICE_KINDS, VOICE_NAMES } from './providers';
-import { type Speech, type VoiceIo, type VoiceSetup, type Word, speak } from './voice';
+import { type Speech, type VoiceIo, type VoiceSetup, type Word, VOICE_KINDS, VOICE_NAMES, speak } from './voice';
 
 export const VOICE_DIR = 'voice';
 const LINES = 'lines.json';
@@ -53,12 +52,13 @@ export function voiceOf(voice: string | null): { kind: VoiceKind; name: string }
 export const clipKey = (voice: string, model: string | undefined, text: string): string =>
   createHash('sha256').update(`${voice}\n${model ?? ''}\n${text}`).digest('hex').slice(0, 16);
 
-/** A clip's speech brought to -16 LUFS (true peak -1.5 dBTP), as MP3 at 48 kHz. */
-function normalised(ffmpeg: string, from: string, to: string): Promise<void> {
+/** A clip's speech brought to -16 LUFS (true peak -1.5 dBTP), as MP3 at 48 kHz: the whole of `from`, or `span` of it in seconds. */
+export function normalised(ffmpeg: string, from: string, to: string, span?: [number, number]): Promise<void> {
+  const cut = span ? ['-ss', span[0].toFixed(3), '-to', span[1].toFixed(3)] : [];
   return new Promise((done, fail) =>
     execFile(
       ffmpeg,
-      ['-y', '-hide_banner', '-loglevel', 'error', '-i', from, '-af', 'loudnorm=I=-16:TP=-1.5:LRA=11', '-ar', '48000', '-c:a', 'libmp3lame', '-b:a', '128k', to],
+      ['-y', '-hide_banner', '-loglevel', 'error', ...cut, '-i', from, '-vn', '-af', 'loudnorm=I=-16:TP=-1.5:LRA=11', '-ar', '48000', '-c:a', 'libmp3lame', '-b:a', '128k', to],
       { timeout: 120_000, windowsHide: true },
       (error, _out, stderr) => (error ? fail(new Error(`The speech could not be levelled: ${String(stderr).trim().split('\n').pop()}`)) : done()),
     ),
@@ -121,9 +121,13 @@ export async function voiceFilm(
     }
     onLine(i + 1, lines.length);
   }
+  await keepNarration(folder, narration);
+  return outcome;
+}
+
+/** Writes which clip each line is, and removes the clips no line uses any more: only names the Studio gave. */
+export async function keepNarration(folder: string, narration: Narration): Promise<void> {
   await writeFile(join(folder, LINES), `${JSON.stringify(narration, null, 2)}\n`);
-  // The clips no line uses any more: only names the Studio gave are ever removed.
   const used = new Set(Object.values(narration.lines));
   for (const file of await readdir(folder)) if (CLIP.test(file) && !used.has(file.slice(0, 16))) await rm(join(folder, file), { force: true });
-  return outcome;
 }

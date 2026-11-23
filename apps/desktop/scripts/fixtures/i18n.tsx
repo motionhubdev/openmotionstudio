@@ -55,6 +55,8 @@ const root = createRoot(document.getElementById('root')!);
 const action = async (work: () => void) => { await act(async () => { work(); await new Promise(resolve => setTimeout(resolve, 20)); }); };
 const assert = (value: unknown, description: string) => { if (!value) throw new Error(description); };
 const text = () => document.body.innerText;
+// The first run's headline sets its second phrase on a line of its own, so it is read as one line of text.
+const firstRun = () => document.querySelector('.onboarding h1')?.textContent?.replace(/\s+/g, ' ').trim();
 const button = (name: string) => {
   const found = Array.from(document.querySelectorAll<HTMLButtonElement>('button')).find(button => button.getAttribute('aria-label') === name || button.textContent?.trim() === name);
   if (!found) throw new Error('Missing button: ' + name);
@@ -65,7 +67,7 @@ const nav = async (label: string) => action(() => { const found = Array.from(doc
 (window as any).runTests = async () => {
   await action(() => root.render(<PreferencesProvider><App /></PreferencesProvider>));
   assert(document.documentElement.lang === 'zh-CN', 'Document language not applied');
-  assert(text().includes('打开项目') && text().includes('用数字讲故事'), 'Home not localized');
+  assert(text().includes('导入项目') && text().includes('用数字讲故事'), 'Home not localized');
   await nav('通用');
   assert(text().includes('开机自动启动') && text().includes('简体中文'), 'General settings not localized');
   await action(() => button('检查更新').click());
@@ -122,7 +124,10 @@ const nav = async (label: string) => action(() => { const found = Array.from(doc
   await action(() => root.render(<></>));
   editor = false; language = 'zh-CN'; complete = false;
   await action(() => root.render(<PreferencesProvider><App /></PreferencesProvider>));
-  assert(text().includes('准备好，开始第一个视频'), 'First-run guide missing');
+  assert(firstRun()?.replace(/ /g, '') === '准备好，开始第一个视频。', 'First-run guide missing');
+  await switchLanguage('en');
+  assert(firstRun() === 'Make room for your first film.' && text().includes('Explore templates first'), 'First-run guide not localized');
+  await switchLanguage('zh-CN');
   await action(() => button('继续').click());
   assert(text().includes('视频保存在哪里'), 'Workspace step missing');
   await action(() => button('继续').click());
@@ -140,7 +145,7 @@ const nav = async (label: string) => action(() => { const found = Array.from(doc
   complete = false;
   library = [{name:'English project name',path:'/test',display:'/test',film:true,lastOpened:1000,modified:1000,missing:true}];
   await action(() => root.render(<PreferencesProvider><App /></PreferencesProvider>));
-  assert(!text().includes('准备好，开始第一个视频') && text().includes('继续创作'), 'Existing user was forced through onboarding');
+  assert(!document.querySelector('.onboarding') && text().includes('继续创作'), 'Existing user was forced through onboarding');
   assert(text().includes('找不到项目文件夹') && text().includes('重新定位项目文件夹'), 'Missing project not recoverable');
   await action(() => button('项目操作').click());
   await action(() => button('从列表移除').click());

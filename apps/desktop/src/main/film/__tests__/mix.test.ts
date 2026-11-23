@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process';
-import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import ffmpegStatic from 'ffmpeg-static';
@@ -9,7 +9,7 @@ import { soundGain, soundPlace, soundSpan } from '../../../shared/sound';
 
 vi.mock('electron', () => ({ app: { getAppPath: () => '' }, protocol: {} }));
 
-const { mediaSeconds, soundFile, soundMix } = await import('../mix');
+const { MIX_FORMAT, mediaSeconds, mixFinish, mixSounds, soundFile } = await import('../mix');
 
 const ffmpeg = ffmpegStatic!;
 const sound = (over: Partial<FilmSound>): FilmSound => ({
@@ -58,69 +58,88 @@ describe('the export\'s mix', () => {
     // A 1.5 s tone near full scale (the sine source is at 1/8 of it), and a quiet 0.5 s one.
     await run(['-y', '-loglevel', 'error', '-f', 'lavfi', '-i', 'sine=frequency=440:duration=1.5', '-af', 'volume=17dB', join(dir, 'media', 'bed.wav')]);
     await run(['-y', '-loglevel', 'error', '-f', 'lavfi', '-i', 'sine=frequency=880:duration=0.5', join(dir, 'media', 'hit.wav')]);
+    // A second at a level of 0.5, and a second whose value is its time: stereo float WAVs, so neither a mono file's
+    // conversion to stereo nor a step of 16 bits changes a level the tests read.
+    await run(['-y', '-loglevel', 'error', '-f', 'lavfi', '-i', 'aevalsrc=0.5|0.5:s=48000:d=1', '-c:a', 'pcm_f32le', join(dir, 'media', 'flat.wav')]);
+    await run(['-y', '-loglevel', 'error', '-f', 'lavfi', '-i', 'aevalsrc=t|t:s=48000:d=1', '-c:a', 'pcm_f32le', join(dir, 'media', 'ramp.wav')]);
   });
   afterAll(() => rm(dir, { recursive: true, force: true }));
 
-  it('cuts, loops, levels, fades and places each sound, and adds nothing for a film with none', () => {
-    const bed = { sound: sound({ src: 'media/bed.wav', loop: true, until: 4, volume: -12, fadeIn: 1, fadeOut: 2 }), file: 'bed.wav', fileSeconds: 1.5 };
-    const hit = { sound: sound({ src: 'media/hit.wav', at: 2.5, trim: 0.1, dur: 0.3, until: 4 }), file: 'hit.wav', fileSeconds: 0.5 };
-    const mix = soundMix([bed, hit], 4, 1)!;
-    expect(mix.inputs).toEqual(['-i', 'bed.wav', '-i', 'hit.wav']);
-    const [first, second, sum] = mix.graph.split(';');
-    expect(first).toBe(
-      '[1:a]aresample=48000,aformat=sample_fmts=fltp:channel_layouts=stereo,atrim=start=0:end=1.5,asetpts=PTS-STARTPTS,aloop=loop=-1:size=72000,atrim=end=4,asetpts=PTS-STARTPTS,volume=-12dB,afade=t=in:st=0:d=1,afade=t=out:st=2:d=2,adelay=0:all=1[s0]',
-    );
-    expect(second).toContain('[2:a]');
-    expect(second).toContain('atrim=start=0.1:end=0.4');
-    expect(second).toContain('atrim=end=0.3');
-    expect(second).toContain('adelay=2500:all=1[s1]');
-    expect(sum).toBe('[s0][s1]amix=inputs=2:normalize=0:duration=longest,alimiter=limit=0.891:level=false:latency=true,apad,atrim=end=4,asetpts=PTS-STARTPTS[aout]');
-    expect(soundMix([], 4, 1)).toBeNull();
-    expect(soundMix([{ ...hit, sound: { ...hit.sound, at: 5 } }], 4, 1)).toBeNull();
-  });
+  /** The mix's left channel at film time `t`, from its raw samples. */
+  const at = (pcm: Float32Array, t: number) => pcm[2 * Math.round(t * 48000)]!;
+  const mixed = async (sounds: Parameters<typeof mixSounds>[0], seconds: number, narration: { at: number; until: number }[] = []) => {
+    const work = await mkdtemp(join(dir, 'work-'));
+    const raw = await mixSounds(sounds, seconds, ffmpeg, work, narration);
+    return raw ? new Float32Array(new Uint8Array(await readFile(raw)).buffer) : null;
+  };
+  const flat = async () => ({ file: join(dir, 'media', 'flat.wav'), fileSeconds: 1 });
+  const ramp = async () => ({ file: join(dir, 'media', 'ramp.wav'), fileSeconds: 1 });
 
-  it('reaches the file as long as the film, under -1 dBFS', async () => {
+  it('places, levels and cuts each sound in the film, as long as the film, and nothing for a film with none', async () => {
+    const pcm = (await mixed([{ sound: sound({ src: 'media/flat.wav', at: 1, dur: 0.5, volume: -6 }), ...(await flat()) }], 3))!;
+    expect(pcm.length).toBe(3 * 48000 * 2);
+    expect(at(pcm, 0.5)).toBe(0);
+    expect(at(pcm, 1.2)).toBeCloseTo(0.5 * 10 ** (-6 / 20), 4);
+    expect(pcm[2 * Math.round(1.2 * 48000) + 1]).toBeCloseTo(at(pcm, 1.2), 6); // both channels
+    expect(at(pcm, 1.6)).toBe(0);
+    expect(await mixed([], 3)).toBeNull();
+    expect(await mixed([{ sound: sound({ src: 'media/flat.wav', at: 5 }), ...(await flat()) }], 3)).toBeNull();
+  }, 60_000);
+
+  it('plays its region from trim, again and again when it loops, and adds sounds that meet', async () => {
+    // The ramp's value is its own time, so each sample says where in the file it came from.
+    const pcm = (await mixed([
+      { sound: sound({ src: 'media/ramp.wav', at: 2, trim: 0.25, dur: 0.5, loop: true, until: 3.5 }), ...(await ramp()) },
+      { sound: sound({ src: 'media/flat.wav', at: 3.4, until: 4 }), ...(await flat()) },
+    ], 4))!;
+    expect(at(pcm, 2.1)).toBeCloseTo(0.35, 3);
+    expect(at(pcm, 2.6)).toBeCloseTo(0.35, 3); // once round its half-second region
+    expect(at(pcm, 3.2)).toBeCloseTo(0.45, 3);
+    expect(at(pcm, 3.45)).toBeCloseTo(0.7 + 0.5, 3); // 1.45 s in: 0.45 s round its region, from 0.25
+    expect(at(pcm, 3.7)).toBeCloseTo(0.5, 4); // the loop stops at its until
+  }, 60_000);
+
+  it('plays a mono file at its own level in both channels, as the preview does', async () => {
+    const file = join(dir, 'media', 'mono.wav');
+    await run(['-y', '-loglevel', 'error', '-f', 'lavfi', '-i', 'aevalsrc=0.5:s=48000:d=1', '-c:a', 'pcm_f32le', file]);
+    const pcm = (await mixed([{ sound: sound({ src: 'media/mono.wav' }), file, fileSeconds: 1 }], 1))!;
+    expect(pcm[2 * 24000]).toBeCloseTo(0.5, 5);
+    expect(pcm[2 * 24000 + 1]).toBeCloseTo(0.5, 5);
+  }, 60_000);
+
+  it('fades in and out on straight lines, and ducks under the narration by its duck, and comes back', async () => {
+    const faded = (await mixed([{ sound: sound({ src: 'media/flat.wav', loop: true, until: 4, fadeIn: 1, fadeOut: 2 }), ...(await flat()) }], 4))!;
+    expect(at(faded, 0.5)).toBeCloseTo(0.25, 3);
+    expect(at(faded, 1.5)).toBeCloseTo(0.5, 4);
+    expect(at(faded, 3)).toBeCloseTo(0.25, 3);
+    const ducked = (await mixed([{ sound: sound({ src: 'media/flat.wav', loop: true, until: 4, duck: 12 }), ...(await flat()) }], 4, [{ at: 1, until: 2 }]))!;
+    expect(at(ducked, 0.5)).toBeCloseTo(0.5, 4);
+    expect(at(ducked, 1.5)).toBeCloseTo(0.5 * 10 ** (-12 / 20), 4);
+    expect(at(ducked, 3)).toBeCloseTo(0.5, 4);
+  }, 60_000);
+
+  it('reaches the video as long as the film, under -1 dBFS, through mixFinish', async () => {
     const bed = await soundFile(dir, 'media/bed.wav');
     const hit = await soundFile(dir, './media/hit.wav');
     expect(await mediaSeconds(ffmpeg, bed)).toBeCloseTo(1.5, 1);
-    const mix = soundMix(
+    const work = await mkdtemp(join(dir, 'work-'));
+    const raw = (await mixSounds(
       [
         { sound: sound({ src: 'media/bed.wav', loop: true, until: 4, volume: 6 }), file: bed, fileSeconds: await mediaSeconds(ffmpeg, bed) },
         { sound: sound({ src: 'media/hit.wav', at: 1, until: 4, volume: 6 }), file: hit, fileSeconds: await mediaSeconds(ffmpeg, hit) },
       ],
       4,
-      0,
-    )!;
+      ffmpeg,
+      work,
+    ))!;
     const out = join(dir, 'mix.wav');
-    await run(['-y', '-loglevel', 'error', ...mix.inputs, '-filter_complex', mix.graph, '-map', '[aout]', out]);
+    await run(['-y', '-loglevel', 'error', ...MIX_FORMAT, '-i', raw, '-af', mixFinish(4), out]);
     expect(await mediaSeconds(ffmpeg, out)).toBeCloseTo(4, 2);
     const stats = await run(['-i', out, '-af', 'astats=measure_overall=Peak_level:measure_perchannel=none', '-f', 'null', '-']);
     const peak = Number(/Peak level dB: (-?[\d.]+)/.exec(stats)?.[1]);
     // Raised 6 dB, the tone would clip; the limiter holds it at -1 dBFS.
     expect(peak).toBeLessThanOrEqual(-0.9);
     expect(peak).toBeGreaterThan(-2);
-  }, 60_000);
-
-  it('ducks a sound under the narration by its duck, and brings it back after', async () => {
-    const bed = await soundFile(dir, 'media/bed.wav');
-    const narration = [{ at: 1, until: 2 }];
-    const mix = soundMix(
-      [{ sound: sound({ src: 'media/bed.wav', loop: true, until: 4, volume: -6, duck: 12 }), file: bed, fileSeconds: await mediaSeconds(ffmpeg, bed) }],
-      4,
-      0,
-      narration,
-    )!;
-    expect(mix.graph).toContain(":eval=frame");
-    const out = join(dir, 'ducked.wav');
-    await run(['-y', '-loglevel', 'error', ...mix.inputs, '-filter_complex', mix.graph, '-map', '[aout]', out]);
-    const peak = async (at: number) =>
-      Number(/Peak level dB: (-?[\d.]+)/.exec(await run(['-ss', String(at), '-t', '0.2', '-i', out, '-af', 'astats=measure_overall=Peak_level:measure_perchannel=none', '-f', 'null', '-']))?.[1]);
-    const before = await peak(0.4);
-    const under = await peak(1.4);
-    const after = await peak(3.2);
-    expect(before - under).toBeGreaterThan(11);
-    expect(before - under).toBeLessThan(13);
-    expect(Math.abs(after - before)).toBeLessThan(0.5);
   }, 60_000);
 
   it('refuses a sound outside the project, or in its hidden folders', async () => {

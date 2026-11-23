@@ -1,9 +1,10 @@
 // Drives the built Studio for a look at it: launches Electron with a throwaway profile (so the person's recent
-// projects and settings are untouched), opens an example from the launcher, runs the steps given and exits.
+// projects and settings are untouched), opens an example or a project folder, runs the steps given and exits.
 //
-//   node drive.mjs <shots-dir> [example] [step ...]
+//   node drive.mjs <shots-dir> [example | folder | file.oms] [step ...]
 //
-// example: kinetic (default), product or data. Steps run in order:
+// example: kinetic (default), product or data; or the path of a project folder, opened where it is; or a film file
+// (.oms), taken in through Home's Import project into the throwaway workspace. Steps run in order:
 //   ss:<name>        screenshot to <shots-dir>/<name>.png
 //   key:<key>        press a key (Playwright names: Space, ArrowRight, Backslash, BracketLeft, ...)
 //   click:<css>      click the first element matching the selector, through the DOM
@@ -45,12 +46,15 @@ const appDir = path.resolve(import.meta.dirname, '../../../apps/desktop');
 const packagedExecutable = process.env.OMS_EXECUTABLE;
 if (!packagedExecutable && !fs.existsSync(path.join(appDir, 'out', 'main'))) throw new Error('No build: run `pnpm build` at the repository root first.');
 const dist = path.join(appDir, 'node_modules', 'electron', 'dist');
+/** A project folder given in place of an example, opened where it is (its own files are the Studio's to change). */
+const folder = fs.existsSync(example) && fs.statSync(example).isDirectory() ? path.resolve(example) : null;
 const bin = packagedExecutable ? path.resolve(packagedExecutable) :
   process.platform === 'win32'
     ? path.join(dist, 'electron.exe')
     : process.platform === 'darwin'
       ? path.join(dist, 'Electron.app', 'Contents', 'MacOS', 'Electron')
       : path.join(dist, 'electron');
+if (!fs.existsSync(bin)) throw new Error('No Electron: run `pnpm --filter ./apps/desktop exec install-electron` once.');
 
 /** A conversation of one turn that looked at `n` stills: the picture on the stage, cut from a screenshot of the window. */
 async function lookedAt(page, n) {
@@ -91,7 +95,13 @@ async function settled(page) {
 }
 
 const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'oms-profile-'));
-fs.writeFileSync(path.join(profile, 'settings.json'), JSON.stringify({ providers: [], active: null, workspace: path.join(profile, 'Workspace') }));
+// Past the first run's walk-through, which stands in front of Home in a fresh profile.
+fs.writeFileSync(
+  path.join(profile, 'settings.json'),
+  JSON.stringify({ providers: [], active: null, workspace: path.join(profile, 'Workspace'), preferences: { onboardingComplete: true, checkUpdatesAutomatically: false } }),
+);
+// The Studio opens only a folder its library knows (or one chosen in a dialog): a folder given is put there.
+if (folder) fs.writeFileSync(path.join(profile, 'projects.json'), JSON.stringify([{ path: folder, lastOpened: Date.now() }]));
 const args = [...(packagedExecutable ? [] : [appDir]), `--user-data-dir=${profile}`];
 if (process.platform === 'linux') args.push('--no-sandbox');
 let app = await electron.launch({ executablePath: bin, args, timeout: 60_000 });
@@ -112,17 +122,24 @@ try {
     await app.close();
     app = await electron.launch({ executablePath: bin, args, timeout: 60_000 });
     home = await app.firstWindow();
-    await home.waitForSelector('.example-card', { timeout: 30_000 });
+    await home.waitForSelector('.studio-home', { timeout: 30_000 });
     await home.evaluate((path) => window.studio.openRecent(path), project);
     page = await editorPage();
     await settled(page);
   };
   const resize = (w, h) => app.evaluate(({ BrowserWindow }, [w, h]) => BrowserWindow.getAllWindows()[0]?.setSize(w, h), [w, h]);
   await resize(1600, 960);
-  await home.waitForSelector('.example-card', { timeout: 30_000 });
-  const card = await home.$(`.example-card.example-${example}`);
-  if (!card) throw new Error(`No example "${example}" in the launcher.`);
-  await card.evaluate((el) => el.click());
+  await home.waitForSelector('.studio-home', { timeout: 30_000 });
+  if (folder) await home.evaluate((path) => window.studio.openRecent(path), folder);
+  else if (example.toLowerCase().endsWith('.oms')) {
+    // The open dialog answered with the file, as a person would pick it.
+    await app.evaluate(({ dialog }, file) => { dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [file] }); }, path.resolve(example));
+    await home.evaluate(() => window.studio.openProject());
+  } else {
+    const ids = await home.evaluate(() => window.studio.examples().then((all) => all.map((e) => e.id)));
+    if (!ids.includes(example)) throw new Error(`No example "${example}": there are ${ids.join(', ')}, or give a project folder.`);
+    await home.evaluate((id) => window.studio.openExample(id), example);
+  }
   page = await editorPage();
   await page.waitForSelector('.stage-bar', { timeout: 30_000 });
   await settled(page);
