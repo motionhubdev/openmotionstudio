@@ -54,6 +54,11 @@ try {
   // A face from Google Fonts, cut to the characters the project writes, with its licence.
   await writeFile(join(starter, 'parts.tsx'), "export const words = '四季';");
   assert.match(oms('font', starter, '--family', 'Noto Sans SC', '--weights', '400'), /Wrote media\/fonts\/noto-sans-sc-400\.ttf, media\/fonts\/noto-sans-sc-LICENSE\.txt: Noto Sans SC cut to the \d+ characters the project writes \(SIL Open Font License 1\.1\)/);
+  // Several families at once, each in its own weights.
+  const both = oms('font', starter, '--family', 'Noto Sans SC:700', '--family', 'Hanken Grotesk', '--weights', '500');
+  assert.match(both, /Wrote media\/fonts\/noto-sans-sc-700\.ttf/);
+  assert.match(both, /Wrote media\/fonts\/hanken-grotesk-500\.ttf/);
+  assert.match(both, /@font-face \{ font-family: 'Hanken Grotesk'; font-weight: 500; src: url\(\$\{hanken_grotesk_500\}\); \}/);
   assert.equal((await readFile(join(starter, 'media/fonts/noto-sans-sc-400.ttf'))).readUInt32BE(0), 0x00010000);
   assert.match(await readFile(join(starter, 'media/fonts/noto-sans-sc-LICENSE.txt'), 'utf8'), /SIL Open Font License, Version 1\.1/);
 

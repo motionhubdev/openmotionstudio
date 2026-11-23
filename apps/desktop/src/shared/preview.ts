@@ -179,8 +179,14 @@ export const inspectScript = `(() => {
       const first = stack.findIndex((family) => !loaded.has(bare(family)));
       if (first < 0) continue;
       const family = stack[first].replace(/^["']|["']$/g, '');
+      // The first face not loaded: it and every one after it, up to a loaded or generic face, are said at once, so a
+      // stack of a Latin and a Chinese face, neither loaded, names both in one check rather than one each.
       if (first === 0) {
-        if (!generic.has(bare(family))) unloaded.set(id + '|' + bare(family), { layer: id, family, chars: '' });
+        for (const each of stack) {
+          const name = each.replace(/^["']|["']$/g, '');
+          if (generic.has(bare(name)) || loaded.has(bare(name))) break;
+          unloaded.set(id + '|' + bare(name), { layer: id, family: name, chars: '' });
+        }
         continue;
       }
       const style = computed.fontStyle + ' ' + computed.fontWeight;

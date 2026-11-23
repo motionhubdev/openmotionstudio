@@ -97,7 +97,7 @@ export const TOOLS: Tool[] = [
   {
     name: 'search_motions',
     description:
-      "Searches motionhub.dev's catalogue of motions (looks) by words in their names, lines, purpose and tags. No words lists them all.",
+      "Searches motionhub.dev's catalogue of motions (looks) by words in their names, lines, purpose and tags: motions with any of the words, those with more of them first. No words lists them all.",
     input_schema: { type: 'object', properties: { words: { type: 'string' } } },
   },
   {
@@ -256,7 +256,7 @@ export async function runTool(name: string, raw: unknown, ctx: ToolContext): Pro
         return await still(ctx, input.time);
       case 'search_motions': {
         const found = await ctx.searchMotions(typeof input.words === 'string' ? input.words : '');
-        if (!found.length) return text('No motion has all of those words.');
+        if (!found.length) return text('No motion has any of those words. Search with none to list them all.');
         return text(found.map((m) => `${m.id}: ${m.name}. ${m.line}${m.fit ? ` For: ${m.fit}` : ''}`).join('\n'));
       }
       case 'ask_person': {

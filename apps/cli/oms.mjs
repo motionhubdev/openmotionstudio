@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 
 const root = dirname(fileURLToPath(import.meta.url));
-const usage = 'oms install <claude|codex> | init <folder> | check <folder> [--json] | still <folder> --at <seconds> --out <new.png> | render <folder> --out <new.mp4> | player <folder> --out <new folder> | preview <folder> [--port <n>] | motion search <words…> [--json] | motion use <@scope/slug> <folder> | sound <folder> --cues <at:role,…> --seconds <s> --out <new.wav> [--motion <id>] | font <folder> --family <name> [--weights 400,700]';
+const usage = 'oms install <claude|codex> | init <folder> | check <folder> [--json] | still <folder> --at <seconds> --out <new.png> | render <folder> --out <new.mp4> | player <folder> --out <new folder> | preview <folder> [--port <n>] | motion search <words…> [--json] | motion use <@scope/slug> <folder> | sound <folder> --cues <at:role,…> --seconds <s> --out <new.wav> [--motion <id>] | font <folder> --family <name[:400,700]>… [--weights 400,700]';
 
 /** `oms motion search <words…> [--json]` and `oms motion use <@scope/slug> <folder>`: motions from motionhub, on demand. */
 async function motion(args) {
@@ -18,7 +18,7 @@ async function motion(args) {
   if (action === 'search') {
     const found = await worker.searchMotions(rest.join(' '));
     if (values.json) return console.log(JSON.stringify(found));
-    if (!found.length) return console.log('No motion has all of those words.');
+    if (!found.length) return console.log(`No motion has any of those words. The words motions are tagged with: ${(await worker.motionWords()).slice(0, 40).join(', ')}. Or run oms motion search with none to list them all.`);
     for (const m of found) console.log(`${m.id}: ${m.name}. ${m.line}${m.fit ? ` For: ${m.fit}` : ''}`);
     return;
   }
@@ -58,21 +58,30 @@ async function sound(args) {
  * writes, into its media/fonts/ with its licence; run again when the words change.
  */
 async function font(args) {
-  const { values, positionals } = parseArgs({ args, options: { family: { type: 'string' }, weights: { type: 'string' } }, allowPositionals: true });
-  if (positionals.length !== 1 || !values.family) throw new Error(usage);
+  const { values, positionals } = parseArgs({ args, options: { family: { type: 'string', multiple: true }, weights: { type: 'string' } }, allowPositionals: true });
+  if (positionals.length !== 1 || !values.family?.length) throw new Error(usage);
   const dir = resolve(positionals[0]);
   if (!existsSync(join(dir, 'film.tsx'))) throw new Error(`${dir} holds no film.tsx: name the project folder.`);
-  const weights = (values.weights ?? '400,700').split(',').map((w) => Number(w.trim()));
+  const weightsOf = (text) => text.split(',').map((w) => Number(w.trim()));
+  // Each --family as "Name" (in --weights, 400 and 700 without) or "Name:300,500".
+  const asked = values.family.map((given) => {
+    const at = given.lastIndexOf(':');
+    return at > 0 ? { family: given.slice(0, at), weights: weightsOf(given.slice(at + 1)) } : { family: given, weights: weightsOf(values.weights ?? '400,700') };
+  });
   const worker = createRequire(import.meta.url)(join(root, 'dist/worker.cjs'));
   const { readFile } = await import('node:fs/promises');
-  const { files, characters, licence } = await worker.takeFont(dir, values.family, weights, await readFile(worker.OFL, 'utf8'));
-  const faces = files.filter((file) => file.endsWith('.ttf'));
+  const ofl = await readFile(worker.OFL, 'utf8');
   const name = (file) => file.replace(/^.*\//, '').replace(/\.ttf$/, '').replace(/-/g, '_').replace(/^(\d)/, '_$1');
-  console.log(`Wrote ${files.join(', ')}: ${values.family} cut to the ${characters} characters the project writes (${licence}). Run this again when the words change.`);
-  console.log('Declare it where the film draws:');
-  for (const file of faces) console.log(`  import ${name(file)} from './${file}';`);
+  const declared = [];
+  for (const { family, weights } of asked) {
+    const { files, characters, licence } = await worker.takeFont(dir, family, weights, ofl);
+    console.log(`Wrote ${files.join(', ')}: ${family} cut to the ${characters} characters the project writes (${licence}).`);
+    for (const file of files.filter((f) => f.endsWith('.ttf'))) declared.push({ family, file, weight: /-(\d+)\.ttf$/.exec(file)[1] });
+  }
+  console.log('Run this again when the words change. Declare them where the film draws:');
+  for (const { file } of declared) console.log(`  import ${name(file)} from './${file}';`);
   console.log('  <style>{`');
-  for (const file of faces) console.log(`    @font-face { font-family: '${values.family}'; font-weight: ${/-(\d+)\.ttf$/.exec(file)[1]}; src: url(\${${name(file)}}); }`);
+  for (const { family, file, weight } of declared) console.log(`    @font-face { font-family: '${family}'; font-weight: ${weight}; src: url(\${${name(file)}}); }`);
   console.log('  `}</style>');
 }
 

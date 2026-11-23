@@ -3,6 +3,14 @@
 Every key change to OpenMotionStudio, newest first, by date. What counts as key and the entry format are in
 `CLAUDE.md`, "The changelog".
 
+## 2026-11-23 — Motion search finds any of its words; a web player seeks on any host; a check names every face a stack lacks
+
+- **What:** A motion search (`oms motion search`, the Studio agent's `search_motions`) gives the motions with any of its words, those with more of them first, where it gave only those with every word; `oms motion search` with nothing found lists the words motions are tagged with. A web player takes its whole soundtrack into memory, so it seeks on a host that answers no range requests. A check names every face of a stack it reaches before a loaded or generic one, not only the first. `oms font` takes several families at once (`--family` again, each `Name` or `Name:400,700`). The film format and the skill say a motion's own components are drawn as it made them, and that a check does not see what overlaps inside one layer.
+- **Why:** A sixth trial of the skill, a data film in a motion it was asked to use, found no motion for "chart data", saw a web player's seek jump back to its start on a plain static server, needed a second check to learn its Chinese face was missing, ran `oms font` once a family three times over, and met a motion component that seemed to break the motion's own rule.
+- **Breaking:** None. A search that found nothing may now find motions with some of its words.
+- **Upgrade:** Move the installed `skills/oms` folder aside and run `oms install claude` or `oms install codex` again.
+- **Refs:** `apps/desktop/src/main/motions.ts`, `apps/desktop/src/main/agent/tools.ts`, `apps/cli/player.ts`, `apps/desktop/src/shared/preview.ts`, `apps/cli/oms.mjs`, `apps/desktop/src/main/film/film.md`, `apps/cli/skills/oms/`.
+
 ## 2026-11-23 — A check says where an error was thrown and warns of a scene still empty after it enters; `oms init` ignores renders
 
 - **What:** An error a film's page throws, in the check before an export, in `oms check` and in `oms still`, now names the project file, line and column it was thrown at, from the bundle's source map, instead of a bundled name alone (`Cannot access 'W' before initialization (at parts/cover.tsx:5:16)`). The check also draws each scene half a second after it opens and warns when none of its layers shows anything yet. `oms init` writes a `.gitignore` for the renders, subtitles and stills at the top of the folder and the Studio's state. The skill gives a portrait film's layout and caption numbers, takes the film's length for `oms sound` from `oms check`, says the first run downloads Chrome, and holds the second scene until the first has been checked and looked at.

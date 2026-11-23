@@ -2,7 +2,7 @@
 
 ## Text first, then pictures
 
-Read `oms check "<folder>" --json` first: build and drawing errors, layers past the frame, placed layers that overlap, text past the frame's edge (a component's coordinates are its layer's, not the frame's), faces the film asks for but never loads, and every character, captions included, that the faces it loads lack (each draws in the machine's fallback; the check sees only the frames it draws), and the film's outline (each scene's `start` and `duration`, each line's `start` and `end`, in the film's seconds). Open a picture only for what the text cannot tell you.
+`check` sees layers against the frame and against each other, not what overlaps inside one layer (a label over a curve, a figure clipped by its own box): those only a still shows. Read `oms check "<folder>" --json` first: build and drawing errors, layers past the frame, placed layers that overlap, text past the frame's edge (a component's coordinates are its layer's, not the frame's), faces the film asks for but never loads, and every character, captions included, that the faces it loads lack (each draws in the machine's fallback; the check sees only the frames it draws), and the film's outline (each scene's `start` and `duration`, each line's `start` and `end`, in the film's seconds). Open a picture only for what the text cannot tell you.
 
 Every picture you read stays in your conversation and is sent again with every later step. Read each still once; never cut, crop or enlarge pictures with scripts of your own (each copy is one more picture); give every `oms still` a new `--out` name, since a viewer can show a cached image.
 

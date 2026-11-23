@@ -290,7 +290,7 @@ export function MotionLibrary({
                 <Loader size={14} className="spin" /> {tr("Loading motionhub…")}
               </p>
             ) : found.length === 0 ? (
-              <p className="note">{tr("No motion has all of those words.")}</p>
+              <p className="note">{tr("No motion has any of those words.")}</p>
             ) : (
               <ul className="library-grid">{found.map((m) => card(shown(m.id)!))}</ul>
             )}

@@ -301,7 +301,7 @@ export const zh: Record<string, string> = {
   "Colours": "颜色",
   "Components ·": "组件 ·",
   "Search motions": "搜索动效",
-  "No motion has all of those words.": "没有包含全部关键词的动效。",
+  "No motion has any of those words.": "没有包含这些关键词的动效。",
   "Loading the reel…": "正在加载演示视频…",
   "In this project": "已在项目中",
   "Taking…": "正在获取…",

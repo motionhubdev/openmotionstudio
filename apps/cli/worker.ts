@@ -15,7 +15,7 @@ import { findChrome, openChromeStage } from './chrome';
 import { removeBuilt, servePlayer, watchProject, writePlayer } from './web';
 
 // Motions come from motionhub when a film asks for one, taken into the project as the Studio and @motionhub/cli take them.
-export { searchMotions, useMotion } from '../desktop/src/main/motions';
+export { motionWords, searchMotions, useMotion } from '../desktop/src/main/motions';
 // Sound effects from the project's motion's sound, for the cues of its picture.
 export { effectsTrack, parseCues } from '../desktop/src/main/film/effects';
 // Faces from Google Fonts, cut to the project's characters.
