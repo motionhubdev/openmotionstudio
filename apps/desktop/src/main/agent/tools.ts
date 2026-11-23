@@ -268,7 +268,7 @@ export async function runTool(name: string, raw: unknown, ctx: ToolContext): Pro
       case 'voice_lines': {
         const voiced = await ctx.voiceFilm();
         return text(
-          `${voiced.spoken ? `Spoke ${voiced.spoken} line${voiced.spoken === 1 ? '' : 's'} (${voiced.characters} characters, ${voiced.seconds.toFixed(1)} s)` : 'Spoke nothing new'}; kept ${voiced.kept}. The film is built again with them: check it.`,
+          `${voiced.spoken ? `Spoke ${voiced.spoken} line${voiced.spoken === 1 ? '' : 's'} (${voiced.characters} characters, ${voiced.seconds.toFixed(1)} s)` : 'Spoke nothing new'}; kept ${voiced.kept}. The film is built again with them: check it.${misreadNote(voiced.misread)}`,
         );
       }
       case 'use_motion': {
@@ -312,6 +312,13 @@ async function check(ctx: ToolContext): Promise<ToolOutcome> {
 }
 
 /** One scene as `check` reports it: its span, its layers' boxes, and what it says. */
+/** What voicing heard read otherwise than written, for the agent to rewrite. */
+function misreadNote(misread: VoicedFilm['misread']): string {
+  if (!misread.length) return '';
+  const each = misread.map((m) => `in ${m.line}, "${m.written}" was read as "${m.said}"`).join('; ');
+  return ` The voice misread words: ${each}. Write each so it cannot be read otherwise (spell it out, or move it from the line's end), then voice_lines again.`;
+}
+
 function outlineLine(scene: SceneInfo): string {
   const seconds = (s: number) => `${Math.round(s * 100) / 100}`;
   const layers = scene.layers.map((l) => `${l.id} (${l.x},${l.y} ${l.w}×${l.h})`).join(', ') || 'no layers';

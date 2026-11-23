@@ -147,6 +147,15 @@ export interface VoicedFilm {
   kept: number;
   characters: number;
   seconds: number;
+  /** Words a line spoken now was read otherwise than written (MiniMax's "Sun." as "Sunday"): rewrite and voice again. */
+  misread: Misread[];
+}
+
+/** A word the voice said otherwise than it is written, in a line. */
+export interface Misread {
+  line: string;
+  written: string;
+  said: string;
 }
 
 /** A model a coding agent offers, and the efforts it takes. */

@@ -187,8 +187,10 @@ describe('voices', () => {
   });
 
   it('voices the film and says what it spoke, or why it could not', async () => {
-    ctx.voiceFilm = vi.fn().mockResolvedValueOnce({ spoken: 2, kept: 1, characters: 33, seconds: 3.42 });
+    ctx.voiceFilm = vi.fn().mockResolvedValueOnce({ spoken: 2, kept: 1, characters: 33, seconds: 3.42, misread: [] });
     expect((await runTool('voice_lines', {}, ctx)).text).toBe('Spoke 2 lines (33 characters, 3.4 s); kept 1. The film is built again with them: check it.');
+    ctx.voiceFilm = vi.fn().mockResolvedValueOnce({ spoken: 1, kept: 0, characters: 9, seconds: 1, misread: [{ line: 'end', written: 'Sun.', said: 'Sunday' }] });
+    expect((await runTool('voice_lines', {}, ctx)).text).toContain('in end, "Sun." was read as "Sunday"');
     ctx.voiceFilm = vi.fn().mockRejectedValue(new Error('Azure is not set up: add it in Models, under Voices.'));
     expect(await runTool('voice_lines', {}, ctx)).toMatchObject({ ok: false, text: 'Azure is not set up: add it in Models, under Voices.' });
   });
