@@ -929,6 +929,8 @@ export const zh: Record<string, string> = {
   "There is already a folder named {0} beside this project.": "此项目旁边已有名为 {0} 的文件夹。",
   "The film’s voice": "视频的声音",
   "Captions follow each word": "字幕逐词显示",
+  "A recording of the person’s own, cut into one clip a line. The Studio does not speak over it.": "由本人录制的旁白，已按台词逐句切好。OpenMotionStudio 不会用合成语音覆盖它。",
+  "{0} lines are not in the recording: record them and import the take again with oms voice --recording.": "有 {0} 句台词不在录音里：请补录后用 oms voice --recording 重新导入整条录音。",
   "Captions show each line": "字幕逐句显示",
   "No captions in the picture": "画面中不显示字幕",
   "The agent changes the film’s voice and speaks its lines again": "由助手更换视频的声音，并重新朗读台词",

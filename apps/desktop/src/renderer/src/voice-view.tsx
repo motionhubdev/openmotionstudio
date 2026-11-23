@@ -27,6 +27,11 @@ export function sampleText(lines: { text: string }[], language?: string): string
   return language?.toLowerCase().startsWith('zh') ? '热量从高处流向低处，除非你推它一把。' : 'Heat moves downhill, unless you push it.';
 }
 
+/** The name of the person's own recording a film's voice names (`recording:<name>`), or null for a provider's voice. */
+export function recordingOf(voice: string | null | undefined): string | null {
+  return voice?.startsWith('recording:') ? voice.slice('recording:'.length) : null;
+}
+
 /** The voices a provider offers whose name, language or id hold the words typed. */
 export function voicesFound(choices: VoiceChoice[], words: string): VoiceChoice[] {
   const wanted = words.toLowerCase().split(/\s+/).filter(Boolean);
@@ -260,6 +265,8 @@ export function VoiceView({
   const lines = script.flatMap((entry) => entry.lines);
   const waiting = lines.filter((line) => !film.speech[line.id]);
   const characters = waiting.reduce((sum, line) => sum + line.text.length, 0);
+  // A recording of the person's own is no provider's: nothing here speaks over it (oms voice --recording cuts it).
+  const recording = recordingOf(film.voice) !== null;
   const kind = film.voice?.split(':')[0] as VoiceKind | undefined;
   const provider = PROVIDERS.find((p) => p.kind === kind);
   const ready = voices?.some((v) => v.kind === kind);
@@ -431,7 +438,20 @@ export function VoiceView({
         </div>
         {/* The voice and the voicing beside the script, always in reach; until the film can speak, what it needs. */}
         <aside className="voice-side">
-          {blocked ? (
+          {recording ? (
+            <section className="voice-card" aria-label={tr("The film’s voice")}>
+              <span className="eyebrow">{tr("The film’s voice")}</span>
+              <strong className="mono">{film.voice}</strong>
+              <span className="note">{tr("A recording of the person’s own, cut into one clip a line. The Studio does not speak over it.")}</span>
+              {waiting.length ? (
+                <p className="note">{tr("{0} lines are not in the recording: record them and import the take again with oms voice --recording.", {0: waiting.length})}</p>
+              ) : (
+                <p className="voice-done">
+                  <Check size={14} /> {tr("Every line is voiced")}
+                </p>
+              )}
+            </section>
+          ) : blocked ? (
             <>
               <section className="voice-card voice-setup">{blocked}</section>
               {!film.voice && picker}

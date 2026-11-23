@@ -77,6 +77,27 @@ export interface PickedElement {
   layer?: string;
   /** Its words in full when it holds nothing but text: the only words a tweak can try on the picture. */
   ownText?: string;
+  /** The weights its face is declared in (@font-face), when the film declares it: the only ones it draws in. */
+  weights?: string[];
+}
+
+/**
+ * The weights the first family of a `font-family` stack is declared in among `faces` (the page's FontFaces), as
+ * `font-weight` values, lightest first: a range (a variable face) gives each hundred in it. None when no face is
+ * declared for that family, which then draws in whatever the machine has.
+ */
+export function declaredWeights(stack: string, faces: Iterable<{ family: string; weight: string }>): string[] | undefined {
+  const bare = (name: string) => name.trim().replace(/^["']|["']$/g, '').toLowerCase();
+  const family = bare(stack.split(',')[0] ?? '');
+  const weights = new Set<number>();
+  for (const face of faces) {
+    if (bare(face.family) !== family) continue;
+    const [from, to = from] = face.weight.split(/\s+/).map((w) => (w === 'bold' ? 700 : w === 'normal' ? 400 : Number(w)));
+    if (!Number.isFinite(from) || !Number.isFinite(to)) continue;
+    for (let w = Math.ceil(from! / 100) * 100; w <= to!; w += 100) weights.add(w);
+    weights.add(from!);
+  }
+  return weights.size ? [...weights].sort((a, b) => a - b).map(String) : undefined;
 }
 
 /** The properties a picked element's look can be tried with on the picture, and changed through the agent. */

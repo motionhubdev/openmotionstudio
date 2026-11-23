@@ -92,8 +92,8 @@ A voice says each line; its words time the captions.
 - **Tests**: each provider's request and words read into one shape (fixtures); the clip's key, what voicing keeps and
   removes; ducking measured in the mix; the agent's `list_voices`, `voice_lines` and `check` notes.
 
-A narration from the person's own recording (`recording.ts`, `oms voice --recording`; not yet offered in the Studio's
-interface): one take of the film's lines, read as written, in a film whose voice is `recording:<name>`. It is transcribed
+A narration from the person's own recording (`recording.ts`, `oms voice --recording`; the Studio plays it, and its
+Voice view says the film speaks from a recording and offers no provider to speak over it, but cannot import one): one take of the film's lines, read as written, in a film whose voice is `recording:<name>`. It is transcribed
 with each word's time by MiniMax, OpenAI or ElevenLabs (kept by the file's hash), matched to the lines character by
 character, and cut into `voice/` one clip a line, as a spoken narration's are, each word the script's own text timed by
 the characters heard for it. A line heard less than 75 % as written stops the import, which writes nothing. Every
