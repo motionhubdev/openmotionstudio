@@ -4,6 +4,7 @@ import { execFileSync } from 'node:child_process';
 import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const installed = resolve(process.argv[2]);
 const scratch = await mkdtemp(join(tmpdir(), 'oms-skill-test-'));
@@ -38,10 +39,32 @@ try {
   assert.throws(() => oms('motion', 'use', '@iamsuosi/plumb-line', starter), /already holds/);
   assert.equal(JSON.parse(oms('check', starter, '--json')).issues.length, 0);
   // Its sound, for the starter's cues, as a track the film plays.
-  assert.match(oms('sound', starter, '--cues', '0.5:land, 3:cut', '--seconds', '6', '--out', 'media/effects.wav'), /Wrote media\/effects\.wav from @iamsuosi\/plumb-line/);
+  const sound = oms('sound', starter, '--cues', '0.5:land, 3:cut', '--seconds', '6', '--out', 'media/effects.wav');
+  assert.match(sound, /Wrote media\/effects\.wav from @iamsuosi\/plumb-line's sound \(roles: land, move, draw, count, cut\)/);
+  assert.match(sound, /Track: peak -?\d+\.\d dBFS/);
+  assert.match(sound, /^ {2}3s cut: peak -?\d+\.\d dBFS$/m);
   assert.equal((await readFile(join(starter, 'media/effects.wav'))).toString('ascii', 0, 4), 'RIFF');
   assert.throws(() => oms('sound', starter, '--cues', '0.5:land', '--seconds', '6', '--out', 'media/effects.wav'), /is there already/);
   assert.throws(() => oms('sound', starter, '--cues', '0.5:bang', '--seconds', '6', '--out', 'media/other.wav'), /no cue/);
+  assert.throws(() => oms('sound', starter, '--cues', '0.5:land, 2:out', '--seconds', '6', '--out', 'media/other.wav'), /has no out: its roles are land, move, draw, count, cut/);
+
+  // Chinese in a stack whose one loaded face is Latin falls past it to the machine's own face, and is said.
+  const mixed = join(scratch, 'Mixed');
+  await mkdir(join(mixed, 'media'), { recursive: true });
+  await cp(fileURLToPath(new URL('../../desktop/node_modules/@fontsource-variable/inter/files/inter-latin-wght-normal.woff2', import.meta.url)), join(mixed, 'media/latin.woff2'));
+  await writeFile(join(mixed, 'film.tsx'), `import {Film, Scene, Layer} from '@motionhub/runtime';
+import latin from './media/latin.woff2';
+export const film = {width: 1280, height: 720, fps: 30};
+export default function Main() {
+  return <Film><style>{\`@font-face { font-family: Latin; src: url(\${latin}); }\`}</style>
+    <Scene id="one" duration={2}><Layer id="title" x={100} y={100} w={1000} h={200}>
+      <div style={{font: '700 80px Latin, sans-serif', color: '#fff'}}>Sky 天空</div>
+    </Layer></Scene></Film>;
+}
+`);
+  const faces = JSON.parse(oms('check', mixed, '--json')).issues;
+  assert.equal(faces.length, 1, JSON.stringify(faces));
+  assert.match(faces[0].text, /^Layer “title” draws “天空”, which the faces it loads lack, in this machine's own sans-serif face/);
 
   const project = join(scratch, '影片 Sample');
   await cp(join(installed, 'dist/example'), project, { recursive: true });

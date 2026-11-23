@@ -70,6 +70,23 @@ describe('the sound effects of a film', () => {
     expect((await effectsTrack(dir, cues, 3)).wav.equals(wav)).toBe(true);
   });
 
+  it('refuses a cue whose role the sound does not know, naming the roles it does', async () => {
+    await motion('@iamsuosi/night-diagram');
+    await expect(effectsTrack(dir, parseCues('1:land, 2:out'), 3)).rejects.toThrow(
+      "@iamsuosi/night-diagram's sound has no out: its roles are land, move, count, cut. Use one of them for 2:out.",
+    );
+  });
+
+  it('says how loud the track is, and each cue, so it can be judged unheard', async () => {
+    await motion('@iamsuosi/night-diagram', { roles: SOUND.roles });
+    const { report } = await effectsTrack(dir, parseCues('0.5:land, 2:count'), 3);
+    expect(report.roles).toEqual(['land', 'move', 'count', 'cut']);
+    expect(report.peak).toBeLessThanOrEqual(0);
+    expect(report.rms).toBeLessThan(report.peak);
+    expect(report.cues.map((cue) => [cue.at, cue.role, cue.silent])).toEqual([[0.5, 'land', false], [2, 'count', false]]);
+    expect(report.cues[0]!.peak).toBeGreaterThan(-60);
+  });
+
   it('asks which motion when the project has several, and says why there is none', async () => {
     await expect(effectsTrack(dir, parseCues('1:land'), 2)).rejects.toThrow('No motion in the project has a sound');
     await motion('@a/one');

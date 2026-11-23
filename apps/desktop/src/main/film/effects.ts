@@ -43,8 +43,36 @@ export async function motionSounds(dir: string): Promise<{ id: string; file: str
   return found.sort((a, b) => a.id.localeCompare(b.id));
 }
 
-/** The sound of motion `id` (or the project's only motion with one) for `cues`, `seconds` long, as a 16-bit mono WAV. */
-export async function effectsTrack(dir: string, cues: Cue[], seconds: number, id?: string): Promise<{ motion: string; wav: Buffer }> {
+/** How loud a stretch of samples is: its peak and its RMS level, in dBFS (-Infinity for silence). */
+const levels = (samples: Float32Array) => {
+  let peak = 0;
+  let sum = 0;
+  for (const value of samples) {
+    peak = Math.max(peak, Math.abs(value));
+    sum += value * value;
+  }
+  const db = (x: number) => (x > 0 ? 20 * Math.log10(x) : -Infinity);
+  return { peak: db(peak), rms: db(Math.sqrt(sum / Math.max(1, samples.length))) };
+};
+
+/** Quieter than this, a cue is not heard: the voice its role names made no sound there. */
+const SILENT_DB = -60;
+
+/** What a track holds, to read without hearing it: its levels, and each cue's peak. */
+export interface EffectsReport {
+  motion: string;
+  /** The roles the motion's sound knows. */
+  roles: string[];
+  peak: number;
+  rms: number;
+  cues: (Cue & { peak: number; silent: boolean })[];
+}
+
+/**
+ * The sound of motion `id` (or the project's only motion with one) for `cues`, `seconds` long, as a 16-bit mono WAV,
+ * with what it holds. A cue whose role the motion's sound does not know is refused: it would be silence.
+ */
+export async function effectsTrack(dir: string, cues: Cue[], seconds: number, id?: string): Promise<{ motion: string; wav: Buffer; report: EffectsReport }> {
   if (!(seconds > 0) || !Number.isFinite(seconds)) throw new Error('The track needs a length in seconds: the film\'s, as `oms check` gives it.');
   const sounds = await motionSounds(dir);
   const chosen = id ? sounds.find((s) => s.id === id) : sounds.length === 1 ? sounds[0] : undefined;
@@ -58,7 +86,25 @@ export async function effectsTrack(dir: string, cues: Cue[], seconds: number, id
   if (issues.length) throw new Error(`${chosen.id}'s sound.json: ${issues.join('; ')}`);
   const late = cues.filter((cue) => cue.at >= seconds);
   if (late.length) throw new Error(`Cue at ${late[0]!.at} s is past the track's ${seconds} s.`);
-  return { motion: chosen.id, wav: wav16(renderSound({ seconds, cues, sound, rate: RATE }), RATE) };
+  const roles = ROLES.filter((role) => sound.roles[role]);
+  const unknown = cues.filter((cue) => !sound.roles[cue.role]);
+  if (unknown.length)
+    throw new Error(`${chosen.id}'s sound has no ${[...new Set(unknown.map((cue) => cue.role))].join(', ')}: its roles are ${roles.join(', ')}. Use one of them for ${unknown.map((cue) => `${cue.at}:${cue.role}`).join(', ')}.`);
+  const samples = renderSound({ seconds, cues, sound, rate: RATE });
+  // Each cue's peak over its span (at least a third of a second); a bed the sound plays under everything counts too.
+  const window = (cue: Cue) => samples.subarray(Math.floor(cue.at * RATE), Math.min(samples.length, Math.ceil((cue.at + Math.max(cue.dur ?? 0, 0.33)) * RATE)));
+  const whole = levels(samples);
+  const report: EffectsReport = {
+    motion: chosen.id,
+    roles,
+    peak: whole.peak,
+    rms: whole.rms,
+    cues: cues.map((cue) => {
+      const { peak } = levels(window(cue));
+      return { ...cue, peak, silent: peak < SILENT_DB };
+    }),
+  };
+  return { motion: chosen.id, wav: wav16(samples, RATE), report };
 }
 
 /** Mono samples as a 16-bit PCM WAV, held inside full scale. */

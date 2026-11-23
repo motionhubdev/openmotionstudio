@@ -41,11 +41,14 @@ async function sound(args) {
   if (!file.startsWith(dir + sep)) throw new Error(`${values.out} is outside the project: a film plays only its own files.`);
   if (existsSync(file)) throw new Error(`${file} is there already: name a new file.`);
   const worker = createRequire(import.meta.url)(join(root, 'dist/worker.cjs'));
-  const { motion, wav } = await worker.effectsTrack(dir, worker.parseCues(values.cues), Number(values.seconds), values.motion);
+  const { motion, wav, report } = await worker.effectsTrack(dir, worker.parseCues(values.cues), Number(values.seconds), values.motion);
   await mkdir(dirname(file), { recursive: true });
   await writeFile(file, wav, { flag: 'wx' });
   const src = relative(dir, file).split(sep).join('/');
-  console.log(`Wrote ${src} from ${motion}'s sound. Play it across the film: <Sound src="${src}" />`);
+  const db = (value) => (value === -Infinity ? 'silent' : `${value.toFixed(1)} dBFS`);
+  console.log(`Wrote ${src} from ${motion}'s sound (roles: ${report.roles.join(', ')}). Play it across the film: <Sound src="${src}" />`);
+  console.log(`Track: peak ${db(report.peak)}, average ${db(report.rms)}.`);
+  for (const cue of report.cues) console.log(`  ${cue.at}s ${cue.role}${cue.dur ? ` (${cue.dur}s)` : ''}: peak ${db(cue.peak)}${cue.silent ? '  <- not heard: its voice made no sound here' : ''}`);
 }
 
 async function run() {

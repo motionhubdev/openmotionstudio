@@ -8,8 +8,8 @@
 
 ## Type
 
-- Four or five sizes in all; weight and colour do the rest. Headlines 84 px or more, other text 40 px or more (film-format.md), key text 80 px from the frame's sides.
-- Name only faces the film loads (its motion's, or one declared from the project's files). A family that is not loaded draws in the machine's fallback, so frames differ between machines. Never look for fonts on the system.
+- A motion's type scale comes first: its sizes, as its `MOTION.md` and tokens give them, even below the defaults here. Without one: four or five sizes in all, weight and colour doing the rest; headlines 84 px or more, other text 40 px or more (film-format.md), key text 80 px from the frame's sides.
+- Name only faces the film loads (its motion's, or one declared from the project's files). A family that is not loaded draws in the machine's fallback, so frames differ between machines, and so does every character the loaded faces lack (Chinese after a Latin face): load a face for each script the film writes. `check` names both. Never look for fonts on the system.
 - Large lowercase letters in a sans face can read as capitals; set such a name in the mono face.
 
 ## The frame

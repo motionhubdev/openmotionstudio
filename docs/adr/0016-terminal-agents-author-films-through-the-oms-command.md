@@ -14,8 +14,8 @@ writes the Studio's starter `film.tsx` into an empty or new folder; `oms check` 
 it; `oms render` exports it as an MP4. `oms motion search` and `oms motion use` find a motion on motionhub and take it
 into the project when a film asks for one, as the Studio's `search_motions` and `use_motion` do (`motions.ts`, through
 `@motionhub/cli`): `oms` ships no motions of its own. `oms sound` renders the project's motion's sound
-(`react/sound.json`) for cues the agent lists (`at:role`, the roles a motion's sound knows) into a WAV the film's
-length, with `@motionhub/runtime/sound`, the synth that gives a motion's reel its sound on motionhub.dev
+(`react/sound.json`) for cues the agent lists (`at:role`, refusing a role that sound lacks) into a WAV the film's
+length, with its levels, with `@motionhub/runtime/sound`, the synth that gives a motion's reel its sound on motionhub.dev
 (`film/effects.ts`). `oms` speaks no narration: a film's lines are its captions, and the film format it installs
 leaves narration out.
 

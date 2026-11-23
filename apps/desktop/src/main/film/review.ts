@@ -47,6 +47,7 @@ export async function reviewBuild(
     const times = [...new Set([0, ...film.scenes.map((s) => s.start + s.duration / 2), ...lineTimes, Math.max(0, film.seconds - 1 / film.fps)])]
       .filter((time) => time >= 0 && time < film.seconds)
       .sort((a, b) => a - b);
+    const GENERIC = new Set(['serif', 'sans-serif', 'monospace', 'cursive', 'fantasy', 'system-ui', 'ui-serif', 'ui-sans-serif', 'ui-monospace', 'ui-rounded', 'math', 'emoji', 'fangsong']);
     const sceneAt = (time: number) => film.scenes.find((s) => time >= s.start && time < s.start + s.duration)?.id;
     const said = new Set<string>();
     for (const time of times) {
@@ -71,14 +72,18 @@ export async function reviewBuild(
             scene: sceneAt(time),
           });
         }
-        for (const { layer, family } of seen.unloaded) {
-          if (said.has(`face|${family}`)) continue;
-          said.add(`face|${family}`);
+        for (const { layer, family, chars } of seen.unloaded) {
+          const key = family.toLowerCase();
+          if (said.has(`face|${key}`)) continue;
+          said.add(`face|${key}`);
+          // A whole text in a face never loaded, or the characters the loaded faces before it in its stack lack.
+          const where = GENERIC.has(key) ? `this machine's own ${family} face` : `“${family}”, which neither the film nor its motion loads, so in this machine's fallback`;
+          const what = chars ? `draws “${chars}”, which the faces it loads lack, in ${where}` : `sets text in ${where}`;
           review.issues.push({
-            id: `face-${family}`,
+            id: `face-${key}`,
             kind: 'layout',
             severity: 'warning',
-            text: `Layer “${layer}” sets text in “${family}”, which neither the film nor its motion loads: it draws in this machine's fallback face, so frames differ between machines. Declare the face from the project's files, or use one the motion ships.`,
+            text: `Layer “${layer}” ${what}: frames differ between machines. Declare a face that has them from the project's files, or use one the motion ships.`,
             time,
             scene: sceneAt(time),
           });

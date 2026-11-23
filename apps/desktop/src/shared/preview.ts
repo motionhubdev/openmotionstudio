@@ -115,8 +115,12 @@ export const seekScript = (t: number): string =>
 export interface Inspection {
   /** Visible text running past an edge of the frame, by layer: the first words of it, and which edges. */
   outside: { layer: string; text: string; edges: string[] }[];
-  /** Families text is set in, first in its stack, that the page never loaded: they draw in the machine's own fallback. */
-  unloaded: { layer: string; family: string }[];
+  /**
+   * Text that draws in a face the page never loaded, by layer: `family` is that face, the first in its stack not loaded
+   * (a generic name when the stack falls to the machine's own), and `chars` the characters it draws, when the faces
+   * loaded before it in the stack draw the rest (a Latin face before the one for Chinese), or empty when it draws all.
+   */
+  unloaded: { layer: string; family: string; chars: string }[];
 }
 
 /** The script that inspects a render page as it now is (after a seek), giving an Inspection. */
@@ -125,6 +129,26 @@ export const inspectScript = `(() => {
   const generic = new Set(['serif', 'sans-serif', 'monospace', 'cursive', 'fantasy', 'system-ui', 'ui-serif', 'ui-sans-serif', 'ui-monospace', 'ui-rounded', 'math', 'emoji', 'fangsong']);
   const bare = (family) => family.trim().replace(/^["']|["']$/g, '').toLowerCase();
   const loaded = new Set([...document.fonts].filter((face) => face.status === 'loaded').map((face) => bare(face.family)));
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = 64;
+  const context = canvas.getContext('2d', { willReadFrequently: true });
+  const pixels = (font, char) => {
+    context.clearRect(0, 0, 64, 64);
+    context.font = font;
+    context.fillText(char, 8, 48);
+    return context.getImageData(0, 0, 64, 64).data;
+  };
+  const drawn = new Map();
+  // Whether the loaded faces draw a character: drawn in them before a generic face, it is the generic face's own glyph,
+  // pixel for pixel, when they lack it. (Widths do not tell: every face draws a Chinese character one em wide.)
+  const covers = (style, faces, char) => {
+    const key = style + '|' + faces + '|' + char;
+    if (!drawn.has(key)) {
+      const theirs = pixels(style + ' 40px ' + faces + ', monospace', char), fallback = pixels(style + ' 40px monospace', char);
+      drawn.set(key, theirs.some((value, i) => value !== fallback[i]) || !fallback.some((value) => value));
+    }
+    return drawn.get(key);
+  };
   const outside = new Map(), unloaded = new Map();
   for (const layer of document.querySelectorAll('[data-layer]')) {
     const id = layer.getAttribute('data-layer');
@@ -139,8 +163,22 @@ export const inspectScript = `(() => {
       if (!box.width || !box.height) continue;
       const edges = [box.left < -1 && 'left', box.top < -1 && 'top', box.right > width + 1 && 'right', box.bottom > height + 1 && 'bottom'].filter(Boolean);
       if (edges.length) outside.set(id + '|' + text, { layer: id, text: text.slice(0, 40), edges });
-      const family = bare(getComputedStyle(element).fontFamily.split(',')[0] || '');
-      if (family && !generic.has(family) && !loaded.has(family)) unloaded.set(id + '|' + family, { layer: id, family });
+      const computed = getComputedStyle(element);
+      const stack = computed.fontFamily.split(',').map((family) => family.trim()).filter(Boolean);
+      const first = stack.findIndex((family) => !loaded.has(bare(family)));
+      if (first < 0) continue;
+      const family = stack[first].replace(/^["']|["']$/g, '');
+      if (first === 0) {
+        if (!generic.has(bare(family))) unloaded.set(id + '|' + bare(family), { layer: id, family, chars: '' });
+        continue;
+      }
+      const style = computed.fontStyle + ' ' + computed.fontWeight;
+      const faces = stack.slice(0, first).join(', ');
+      const missed = [...new Set(text.replace(/\\s/g, ''))].filter((char) => !covers(style, faces, char));
+      if (!missed.length) continue;
+      const seen = unloaded.get(id + '|' + bare(family));
+      const chars = [...new Set((seen ? seen.chars : '') + missed.join(''))].slice(0, 12).join('');
+      unloaded.set(id + '|' + bare(family), { layer: id, family, chars });
     }
   }
   return { outside: [...outside.values()], unloaded: [...unloaded.values()] };

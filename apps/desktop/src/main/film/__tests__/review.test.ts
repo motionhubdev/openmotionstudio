@@ -53,7 +53,7 @@ it('says once each text past the frame, and each face that never loaded, at the 
     .mockResolvedValueOnce({ outside: [], unloaded: [] })
     .mockResolvedValue({
       outside: [{ layer: 'figure', text: '约 6 倍', edges: ['left'] }, { layer: 'figure', text: '计算值', edges: ['bottom'] }],
-      unloaded: [{ layer: 'title', family: 'Noto Sans SC' }],
+      unloaded: [{ layer: 'title', family: 'Noto Sans SC', chars: '' }, { layer: 'note', family: 'sans-serif', chars: '天空' }],
     });
   const result = await reviewBuild({ ok: true, version: 1, errors: [] }, async () => s);
   const outside = result.issues.filter((issue) => issue.id.startsWith('outside-'));
@@ -61,6 +61,8 @@ it('says once each text past the frame, and each face that never loaded, at the 
   expect(outside).toHaveLength(1);
   expect(outside[0]).toMatchObject({ kind: 'layout', severity: 'warning', time: 1.5 });
   expect(outside[0]!.text).toContain('layer “figure” (“约 6 倍” and 1 more) runs past the frame\'s left and bottom edge');
-  expect(faces).toHaveLength(1);
-  expect(faces[0]!.text).toContain('“Noto Sans SC”');
+  expect(faces.map((face) => face.text)).toEqual([
+    "Layer “title” sets text in “Noto Sans SC”, which neither the film nor its motion loads, so in this machine's fallback: frames differ between machines. Declare a face that has them from the project's files, or use one the motion ships.",
+    "Layer “note” draws “天空”, which the faces it loads lack, in this machine's own sans-serif face: frames differ between machines. Declare a face that has them from the project's files, or use one the motion ships.",
+  ]);
 });

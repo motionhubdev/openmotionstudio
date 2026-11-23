@@ -3,6 +3,14 @@
 Every key change to OpenMotionStudio, newest first, by date. What counts as key and the entry format are in
 `CLAUDE.md`, "The changelog".
 
+## 2026-11-23 — A check finds characters no loaded face draws, and `oms sound` says what it made
+
+- **What:** The check before an export (and `oms check`) also warns when characters of a text fall past the faces the film loads to a face it never loaded (Chinese after a Latin face), naming them; it had looked only at the first face of each stack. `oms sound` refuses a cue in a role the motion's sound does not have, naming the roles it has, where it had rendered silence, and prints the track's peak and average level and each cue's peak, marking a cue that made no sound. The film format and the skill put a motion's own rules (its type sizes, how its components are placed) before their defaults, place a component drawn in the frame's coordinates in a layer the size of the frame, explain how loud to play a motion's effects track and its bed, and allow fonts under the SIL Open Font License.
+- **Why:** A second trial of the skill heard nothing at a cue in a role its motion lacked, could check its effects only by measuring the WAV itself, got no warning for Chinese set past a loaded Latin face, and met film-format rules its motion contradicted.
+- **Breaking:** None. A command that passed `oms sound` a role its motion lacks now fails instead of writing a track with a silence there.
+- **Upgrade:** Move the installed `skills/oms` folder aside and run `oms install claude` or `oms install codex` again.
+- **Refs:** `apps/desktop/src/shared/preview.ts`, `apps/desktop/src/main/film/review.ts`, `apps/desktop/src/main/film/effects.ts`, `apps/desktop/src/main/film/film.md`, `apps/cli/oms.mjs`, `apps/cli/skills/oms/`.
+
 ## 2026-11-22 — A check finds text past the frame and faces never loaded, and `oms sound` makes effects
 
 - **What:** The check before an export (and `oms check`) also draws each line 85 % of the way through and inspects every frame it draws: text running past the frame's edge, and text set in a face that neither the film nor its motion loads (so it draws in the machine's fallback), each said once as a warning. `oms sound <folder> --cues <at:role,…> --seconds <s> --out <new.wav>` renders the project's motion's sound (`react/sound.json`) for the film's cues into a WAV a `<Sound>` plays, with the synth motionhub.dev gives reels. The skill gains a sound step and sound craft for films without narration, and the film format `oms install` puts beside it leaves narration out.
