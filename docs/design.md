@@ -180,7 +180,8 @@ shortcuts) and the content.
   does in the editor, where Settings is still a page of its own over the project.
 - **Home** asks what the person wants to make next, over a prompt: a field for the film in their own words, three
   starts to finish (a launch teaser, an explainer, kinetic type) and **Start creating**; the prompt's foot holds, on its
-  left, the note that no assistant is connected (while none is), and on its right **Import project**: a film the person
+  left, the note that no assistant is connected while none is, else the mark of each assistant ready to take a film
+  (the built-in agent's robot, named by its model on hover, then Claude Code's and Codex's own), and on its right **Import project**: a film the person
   already has, as a project folder or an `.oms` an agent packed (ADR 0019). Enter sends it, Shift+Enter
   is a new line, `/` goes to it. It creates a project named from the words' first line and opens it, and the words
   are the assistant's first message, sent as soon as the agent and the film are ready; with no assistant connected,

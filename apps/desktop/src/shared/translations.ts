@@ -835,6 +835,7 @@ export const zh: Record<string, string> = {
   "My projects": "我的项目",
   "Templates": "模板",
   "Import project": "导入项目",
+  "Connected assistants": "已连接的创作助手",
   "A project folder, or a film file (.oms)": "项目文件夹，或影片文件（.oms）",
   "Import a project": "导入项目",
   "Project folder (film.tsx) or film file": "项目文件夹（film.tsx）或影片文件",

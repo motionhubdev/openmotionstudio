@@ -6102,6 +6102,31 @@ input.switch:disabled {
   border-top: 1px solid var(--line);
 }
 
+/* The assistants ready to take a film, at the prompt's foot on the left. */
+.home-assistants {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.home-assistant {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--r-control);
+  color: var(--text);
+}
+
+.home-assistant .agent-logo {
+  width: 22px;
+  height: 22px;
+}
+
+.home-assistant .agent-logo.codex {
+  padding: 3px;
+}
+
 /* A film the person already has, at the prompt's foot on the right: a project folder or a film file. */
 .home-import {
   display: inline-flex;
