@@ -25,6 +25,8 @@ async function until(fn, label) { for (let i=0;i<160;i++) { const value = await 
 const js = (wc, source) => wc.executeJavaScript(source, true);
 const click = async (wc, selector) => { await js(wc, 'document.querySelector('+JSON.stringify(selector)+')?.click()'); await sleep(120); };
 const text = wc => js(wc, 'document.body.innerText');
+// The first run's headline sets its second phrase on a line of its own, so it is read as one line of text.
+const firstRun = wc => js(wc, '('+(()=>document.querySelector('.onboarding h1')?.textContent.replace(/\\s+/g,' ').trim() ?? null).toString()+')()');
 async function button(wc, label, scope='') {
   const found = await js(wc, '('+((label,scope)=>{ const buttons=[...document.querySelectorAll(scope+'button')]; const el=buttons.find(b=>b.textContent.trim()===label||b.getAttribute('aria-label')===label); if(!el) return false; el.click();return true; }).toString()+')('+JSON.stringify(label)+','+JSON.stringify(scope)+')');
   assert(found, 'Missing button: '+label); await sleep(150);
@@ -47,14 +49,15 @@ require(${JSON.stringify(join(desktop, 'out/main/index.js'))});
   const home = win.webContents;
   await until(async()=>!home.isLoading() && await js(home,'!!document.querySelector(".onboarding, .home-hero, .home-title")'),'home loaded');
   if(process.argv.includes('--verify-relaunch')) {
-    assert(!(await text(home)).includes('准备好，开始第一个视频。'),'onboarding repeated after restart');
+    assert.equal(await firstRun(home),null,'onboarding repeated after restart');
     assert((await text(home)).includes('继续创作'),'library missing after restart');
     assert.equal(await js(home,'document.documentElement.dataset.theme'),'dark');
     assert((await js(home,'window.studio.providers()')).providers.some(p=>p.model==='qa-local-model'));
     pass('restart preserves completed onboarding, library, preferences and providers'); app.exit(0); return;
   }
+  assert.equal((await firstRun(home)).replace(/ /g,''),'准备好，开始第一个视频。');
   assert((await text(home)).includes('界面偏好')); pass('first-run onboarding');
-  await choice(home,'语言','English'); assert((await text(home)).includes('Make room for your first film.'));
+  await choice(home,'语言','English'); assert.equal(await firstRun(home),'Make room for your first film.');
   await choice(home,'Language','简体中文');
   await choice(home,'主题','深色'); assert.equal(await js(home,'document.documentElement.dataset.theme'),'dark');
   await choice(home,'主题','浅色'); pass('live language and theme');
@@ -76,7 +79,7 @@ require(${JSON.stringify(join(desktop, 'out/main/index.js'))});
   const saved=JSON.parse(await fs.readFile(path.join(temp,'user-data/settings.json'),'utf8'));
   assert(saved.providers.some(p=>p.model==='qa-local-model')); pass('real provider save and return to onboarding step');
   await button(home,'先体验模板');
-  assert(!(await text(home)).includes('准备好，开始第一个视频。'));
+  assert.equal(await firstRun(home),null,'onboarding shown after it was finished');
   await click(home,'.home-template');
   assert.equal((await fs.readdir(path.join(temp,'projects'))).length,0,'preview created project');
   await button(home,'暂停'); await shot(home,'template-small');
