@@ -7,9 +7,10 @@
 //   - In the Studio's preview it plays on its own clock and obeys play, pause and seek.
 //   - With ?render=1 it holds still and exposes window.__oms.seek(t) for the exporter and
 //     for stills, which resolves once the frame at t is committed; a DevTools screenshot then
-//     draws it. Its parent may move it too (oms:seek), as oms's web player does on its own clock
-//     (apps/cli/player.ts), and hears each frame drawn (oms:time) and whether an image it shows is
-//     still loading. With &framed=1 it draws nothing unless it is in a frame.
+//     draws it. Its parent may move it too (oms:seek), and hears each frame drawn (oms:time) and
+//     whether an image it shows is still loading.
+//   - In oms's web player (apps/cli/web.ts) the page is a document of its own, written into a
+//     sandboxed frame whole: the film comes in it (window.__omsInline), and it is a still the player moves.
 //
 // Built by scripts/build-preview.mjs into resources/preview/core.js.
 
@@ -29,6 +30,8 @@ declare global {
     __oms?: FilmInfo & { seek(t: number): Promise<number> };
     /** In a render: the first error the page met, for the main process to report. */
     __omsError?: string;
+    /** The film's bundle, carried in the page by oms's web player: run once React and the runtime are provided. */
+    __omsInline?: () => unknown;
     /** The film's size, for studio/pick.js. */
     __omsFrame?: FilmInfo;
     require?: (name: string) => unknown;
@@ -360,17 +363,16 @@ async function loadFaces(): Promise<void> {
 
 async function start(): Promise<void> {
   reportErrors();
-  const render = new URLSearchParams(location.search).get('render') === '1';
+  const inline = window.__omsInline;
+  const render = inline !== undefined || new URLSearchParams(location.search).get('render') === '1';
   const version = new URLSearchParams(location.search).get('v') ?? '';
-  // Opened on its own, a page meant for a sandboxed frame would run the film with its host's own origin.
-  if (new URLSearchParams(location.search).get('framed') === '1' && window === top) {
-    document.body.textContent = 'Open the player (index.html), which plays this film in a sandboxed frame.';
-    return;
-  }
   try {
-    await motionFaces();
-    await loadFaces();
-    await load(`build/film-${Number(version)}.js`);
+    if (inline) (globalThis as { __omsFilm?: unknown }).__omsFilm = inline();
+    else {
+      await motionFaces();
+      await loadFaces();
+      await load(`build/film-${Number(version)}.js`);
+    }
     const module = (globalThis as { __omsFilm?: FilmModule }).__omsFilm;
     if (!module) throw new Error('The film did not load.');
     const film = info(module, await spoken());

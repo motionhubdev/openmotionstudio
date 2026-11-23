@@ -9,25 +9,28 @@ keeps to, and how its media load.
 
 `oms player <folder> --out <new folder>` writes a folder that any static web host plays (`apps/cli/web.ts`), and
 `oms preview <folder>` serves the same folder on 127.0.0.1, building it again when a project file changes; an open
-page then reloads at the time it was at. The folder holds two pages, as the Studio holds the preview frame in its
-window:
+page then reloads at the time it was at. The folder holds four files, and nothing of the project:
 
-- **`index.html`, the player** (`apps/cli/player.ts`): the clock, the sound and the controls of motionhub's reel player
-  (play, a scrubber, sound, full screen, the same keys, controls that step aside while the film plays). It
-  plays nothing of the film's own code.
-- **`film.html`, the frame**: the Studio's preview core (`studio/core.js`) held still (`?render=1`), as an export holds
-  it, in an `<iframe sandbox="allow-scripts">` under the film's own policy (`filmPolicy`, as a `<meta>`). The player
-  moves it frame by frame (`oms:seek`, one frame asked for once the last is drawn) and hears each frame drawn
-  (`oms:time`), with whether an image it shows is still loading. Opened on its own (`&framed=1`), it draws nothing.
+- **`index.html` and `player.js`, the player** (`apps/cli/player.ts`): the clock, the sound and the controls of
+  motionhub's reel player (play, a scrubber, sound, full screen, the same keys, controls that step aside while the
+  film plays). It runs nothing of the film's own code.
+- **`frame.js`, the frame's document** (`window.__omsFrame`, a string), which the player writes into an
+  `<iframe sandbox="allow-scripts">` (`srcdoc`). It holds the Studio's preview core (`core.js`) and the film's bundle
+  as two inline scripts, the motions' faces as a stylesheet and the narration's timing (`#oms-voice`, `null` without
+  one). Every file the bundle imports but sounds, faces and images alike, is in the bundle as a `data:` URL; its inline
+  source map is left out. The core runs the bundle (`window.__omsInline`) and is a still, as an export holds it. The
+  player moves it frame by frame (`oms:seek`, one frame asked for once the last is drawn) and hears each frame drawn
+  (`oms:time`), with whether an image it shows is still decoding.
+- **`soundtrack.mp4`**, below.
 
-**The frame fetches nothing.** Its origin is opaque, so its fetches and its faces are CORS requests, which a static host
-need not answer. The film's faces, the ones it imports and its motions', are written into its bundle and `fonts.css`
-as `data:` URLs; its narration's timing is written into `film.html` (`#oms-voice`, `null` without one), which the core
-reads before it would fetch `voice/`. The frame loads only scripts, a stylesheet and images, which a page may load
-from any host. The images the bundle imports are asked for as the frame opens (`<link rel="preload">`). The folder holds
-the bundle's files and nothing else of the project. The bundle's inline source map is left out.
+**The frame loads nothing.** Its origin is opaque, so a file it asked the host for would be a cross-origin request, which
+a static host need not answer and an artifact host refuses. Its policy allows its two scripts by their hashes, inline
+styles and `data:` and `blob:` media, and nothing else (no `'self'`, no `connect-src`). The player's policy names the
+same two hashes, since a `srcdoc` frame keeps its parent's policy as well as its own. `frame.js` is a script, not a
+page, so the folder also plays opened from disk, and a host that adds its own scripts to the pages it serves cannot add
+them to the frame.
 
-**The sound is one soundtrack** (`soundtrack.m4a`, AAC), mixed by the export's own mix (`mixSounds`, `mixFinish`,
+**The sound is one soundtrack** (`soundtrack.mp4`: AAC in an MP4, named `.mp4` because hosts serve that type where many do not serve `.m4a`), mixed by the export's own mix (`mixSounds`, `mixFinish`,
 [ADR 0017](0017-an-export-is-encoded-in-segments-and-mixed-in-blocks.md)) with the person's ffmpeg, so the page sounds
 as the MP4 does. **The clock is the soundtrack's**, as VisoTalk's and HyperFrames' players keep to their audio. An
 `<audio>` reports its time in steps of 10 to 50 ms, so the player runs the time between steps on the page's clock,
@@ -36,9 +39,9 @@ Without a soundtrack, or while the browser will not play one, the page's clock k
 
 **Loading holds the picture, for a while.**
 - A soundtrack that stalls (`waiting`) holds the picture with it.
-- An image the frame shows before it has loaded pauses the soundtrack and the picture, for at most five seconds. After
+- An image the frame shows before it has decoded pauses the soundtrack and the picture, for at most five seconds. After
   that the player says so on the page and plays on, without waiting for the images loading then.
-- Either shows a spinner only after 200 ms.
+- Either shows a spinner only after 200 ms, as does `frame.js` while it downloads.
 
 **A browser that refuses sound** without a gesture is handled in three steps:
 - The soundtrack is played muted, which browsers allow.
@@ -57,18 +60,17 @@ function of time, so one soundtrack as the clock removes drift between sounds al
 draws the frame, so the web, the Studio and the MP4 draw the film with one engine
 ([ADR 0005](0005-the-studio-has-one-engine-its-own.md)), and the frame keeps the isolation of
 [ADR 0004](0004-a-films-code-runs-in-a-sandboxed-frame-on-its-own-scheme.md) on any host. Measured in Chromium, the
-frame shown kept within 6 to 41 ms of the soundtrack (one frame at 30 fps), and on a host slower than the soundtrack
-the picture held with it.
+frame shown kept within 1 to 48 ms behind the soundtrack (a frame and a half at 30 fps, the picture showing whole
+frames), and on a host slower than the soundtrack the picture held with it. The same folder played on a plain static
+server, in an artifact's viewer, which refuses a sandboxed frame's requests, and opened from disk.
 
 ## Cost
 
-- A face is downloaded as base64, a third larger, inside the bundle: a film in Chinese carries its faces whole (a 2 MB
-  subset made the bundle 2.9 MB).
+- Faces and images are downloaded as base64, a third larger, all in `frame.js` before the first frame: a film in
+  Chinese carries its faces whole (a 2 MB subset made `frame.js` 3.1 MB), and a film of many large photographs waits for
+  all of them.
 - A sound cannot be muted on its own in the page, and the page cannot play a narration the film has not mixed.
-- An image is held for at most five seconds; a film with many large images on a slow host plays on without some.
-- The folder trusts its host: `film.html` opened on its own refuses to draw, but a host serving other pages on the same
-  origin shares it with the film's code if someone frames `film.html` there with more rights. Put the folder on its own
-  origin.
+- The player's own page runs on the host's origin; only the film's code is kept apart, in the frame.
 - The core and the bundle are built for current Chrome (`chrome130`); only Chromium was tested. A browser older than
   the bundle's syntax cannot play it.
 - `oms preview` builds the whole player again on every change (a few seconds, the soundtrack included), and plays only

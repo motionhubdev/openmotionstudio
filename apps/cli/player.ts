@@ -1,7 +1,8 @@
 // The web player's page (index.html of `oms player`): plays a film in any browser without rendering it. The film is drawn
-// in a sandboxed frame (film.html: the Studio's preview core, held still and moved by this page, ADR 0018); this page
-// owns the clock, the film's sound as one soundtrack mixed as its MP4's is, and the controls, as motionhub's reel
-// player draws them. Built by apps/desktop/scripts/build-cli.mjs into dist/player.js.
+// in a sandboxed frame: frame.js holds its whole document (the Studio's preview core with the film in it, web.ts), which
+// this page writes into the frame (srcdoc), so the frame loads nothing from the host; the core is held still and moved
+// by this page (ADR 0018). This page owns the clock, the film's sound as one soundtrack mixed as its MP4's is, and the
+// controls, as motionhub's reel player draws them. Built by apps/desktop/scripts/build-cli.mjs into dist/player.js.
 //
 // The clock is the soundtrack's while it plays (an <audio> reports its time in steps of 10 to 50 ms, so the time
 // between steps runs on the page's clock, never past a quarter second, never backwards); without one, or while the
@@ -17,7 +18,7 @@ interface Shown {
   height: number;
   fps: number;
   title: string;
-  /** Whether soundtrack.m4a is beside the page. */
+  /** Whether soundtrack.mp4 is beside the page. */
   sound: boolean;
   /** Served by `oms preview`: the page reloads, at the time it was at, when the film is built again. */
   live: boolean;
@@ -73,7 +74,7 @@ const icon = (d: string, fill = false) => {
 const setIcon = (button: HTMLButtonElement, d: string, fill = false) => button.replaceChildren(icon(d, fill));
 
 // The page: the frame, scaled to the window; a cover over it that takes the pointer; the controls.
-const frame = el('iframe', { src: 'film.html?render=1&v=1&framed=1', title: film.title, tabIndex: -1 });
+const frame = el('iframe', { title: film.title, tabIndex: -1 });
 frame.setAttribute('sandbox', 'allow-scripts');
 frame.width = String(film.width);
 frame.height = String(film.height);
@@ -95,7 +96,7 @@ const bar = el('div', { className: 'bar' }, scrub, el('div', { className: 'row' 
 const shell = el('div', { className: 'shell' }, stage, cover, big, spinner, chip, notice, bar);
 document.getElementById('player')!.append(shell);
 
-const audio = film.sound ? new Audio('soundtrack.m4a') : null;
+const audio = film.sound ? new Audio('soundtrack.mp4') : null;
 if (audio) {
   audio.preload = 'auto';
   audio.load();
@@ -280,6 +281,7 @@ addEventListener('message', (event: MessageEvent<FromFrame>) => {
   const message = event.data;
   if (message?.type === 'oms:ready') {
     ready = true;
+    setBuffering(false);
     show();
     if (params.get('autoplay') === '1') void play();
   } else if (message?.type === 'oms:error') fail(`The film failed: ${message.message}`);
@@ -301,7 +303,7 @@ addEventListener('message', (event: MessageEvent<FromFrame>) => {
 if (audio) {
   audio.addEventListener('waiting', () => playing && setBuffering(true));
   audio.addEventListener('playing', () => !imagesSince && setBuffering(false));
-  audio.addEventListener('error', () => fail('The film\'s soundtrack (soundtrack.m4a) did not load; it plays without sound.'));
+  audio.addEventListener('error', () => fail('The film\'s soundtrack (soundtrack.mp4) did not load; it plays without sound.'));
 }
 
 // Fitted to the window, kept to its proportions.
@@ -356,4 +358,15 @@ if (film.live)
     location.replace(`${location.pathname}${location.search}#t=${t.toFixed(3)}`);
     location.reload();
   });
+
+// The frame's document, loaded as a script so the page also plays from a file on disk; the spinner shows meanwhile.
+setBuffering(true);
+const source = el('script', { src: 'frame.js' });
+source.addEventListener('load', () => {
+  const html = (window as { __omsFrame?: string }).__omsFrame;
+  if (typeof html !== 'string') return fail('frame.js holds no film: export the player again.');
+  frame.srcdoc = html;
+});
+source.addEventListener('error', () => fail('The film (frame.js) did not load.'));
+document.head.append(source);
 show();

@@ -1,7 +1,7 @@
 // Run against the unpacked installation, not the development workspace.
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { cp, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -130,13 +130,11 @@ export default function Main() {
   assert.match(await readFile(join(scratch, 'scored.srt'), 'utf8'), /One\.[\s\S]*Two\./);
   assert.throws(() => oms('render', scored, '--out', video), /is there already/);
 
-  // The same film as a web player: two pages, the scripts, the bundle, and its sound as one soundtrack as long as the film.
+  // The same film as a web player: the player, the frame's document, and its sound as one soundtrack as long as the film.
   const web = join(scratch, 'scored-web');
   assert.equal(oms('player', scored, '--out', web).trim(), web);
-  for (const file of ['index.html', 'film.html', 'player.js', 'studio/core.js', 'build/film-1.js', 'soundtrack.m4a'])
-    assert.match((await readFile(join(web, file))).toString('utf8', 0, 200), /\S/, file);
-  await readFile(join(web, 'build/fonts.css')); // the motions' faces: none here, so empty
-  const track = (() => { try { return execFileSync('ffmpeg', ['-hide_banner', '-i', join(web, 'soundtrack.m4a')], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }); } catch (error) { return error.stderr; } })();
+  assert.deepEqual((await readdir(web)).sort(), ['frame.js', 'index.html', 'player.js', 'soundtrack.mp4']);
+  const track = (() => { try { return execFileSync('ffmpeg', ['-hide_banner', '-i', join(web, 'soundtrack.mp4')], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }); } catch (error) { return error.stderr; } })();
   for (const stream of [/Audio: aac/, /Duration: 00:00:02\.0/]) assert.match(track, stream);
   assert.match(await readFile(join(web, 'index.html'), 'utf8'), /"sound":true/);
   assert.throws(() => oms('player', scored, '--out', web), /is not empty/);
