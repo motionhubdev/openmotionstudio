@@ -19,7 +19,7 @@ into the project when a film asks for one, as the Studio's `search_motions` and 
 length, with its levels, with `@motionhub/runtime/sound`, the synth that gives a motion's reel its sound on motionhub.dev
 (`film/effects.ts`). `oms font` takes a face from Google Fonts cut to the characters the project's sources write
 (its `text=` subset), into `media/fonts/` with its licence: the font's copyright and, for the SIL Open Font License,
-that licence's text, which the package carries (`apps/cli/font.ts`). `oms voice` speaks the film's lines in its `<Film voice>` into `voice/` as the Studio's Voice the film does
+that licence's text, which the package carries (`apps/desktop/src/main/font.ts`, which the Studio's agent also takes faces with as `use_font`). `oms voice` speaks the film's lines in its `<Film voice>` into `voice/` as the Studio's Voice the film does
 (`narration.ts`, [ADR 0011](0011-narration-is-synthesized-per-line-and-times-the-captions.md)), through the same
 providers ([ADR 0012](0012-a-narration-speaks-through-the-persons-own-voice-provider.md)); `oms voice --list` gives a
 provider's voices, and `oms voice --recording <file>` takes the narration from the person's own take of the lines instead

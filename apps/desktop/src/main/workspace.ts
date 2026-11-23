@@ -70,6 +70,8 @@ import { randomUUID } from 'node:crypto';
 import { isAbsolute, relative, resolve } from 'node:path';
 import { ProviderStore, providers } from './providers';
 import { packProject } from './oms-file';
+import { takeFont } from './font';
+import OFL from './ofl.txt?raw';
 
 /** The ffmpeg shipped with the app; inside a package it is unpacked beside the archive. */
 export function ffmpegPath(): string {
@@ -551,6 +553,12 @@ export function createWorkspace(host: WorkspaceHost, renderSession: Session, cha
             }
             return taken;
           },
+          useFont: async (family, weights) => {
+            const taken = await takeFont(dir, family, weights, OFL);
+            // Written by the Studio, as a motion it takes is: published as they are now.
+            if (state.published) for (const [path, bytes] of await noteFiles(dir, true)) if (taken.files.includes(path)) state.published.set(path, bytes);
+            return taken;
+          },
           voiceKinds: async () => (await providers().voices()).map((v) => v.kind),
           voiceChoices: async (kind) => voicesOf(await providers().voiceSetup(kind)),
           voiceFilm: () => voiceOpenFilm(state),
@@ -969,6 +977,7 @@ export function createWorkspace(host: WorkspaceHost, renderSession: Session, cha
           stage: (version) => openStage(version),
           searchMotions: (words) => searchMotions(words),
           useMotion: (id) => useMotion(dir, id),
+          useFont: (family, weights) => takeFont(dir, family, weights, OFL),
           voiceKinds: async () => (await providers().voices()).map((v) => v.kind),
           voiceChoices: async (kind) => voicesOf(await providers().voiceSetup(kind)),
           voiceFilm: () => voiceOpenFilm(state),

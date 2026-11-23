@@ -23,7 +23,7 @@ import { OMS_EXTENSION, packProject } from '../desktop/src/main/oms-file';
 export { motionWords, searchMotions, useMotion } from '../desktop/src/main/motions';
 // Sound effects from the project's motion's sound, for the cues of its picture.
 export { effectsTrack, parseCues } from '../desktop/src/main/film/effects';
-import { bundledSources, takeFont } from './font';
+import { bundledSources, takeFont } from '../desktop/src/main/font';
 /**
  * A face from Google Fonts cut to the characters the film writes: its project's sources and every source the film is
  * built from, so words it imports from outside the project are in it too. A film that does not build (one whose fonts

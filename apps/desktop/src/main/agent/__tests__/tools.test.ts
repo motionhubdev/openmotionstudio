@@ -17,6 +17,7 @@ beforeEach(async () => {
     stage: vi.fn(),
     searchMotions: vi.fn(),
     useMotion: vi.fn(),
+    useFont: vi.fn(),
     voiceKinds: vi.fn(),
     voiceChoices: vi.fn(),
     voiceFilm: vi.fn(),
@@ -184,6 +185,14 @@ describe('voices', () => {
     expect(outcome.ok).toBe(false);
     expect(outcome.text).toContain('Models, under Voices');
     expect(ctx.voiceChoices).not.toHaveBeenCalled();
+  });
+
+  it('takes a face from Google Fonts and says how to declare it', async () => {
+    ctx.useFont = vi.fn().mockResolvedValue({ files: ['media/fonts/inter-tight-400.ttf', 'media/fonts/inter-tight-700.ttf', 'media/fonts/inter-tight-LICENSE.txt'], characters: 97, licence: 'SIL Open Font License 1.1' });
+    const out = (await runTool('use_font', { family: 'Inter Tight', weights: [400, 700] }, ctx)).text;
+    expect(ctx.useFont).toHaveBeenCalledWith('Inter Tight', [400, 700]);
+    expect(out).toContain("import inter_tight_700 from './media/fonts/inter-tight-700.ttf';");
+    expect(out).toContain("@font-face { font-family: 'Inter Tight'; font-weight: 700; src: url(${inter_tight_700}); }");
   });
 
   it('voices the film and says what it spoke, or why it could not', async () => {
