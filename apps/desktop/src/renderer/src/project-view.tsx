@@ -642,6 +642,18 @@ export function ProjectView({ onGlobalSettings, settingsOpen, project, providers
     }
   }
 
+  async function exportFilmFile() {
+    if (busy || importing || checking || progress !== null) return;
+    setMenu(false);
+    setToast(null);
+    try {
+      const file = await window.studio.exportFilmFile();
+      if (file) setToast({ text: translate("Saved {0}", false, {0: file.split(/[/\\]/).pop()}), error: false, file });
+    } catch (e) {
+      setToast({ text: reason(e), error: true });
+    }
+  }
+
   async function startFilm() {
     try {
       onChange(await window.studio.startFilm());
@@ -819,6 +831,10 @@ export function ProjectView({ onGlobalSettings, settingsOpen, project, providers
               </button>
               {menu && (
                 <span className="menu" role="menu">
+                  <button type="button" role="menuitem" onClick={() => void exportFilmFile()}>
+                    <strong><Translated text="Film file (.oms)…" /></strong>
+                    <span>{tr("The project as one file, to share or keep: Import project opens it")}</span>
+                  </button>
                   <button type="button" role="menuitem" onClick={() => void exportRemotion()}>
                     <strong><Translated text="Remotion project…" /></strong>
                     <span>{tr("The film as a Remotion project, each scene a Series.Sequence")}</span>

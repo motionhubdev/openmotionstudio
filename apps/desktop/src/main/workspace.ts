@@ -2,7 +2,7 @@
 
 import { studioTranslator } from './providers';
 import { BrowserWindow, Notification, app, dialog, shell, type BaseWindow, type IpcMainInvokeEvent, type Session, type OpenDialogOptions, type WebContents } from 'electron';
-import { mkdir, readFile, realpath, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, realpath, rename, writeFile } from 'node:fs/promises';
 import { join, sep } from 'node:path';
 import { log } from './log';
 import {
@@ -69,6 +69,7 @@ import { NO_TOKENS, type Spent, readUsage, recordUsage, totals } from './usage';
 import { randomUUID } from 'node:crypto';
 import { isAbsolute, relative, resolve } from 'node:path';
 import { ProviderStore, providers } from './providers';
+import { packProject } from './oms-file';
 
 /** The ffmpeg shipped with the app; inside a package it is unpacked beside the archive. */
 export function ffmpegPath(): string {
@@ -1060,6 +1061,27 @@ export function createWorkspace(host: WorkspaceHost, renderSession: Session, cha
     });
 
     handle(CHANNELS.cancelExport, () => exporting?.abort());
+    // The project as one film file (ADR 0019): its own files, packed as `oms pack` packs them, written whole then moved into place.
+    handle(CHANNELS.exportFilmFile, async (event) => {
+      const state = requireOpen();
+      if (working || exporting) throw new Error('Wait for the current task to finish before exporting.');
+      if (!state.project.film) throw new Error('The project has no film to save.');
+      const tr = await studioTranslator();
+      const window = host.window?.() ?? BrowserWindow.fromWebContents(event.sender);
+      const options = {
+        title: tr('Save the film file'),
+        defaultPath: join(state.project.path, `${state.project.name}.oms`),
+        filters: [{ name: tr('Film file'), extensions: ['oms'] }],
+      };
+      const result = window ? await dialog.showSaveDialog(window, options) : await dialog.showSaveDialog(options);
+      if (result.canceled || !result.filePath) return null;
+      const { bytes } = await packProject(state.project.path);
+      const partial = `${result.filePath}.partial`;
+      await writeFile(partial, bytes);
+      await rename(partial, result.filePath);
+      exported = result.filePath;
+      return result.filePath;
+    });
     handle(CHANNELS.exportRemotion, async (event) => {
       const state = requireOpen();
       if (working || exporting) throw new Error('Wait for the current task to finish before exporting.');
