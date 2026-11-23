@@ -5,11 +5,11 @@ Every key change to OpenMotionStudio, newest first, by date. What counts as key 
 
 ## 2026-11-23 — The skill draws a film in a look of its own unless a motion is asked for, and `oms sound` has a sound of its own
 
-- **What:** The skill's look step no longer searches motionhub by default: a film gets a look of its own in `parts/kit.tsx`, and `oms motion search` and `oms motion use` run only when the project already has a motion or the person asks for one. `oms sound` in a project with no motion that has a sound renders oms's own sound (every role from `land` to `out`, no bed) instead of refusing.
-- **Why:** A film's look should come from its subject, as VisoTalk's did, not from whichever motion a search turns up; and a film in a look of its own still needs its effects.
+- **What:** The skill's look step no longer searches motionhub by default: a film gets a look of its own in `parts/kit.tsx`, and `oms motion search` and `oms motion use` run only when the project already has a motion or the person asks for one. `oms sound` in a project with no motion that has a sound renders oms's own sound (every role from `land` to `out`, no bed) instead of refusing. The film format and the skill say how a film in no motion styles its captions (its own `caption` tokens in a `<MotionScope>` around the `<Film>`), since without a motion `<Film captions>` draws black text on nothing.
+- **Why:** A film's look should come from its subject, as VisoTalk's did, not from whichever motion a search turns up; a film in a look of its own still needs its effects, and a trial in one drew its captions black on a dark ground.
 - **Breaking:** None. A project with no motion now gets a track from `oms sound` where it got an error.
 - **Upgrade:** Move the installed `skills/oms` folder aside and run `oms install claude` or `oms install codex` again.
-- **Refs:** `apps/cli/skills/oms/`, `apps/desktop/src/main/film/effects.ts`, `docs/tech/architecture.md`.
+- **Refs:** `apps/cli/skills/oms/`, `apps/desktop/src/main/film/effects.ts`, `apps/desktop/src/main/film/film.md`, `docs/tech/architecture.md`.
 
 ## 2026-11-23 — A check finds characters no loaded face draws, and `oms sound` says what it made
 
