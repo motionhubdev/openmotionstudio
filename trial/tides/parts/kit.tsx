@@ -2,7 +2,7 @@
 // #C9D3DA, the sun's warm #F4C05A, and one accent, buoy orange #F2763A, for the tidal bulge and the water it raises.
 // Ocean water is a pale sea-green #5FB3B3. Headings in Noto Serif SC 700, labels in Noto Sans SC 400/700.
 import type {ReactNode} from 'react';
-import {interpolate, Easing, useTime} from '@motionhub/runtime';
+import {interpolate, Easing, useLine, useTime} from '@motionhub/runtime';
 
 export const C = {
   ground: '#0A2233',
@@ -30,20 +30,37 @@ export const T = {
   small: 40,
 };
 
-/** Caption tokens for <MotionScope>, in the film's face and colours. */
-export const captionTokens = {
-  caption: {
-    font: FONT.body,
-    size: 44,
-    weight: 700,
-    color: C.ink,
-    background: 'rgba(6, 22, 34, 0.82)',
-    radius: 14,
-    'padding-y': 14,
-    'padding-x': 30,
-    bottom: 56,
-  },
-};
+const CAPTION = {size: 48, weight: 700, color: C.ink, background: 'rgba(6, 22, 34, 0.82)', radius: 14, padY: 14, padX: 30, bottom: 56};
+
+/** Whether a word is Latin letters or digits, which keep a space between them; Chinese characters and punctuation do not. */
+const latin = (text: string) => /^[A-Za-z0-9]/.test(text);
+
+/**
+ * The scene's caption, each word lit as it is said. Drawn here rather than by <Film captions="words">, which joins every
+ * word with a space and so spaces out Chinese, where each character is a word.
+ */
+export function Captions({ids}: {ids: string[]}) {
+  const t = useTime();
+  const lines = ids.map((id) => useLine(id));
+  const line = lines.find((l) => t >= l.start && t < l.end);
+  if (!line) return null;
+  const words = line.words ?? [];
+  return (
+    <div style={{height: '100%', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', paddingBottom: CAPTION.bottom, boxSizing: 'border-box'}}>
+      <div style={{maxWidth: 1500, textAlign: 'center', font: `${CAPTION.weight} ${CAPTION.size}px/1.35 ${FONT.body}`, color: CAPTION.color,
+        background: CAPTION.background, borderRadius: CAPTION.radius, padding: `${CAPTION.padY}px ${CAPTION.padX}px`}}>
+        {words.length === 0
+          ? line.text
+          : words.map((w, i) => (
+              <span key={i} style={{opacity: t >= w.start ? 1 : 0.35}}>
+                {i > 0 && latin(words[i - 1]!.text) && latin(w.text) ? ' ' : ''}
+                {w.text}
+              </span>
+            ))}
+      </div>
+    </div>
+  );
+}
 
 /** The heading every scene keeps in the same box; it rises in over half a second. */
 export function Heading({children, cover = false}: {children: ReactNode; cover?: boolean}) {
