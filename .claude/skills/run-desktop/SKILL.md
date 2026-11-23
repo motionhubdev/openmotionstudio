@@ -1,6 +1,9 @@
 ---
 name: run-desktop
 description: Build, launch and screenshot the OpenMotionStudio desktop app with an example film or a project folder open. Use when asked to run the app, look at the workspace, or check a UI change in the real app rather than in tests.
+metadata:
+  # For working on the Studio, not for using it: `npx skills add` leaves it out.
+  internal: true
 ---
 
 The Studio is an Electron app. `drive.mjs` launches the built app with a throwaway profile (the person's recent

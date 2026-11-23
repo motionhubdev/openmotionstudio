@@ -3,6 +3,14 @@
 Every key change to OpenMotionStudio, newest first, by date. What counts as key and the entry format are in
 `CLAUDE.md`, "The changelog".
 
+## 2026-11-23 — The oms skill installs with `npx skills add`
+
+- **What:** `npx skills add motionhubdev/openmotionstudio --skill oms -g` installs the oms skill for Claude Code, Codex and the other agents the `skills` installer knows. The skill folder now holds its film format and example film itself, so it is whole however it is installed; `oms install` copies that folder alone. The repository's `run-desktop` skill, for working on the Studio, is marked internal and not offered.
+- **Why:** `skills add` copies a skill's folder from the repository, and it found only `run-desktop`: the oms skill sat outside the folders it searches, and its film format and example were added at packing.
+- **Breaking:** None.
+- **Upgrade:** Nothing: a skill installed by `oms install` holds the same files.
+- **Refs:** `skills.sh.json`, `apps/cli/skills/oms/`, `apps/desktop/scripts/build-cli.mjs`, `apps/cli/oms.mjs`, `apps/cli/__tests__/skill.test.ts`.
+
 ## 2026-11-23 — The check names characters no face on the machine has
 
 - **What:** On a machine with no face at all for a film's characters (Chinese on a Linux server without Chinese fonts), the check before an export and `oms check` said nothing about them, though the film drew them as empty boxes. They are now named like any character the film's faces lack.

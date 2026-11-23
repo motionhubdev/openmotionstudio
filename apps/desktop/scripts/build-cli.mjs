@@ -40,11 +40,11 @@ await build({ entryPoints: [join(cli, 'player.ts')], outfile: join(dist, 'player
 await cp(join(desktop, 'resources/preview/core.js'), join(dist, 'resources/preview/core.js'));
 await cp(join(desktop, 'resources/preview/pick.js'), join(dist, 'resources/preview/pick.js'));
 await cp(join(desktop, 'src/main/film/starter.tsx.txt'), join(dist, 'starter.tsx'));
+// The film format as the Studio's agent has it, written into the skill, so the skill is whole however it is installed
+// (`oms install`, or `npx skills add`, which copies the folder from the repository); the skill says which oms command
+// stands for each of its tools. A test keeps the committed copy the Studio's (apps/cli/__tests__/skill.test.ts).
 const guide = await readFile(join(desktop, 'src/main/film/film.md'), 'utf8');
-// The film format as the Studio's agent has it; the skill says which oms command stands for each of its tools.
-await writeFile(join(dist, 'film-format.md'), guide.slice(guide.indexOf('# The film'), guide.indexOf('# How you work')));
+await writeFile(join(cli, 'skills/oms/film-format.md'), guide.slice(guide.indexOf('# The film'), guide.indexOf('# How you work')));
 await cp(join(desktop, '../../LICENSE'), join(dist, 'LICENSE'));
 await cp(join(cli, 'OFL.txt'), join(dist, 'OFL.txt'));
 
-// The example is apps/cli/example as it is: one film.tsx, drawn from code.
-await cp(join(cli, 'example'), join(dist, 'example'), { recursive: true });
