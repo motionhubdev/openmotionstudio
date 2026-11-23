@@ -1,0 +1,6 @@
+# Render outputs and review stills stay out of git.
+*.mp4
+*.srt
+*.png
+stills/
+.motion-studio/
