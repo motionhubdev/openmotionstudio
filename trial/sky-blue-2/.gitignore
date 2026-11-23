@@ -1,0 +1,5 @@
+# Renders and the Studio state stay out of git
+*.mp4
+*.srt
+*.png
+.motion-studio/
