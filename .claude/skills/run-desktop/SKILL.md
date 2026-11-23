@@ -1,10 +1,10 @@
 ---
 name: run-desktop
-description: Build, launch and screenshot the OpenMotionStudio desktop app with an example film open. Use when asked to run the app, look at the workspace, or check a UI change in the real app rather than in tests.
+description: Build, launch and screenshot the OpenMotionStudio desktop app with an example film or a project folder open. Use when asked to run the app, look at the workspace, or check a UI change in the real app rather than in tests.
 ---
 
 The Studio is an Electron app. `drive.mjs` launches the built app with a throwaway profile (the person's recent
-projects and settings stay untouched), seeds its workspace inside that temporary profile, opens an example from the launcher in its project editor view, runs a list of steps (screenshots, keys,
+projects and settings stay untouched), seeds its workspace inside that temporary profile, opens an example (or a project folder given in its place) in its project editor view, past the first run's walk-through,, runs a list of steps (screenshots, keys,
 clicks, window sizes) and exits. All commands run from the repository root.
 
 ## Once per machine
@@ -16,7 +16,8 @@ npm i --prefix <scratch>/pw playwright-core@1.47.2
 export OMS_PLAYWRIGHT=<scratch>/pw          # PowerShell: $env:OMS_PLAYWRIGHT = '<scratch>\pw'
 ```
 
-It drives the Electron that `pnpm install` downloaded; it needs no browser of its own.
+It drives the repository's Electron, which `pnpm install` leaves undownloaded: `pnpm dev` and `pnpm package` fetch it, or
+`pnpm --filter ./apps/desktop exec install-electron` does it alone. It needs no browser of its own.
 
 ## Build, then drive
 
@@ -24,6 +25,7 @@ It drives the Electron that `pnpm install` downloaded; it needs no browser of it
 pnpm build
 node .claude/skills/run-desktop/drive.mjs <shots-dir>                  # kinetic example, ss:workspace + boxes
 node .claude/skills/run-desktop/drive.mjs <shots-dir> data ss:open key:Backslash ss:folded click:".topbar .status" ss:checks
+node .claude/skills/run-desktop/drive.mjs <shots-dir> "<project folder>" ss:open   # a folder oms made, opened where it is
 ```
 
 Then **read the screenshots**. A blank or launcher-only shot means it did not reach the workspace.

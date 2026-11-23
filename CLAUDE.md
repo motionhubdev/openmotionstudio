@@ -49,7 +49,7 @@ explicit ask for English, switches the reply.
 ## Commands
 
 Use the Node version in `.nvmrc` and the pnpm version in `package.json` (`corepack enable`). `pnpm install` from the root
-downloads Electron.
+installs the workspace; Electron's binary is fetched by `pnpm dev` and `pnpm package` (`install-electron`).
 
 ```bash
 pnpm dev              # the desktop app with hot reload (electron-vite)
