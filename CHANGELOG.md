@@ -3,6 +3,14 @@
 Every key change to OpenMotionStudio, newest first, by date. What counts as key and the entry format are in
 `CLAUDE.md`, "The changelog".
 
+## 2026-11-23 — A check names every character a face lacks, captions included; `oms sound` writes where you say and measures each cue alone
+
+- **What:** The check gathers what falls to an unloaded or fallback face over every frame it draws and warns once a face, naming each layer and the captions with all their characters; it had warned once a face at the first layer it saw and never looked at captions. `oms sound --out` is a path from the current directory, as `still`'s and `render`'s are, and must be inside the project; it was a path inside the project. Each cue's printed peak is now its own: measured without the sound's bed and before the next cue begins.
+- **Why:** A third trial of the skill missed characters lacking in a later title and in its captions, wrote its effects track to a doubled path, and read cue levels that were the bed's and their neighbours'.
+- **Breaking:** `oms sound --out media/effects.wav` run from outside the project now refuses the path; give it from where you run it, as `--out "<folder>/media/effects.wav"`.
+- **Upgrade:** Move the installed `skills/oms` folder aside and run `oms install claude` or `oms install codex` again.
+- **Refs:** `apps/desktop/src/shared/preview.ts`, `apps/desktop/src/main/film/review.ts`, `apps/desktop/src/main/film/effects.ts`, `apps/cli/oms.mjs`, `apps/cli/skills/oms/`.
+
 ## 2026-11-23 — The skill draws a film in a look of its own unless a motion is asked for, and `oms sound` has a sound of its own
 
 - **What:** The skill's look step no longer searches motionhub by default: a film gets a look of its own in `parts/kit.tsx`, and `oms motion search` and `oms motion use` run only when the project already has a motion or the person asks for one. `oms sound` in a project with no motion that has a sound renders oms's own sound (every role from `land` to `out`, no bed) instead of refusing. The film format and the skill say how a film in no motion styles its captions (its own `caption` tokens in a `<MotionScope>` around the `<Film>`), since without a motion `<Film captions>` draws black text on nothing.

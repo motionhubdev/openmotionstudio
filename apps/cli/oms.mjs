@@ -31,14 +31,16 @@ async function motion(args) {
 
 /**
  * `oms sound <folder> --cues <at:role,…> --seconds <s> --out <new.wav> [--motion <id>]`: the project's motion's sound
- * for those cues, a track the film's length, written as a new WAV inside the project for a <Sound> to play.
+ * for those cues, a track the film's length, written as a new WAV inside the project (--out is a path from the current
+ * directory, as still's and render's are) for a <Sound> to play.
  */
 async function sound(args) {
   const { values, positionals } = parseArgs({ args, options: { cues: { type: 'string' }, seconds: { type: 'string' }, out: { type: 'string' }, motion: { type: 'string' } }, allowPositionals: true });
   if (positionals.length !== 1 || !values.cues || !values.seconds || !values.out?.toLowerCase().endsWith('.wav')) throw new Error(usage);
   const dir = resolve(positionals[0]);
-  const file = resolve(dir, values.out);
-  if (!file.startsWith(dir + sep)) throw new Error(`${values.out} is outside the project: a film plays only its own files.`);
+  // Like still's and render's, --out is a path from where oms runs; the track must be inside the project.
+  const file = resolve(values.out);
+  if (!file.startsWith(dir + sep)) throw new Error(`${file} is outside the project ${dir}: a film plays only its own files. Give a path inside it, as "${join(positionals[0], 'media', 'effects.wav')}".`);
   if (existsSync(file)) throw new Error(`${file} is there already: name a new file.`);
   const worker = createRequire(import.meta.url)(join(root, 'dist/worker.cjs'));
   const { motion, wav, report } = await worker.effectsTrack(dir, worker.parseCues(values.cues), Number(values.seconds), values.motion);

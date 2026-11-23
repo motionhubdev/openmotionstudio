@@ -39,14 +39,16 @@ try {
   assert.throws(() => oms('motion', 'use', '@iamsuosi/plumb-line', starter), /already holds/);
   assert.equal(JSON.parse(oms('check', starter, '--json')).issues.length, 0);
   // Its sound, for the starter's cues, as a track the film plays.
-  const sound = oms('sound', starter, '--cues', '0.5:land, 3:cut', '--seconds', '6', '--out', 'media/effects.wav');
+  const sound = oms('sound', starter, '--cues', '0.5:land, 3:cut', '--seconds', '6', '--out', join(starter, 'media/effects.wav'));
   assert.match(sound, /Wrote media\/effects\.wav from @iamsuosi\/plumb-line's sound \(roles: land, move, draw, count, cut\)/);
   assert.match(sound, /Track: peak -?\d+\.\d dBFS/);
   assert.match(sound, /^ {2}3s cut: peak -?\d+\.\d dBFS$/m);
   assert.equal((await readFile(join(starter, 'media/effects.wav'))).toString('ascii', 0, 4), 'RIFF');
-  assert.throws(() => oms('sound', starter, '--cues', '0.5:land', '--seconds', '6', '--out', 'media/effects.wav'), /is there already/);
-  assert.throws(() => oms('sound', starter, '--cues', '0.5:bang', '--seconds', '6', '--out', 'media/other.wav'), /no cue/);
-  assert.throws(() => oms('sound', starter, '--cues', '0.5:land, 2:out', '--seconds', '6', '--out', 'media/other.wav'), /has no out: its roles are land, move, draw, count, cut/);
+  assert.throws(() => oms('sound', starter, '--cues', '0.5:land', '--seconds', '6', '--out', join(starter, 'media/effects.wav')), /is there already/);
+  // --out is a path from where oms runs, as still's and render's are: a bare media/… is outside the project.
+  assert.throws(() => oms('sound', starter, '--cues', '0.5:land', '--seconds', '6', '--out', 'media/stray.wav'), /is outside the project/);
+  assert.throws(() => oms('sound', starter, '--cues', '0.5:bang', '--seconds', '6', '--out', join(starter, 'media/other.wav')), /no cue/);
+  assert.throws(() => oms('sound', starter, '--cues', '0.5:land, 2:out', '--seconds', '6', '--out', join(starter, 'media/other.wav')), /has no out: its roles are land, move, draw, count, cut/);
 
   // Chinese in a stack whose one loaded face is Latin falls past it to the machine's own face, and is said.
   const mixed = join(scratch, 'Mixed');
@@ -64,7 +66,7 @@ export default function Main() {
 `);
   const faces = JSON.parse(oms('check', mixed, '--json')).issues;
   assert.equal(faces.length, 1, JSON.stringify(faces));
-  assert.match(faces[0].text, /^Layer “title” draws “天空”, which the faces it loads lack, in this machine's own sans-serif face/);
+  assert.match(faces[0].text, /^Characters the faces it loads lack fall to this machine's own sans-serif face: layer “title” \(“天空”\)/);
 
   const project = join(scratch, '影片 Sample');
   await cp(join(installed, 'dist/example'), project, { recursive: true });

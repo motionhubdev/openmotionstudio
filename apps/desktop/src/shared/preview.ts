@@ -114,7 +114,7 @@ export const seekScript = (t: number): string =>
 
 /** What a frame shows that a picture alone does not say: text past the frame's edge, and faces that never loaded. */
 export interface Inspection {
-  /** Visible text running past an edge of the frame, by layer: the first words of it, and which edges. */
+  /** Visible text running past an edge of the frame, by layer ("captions" for <Film captions>, "film" outside any layer): the first words of it, and which edges. */
   outside: { layer: string; text: string; edges: string[] }[];
   /**
    * Text that draws in a face the page never loaded, by layer: `family` is that face, the first in its stack not loaded
@@ -151,13 +151,21 @@ export const inspectScript = `(() => {
     return drawn.get(key);
   };
   const outside = new Map(), unloaded = new Map();
-  for (const layer of document.querySelectorAll('[data-layer]')) {
-    const id = layer.getAttribute('data-layer');
-    const walker = document.createTreeWalker(layer, NodeFilter.SHOW_TEXT);
+  // Every text the film draws: in a layer, named by it; in the captions <Film captions> draws over everything, as
+  // "captions"; anywhere else, as "film".
+  const placeOf = (element) => {
+    const layer = element.closest('[data-layer]');
+    if (layer) return layer.getAttribute('data-layer');
+    for (let e = element; e; e = e.parentElement) if (e.style && e.style.zIndex === '2147483647') return 'captions';
+    return 'film';
+  };
+  {
+    const walker = document.createTreeWalker(document.getElementById('root') || document.body, NodeFilter.SHOW_TEXT);
     for (let node = walker.nextNode(); node; node = walker.nextNode()) {
       const text = node.textContent.replace(/\\s+/g, ' ').trim();
       const element = node.parentElement;
-      if (!text || !element || !element.checkVisibility({ opacityProperty: true, visibilityProperty: true })) continue;
+      if (!text || !element || element.closest('style, script') || !element.checkVisibility({ opacityProperty: true, visibilityProperty: true })) continue;
+      const id = placeOf(element);
       const range = document.createRange();
       range.selectNodeContents(node);
       const box = range.getBoundingClientRect();
@@ -178,7 +186,7 @@ export const inspectScript = `(() => {
       const missed = [...new Set(text.replace(/\\s/g, ''))].filter((char) => !covers(style, faces, char));
       if (!missed.length) continue;
       const seen = unloaded.get(id + '|' + bare(family));
-      const chars = [...new Set((seen ? seen.chars : '') + missed.join(''))].slice(0, 12).join('');
+      const chars = [...new Set((seen ? seen.chars : '') + missed.join(''))].slice(0, 40).join('');
       unloaded.set(id + '|' + bare(family), { layer: id, family, chars });
     }
   }

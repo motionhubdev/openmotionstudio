@@ -95,6 +95,17 @@ describe('the sound effects of a film', () => {
     await expect(effectsTrack(dir, parseCues('1:land'), 2, '@c/three')).rejects.toThrow('no motion @c/three');
   });
 
+  it("measures each cue on its own: not its sound's bed, not the cue after it", async () => {
+    await motion('@iamsuosi/night-diagram');
+    const cues = parseCues('0.5:land, 0.6:count, 2:cut');
+    const withBed = (await effectsTrack(dir, cues, 3)).report.cues.map((cue) => cue.peak);
+    await motion('@iamsuosi/night-diagram', { ...SOUND, bed: 0 });
+    const without = (await effectsTrack(dir, cues, 3)).report.cues.map((cue) => cue.peak);
+    expect(withBed).toEqual(without);
+    // The land is measured until the count begins, a tenth of a second later: quieter than the count's own peak.
+    expect(without[0]).toBeLessThan(without[1]!);
+  });
+
   it('asks which motion when the project has several', async () => {
     await motion('@a/one');
     await motion('@b/two');

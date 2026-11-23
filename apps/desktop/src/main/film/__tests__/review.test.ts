@@ -62,7 +62,27 @@ it('says once each text past the frame, and each face that never loaded, at the 
   expect(outside[0]).toMatchObject({ kind: 'layout', severity: 'warning', time: 1.5 });
   expect(outside[0]!.text).toContain('layer “figure” (“约 6 倍” and 1 more) runs past the frame\'s left and bottom edge');
   expect(faces.map((face) => face.text)).toEqual([
-    "Layer “title” sets text in “Noto Sans SC”, which neither the film nor its motion loads, so in this machine's fallback: frames differ between machines. Declare a face that has them from the project's files, or use one the motion ships.",
-    "Layer “note” draws “天空”, which the faces it loads lack, in this machine's own sans-serif face: frames differ between machines. Declare a face that has them from the project's files, or use one the motion ships.",
+    "Layer “title” sets text in “Noto Sans SC”, which neither the film nor its motion loads, so to this machine's fallback. Frames differ between machines. Declare a face that has them from the project's files, or use one the motion ships.",
+    "Characters the faces it loads lack fall to this machine's own sans-serif face: layer “note” (“天空”). Frames differ between machines. Declare a face that has them from the project's files, or use one the motion ships.",
   ]);
+});
+
+it("names every layer and character a face draws over the frames drawn, the captions' too, once", async () => {
+  const s = stage();
+  vi.mocked(s.inspect)
+    .mockResolvedValueOnce({ outside: [], unloaded: [{ layer: 'cover-title', family: 'sans-serif', chars: '圆缺' }] })
+    .mockResolvedValueOnce({ outside: [], unloaded: [] })
+    .mockResolvedValue({
+      outside: [],
+      unloaded: [
+        { layer: 'ending-title', family: 'sans-serif', chars: '弦' },
+        { layer: 'captions', family: 'sans-serif', chars: '缺蚀' },
+      ],
+    });
+  const faces = (await reviewBuild({ ok: true, version: 1, errors: [] }, async () => s)).issues.filter((issue) => issue.id.startsWith('face-'));
+  expect(faces).toHaveLength(1);
+  expect(faces[0]).toMatchObject({ id: 'face-sans-serif', time: 0 });
+  expect(faces[0]!.text).toBe(
+    "Characters the faces it loads lack fall to this machine's own sans-serif face: layer “cover-title” (“圆缺”), layer “ending-title” (“弦”), the captions (“缺蚀”). Frames differ between machines. Declare a face that has them from the project's files, or use one the motion ships.",
+  );
 });

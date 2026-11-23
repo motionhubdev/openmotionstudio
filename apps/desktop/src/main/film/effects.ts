@@ -84,6 +84,7 @@ export interface EffectsReport {
   roles: string[];
   peak: number;
   rms: number;
+  /** Each cue's own peak, in the track without its bed and before the next cue begins. */
   cues: (Cue & { peak: number; silent: boolean })[];
 }
 
@@ -109,8 +110,15 @@ export async function effectsTrack(dir: string, cues: Cue[], seconds: number, id
   if (unknown.length)
     throw new Error(`${chosen.id}'s sound has no ${[...new Set(unknown.map((cue) => cue.role))].join(', ')}: its roles are ${roles.join(', ')}. Use one of them for ${unknown.map((cue) => `${cue.at}:${cue.role}`).join(', ')}.`);
   const samples = renderSound({ seconds, cues, sound, rate: RATE });
-  // Each cue's peak over its span (at least a third of a second); a bed the sound plays under everything counts too.
-  const window = (cue: Cue) => samples.subarray(Math.floor(cue.at * RATE), Math.min(samples.length, Math.ceil((cue.at + Math.max(cue.dur ?? 0, 0.33)) * RATE)));
+  // Each cue's own peak: in the same track rendered without its bed, over the cue's span (at least a third of a second)
+  // but not past the next cue's start, so neither the bed nor a neighbour is counted as the cue.
+  const hits = sound.bed ? renderSound({ seconds, cues, sound: { ...sound, bed: 0 }, rate: RATE }) : samples;
+  const starts = [...new Set(cues.map((cue) => cue.at))].sort((x, y) => x - y);
+  const window = (cue: Cue) => {
+    const next = starts.find((at) => at > cue.at) ?? Infinity;
+    const end = Math.min(cue.at + Math.max(cue.dur ?? 0, 0.33), Math.max(next, cue.at + 0.05));
+    return hits.subarray(Math.floor(cue.at * RATE), Math.min(hits.length, Math.ceil(end * RATE)));
+  };
   const whole = levels(samples);
   const report: EffectsReport = {
     motion: chosen.id,
