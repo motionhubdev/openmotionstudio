@@ -435,16 +435,12 @@ const STARTERS = ['A 15-second launch teaser for ', 'A 30-second explainer on ho
  * What the person wants to make, in their words: a new project named from it, opened, with the words as the agent's
  * first message. Without an assistant they wait in the project's composer.
  */
-function Prompt({ field, available, disabled, onCreate, onOpen, onImport, onSetUp }: {
+function Prompt({ field, available, disabled, onCreate, onSetUp }: {
   field: RefObject<HTMLTextAreaElement | null>;
   available: boolean;
   disabled: boolean;
   /** Creates the project; the words stay in the field until it has. */
   onCreate(brief: string): Promise<boolean>;
-  /** Opens a folder the person already has, the other way to start. */
-  onOpen(): void;
-  /** Takes a film file (.oms) an agent packed into a new project. */
-  onImport(): void;
   onSetUp(): void;
 }) {
   const { t } = usePreferences();
@@ -486,14 +482,6 @@ function Prompt({ field, available, disabled, onCreate, onOpen, onImport, onSetU
             </button>
           ))}
         </div>
-        <button type="button" className="button" disabled={disabled} onClick={onOpen}>
-          <Folder size={15} />
-          {t('Open project')}
-        </button>
-        <button type="button" className="button" disabled={disabled} onClick={onImport}>
-          <FileInput size={15} />
-          {t('Import film file')}
-        </button>
         <button className="button primary" type="submit" disabled={disabled || !brief.trim()}>
           {t('Start creating')}
           <ArrowRight size={15} />
@@ -704,6 +692,22 @@ export function Home({ providers, workspace, tasks, examples, busy, error, revis
     );
   }
 
+  /** Open project and Import film file: a film the person already has, as a folder or as a film file an agent packed (.oms). */
+  function haveFilm(look: 'quiet' | 'button') {
+    return (
+      <>
+        <button type="button" className={look} disabled={disabled} onClick={() => void onAction(window.studio.openProject)}>
+          <Folder size={15} />
+          {t('Open project')}
+        </button>
+        <button type="button" className={look} disabled={disabled} onClick={() => void onAction(window.studio.importProject)}>
+          <FileInput size={15} />
+          {t('Import film file')}
+        </button>
+      </>
+    );
+  }
+
   function body() {
     if (page === 'help') return <HelpPage />;
     if (library === null || !ready) {
@@ -768,10 +772,13 @@ export function Home({ providers, workspace, tasks, examples, busy, error, revis
               available={available}
               disabled={disabled}
               onCreate={(brief) => onAction(() => window.studio.createProject(brief))}
-              onOpen={() => void onAction(window.studio.openProject)}
-              onImport={() => void onAction(window.studio.importProject)}
               onSetUp={() => onSettings({ models: true })}
             />
+            {/* The other way to begin, outside the prompt: a film the person already has, as a folder or a film file. */}
+            <p className="home-elsewhere">
+              {t('Already have a film?')}
+              {haveFilm('quiet')}
+            </p>
           </section>
           {active.length > 0 && tasksSummary()}
           {library.length > 0 && (
@@ -825,6 +832,7 @@ export function Home({ providers, workspace, tasks, examples, busy, error, revis
               <button className="icon-button" aria-label={t('List view')} aria-pressed={view === 'list'} onClick={() => setView('list')}>
                 <List size={17} />
               </button>
+              {haveFilm('button')}
             </div>
             {library.length ? (
               <div className={`home-projects ${view}`}>{found.map((project) => card(project))}</div>

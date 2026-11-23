@@ -837,6 +837,7 @@ export const zh: Record<string, string> = {
   "Templates": "模板",
   "Open project": "打开项目",
   "Import film file": "导入影片文件",
+  "Already have a film?": "已经有影片了？",
   "Import a film file": "导入影片文件",
   "Switch to the light theme": "切换到浅色主题",
   "Switch to the dark theme": "切换到深色主题",
