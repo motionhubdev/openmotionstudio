@@ -28,7 +28,16 @@ Linux, macOS and Windows, and stages it on npm. A maintainer approves it. The de
    ```
 
 A tag that names another version than `package.json`, or a commit main does not hold, stops at `pack`. A failed
-`verify` stages nothing: fix it on main and tag a new version, since a published version never changes.
+`verify` stages nothing: fix it on main, then move the tag to the fixed commit, since that version never reached npm:
+
+```bash
+git push origin :refs/tags/oms-v<version>
+git fetch origin main
+git tag -f oms-v<version> origin/main
+git push origin oms-v<version>
+```
+
+A version npm has published never changes: a fix after it is a new version.
 
 ## Once, before the first version
 
