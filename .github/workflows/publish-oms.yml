@@ -60,7 +60,7 @@ jobs:
         with:
           name: oms-tarball
           path: ${{ runner.temp }}/oms
-      - name: Install ffmpeg (apt, Homebrew, Chocolatey: a full build, as the README asks)
+      - name: Install a full ffmpeg (apt, Homebrew or Chocolatey)
         shell: bash
         run: |
           case "$RUNNER_OS" in
