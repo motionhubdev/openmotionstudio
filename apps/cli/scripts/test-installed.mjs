@@ -130,6 +130,21 @@ export default function Main() {
   assert.match(await readFile(join(scratch, 'scored.srt'), 'utf8'), /One\.[\s\S]*Two\./);
   assert.throws(() => oms('render', scored, '--out', video), /is there already/);
 
+  // The same film as a web player: two pages, the scripts, the bundle, and its sound as one soundtrack as long as the film.
+  const web = join(scratch, 'scored-web');
+  assert.equal(oms('player', scored, '--out', web).trim(), web);
+  for (const file of ['index.html', 'film.html', 'player.js', 'studio/core.js', 'build/film-1.js', 'soundtrack.m4a'])
+    assert.match((await readFile(join(web, file))).toString('utf8', 0, 200), /\S/, file);
+  await readFile(join(web, 'build/fonts.css')); // the motions' faces: none here, so empty
+  const track = (() => { try { return execFileSync('ffmpeg', ['-hide_banner', '-i', join(web, 'soundtrack.m4a')], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }); } catch (error) { return error.stderr; } })();
+  for (const stream of [/Audio: aac/, /Duration: 00:00:02\.0/]) assert.match(track, stream);
+  assert.match(await readFile(join(web, 'index.html'), 'utf8'), /"sound":true/);
+  assert.throws(() => oms('player', scored, '--out', web), /is not empty/);
+  // A film without sound has no soundtrack.
+  const quiet = join(scratch, 'example-web');
+  oms('player', project, '--out', quiet);
+  assert.match(await readFile(join(quiet, 'index.html'), 'utf8'), /"sound":false/);
+
   const silent = join(scratch, 'Missing sound');
   await mkdir(silent);
   await writeFile(join(silent, 'film.tsx'), `import {Film, Scene, Sound} from '@motionhub/runtime';
@@ -140,7 +155,7 @@ export default function Main() {
 `);
   assert.throws(() => oms('check', silent, '--json'), error =>
     error.status === 1 && JSON.parse(error.stdout).issues.some(issue => issue.text.includes('media/chime.wav')));
-  console.log('PASS installed skill, starter, editable example, PNG, bounds, a fresh frame, a render, a motion from motionhub and its sound, and missing audio');
+  console.log('PASS installed skill, starter, editable example, PNG, bounds, a fresh frame, a render, a web player, a motion from motionhub and its sound, and missing audio');
 } finally {
   await rm(scratch, { recursive: true, force: true });
 }

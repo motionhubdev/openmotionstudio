@@ -11,7 +11,8 @@ film end to end, as Remotion's or HyperFrames' command line does; opening it in 
 copies the skill and the film format (the film section of `film.md`) into the host's user skills directory
 (`CLAUDE_CONFIG_DIR` or `~/.claude`, `CODEX_HOME` or `~/.codex`) and refuses to replace one already there. `oms init`
 writes the Studio's starter `film.tsx` into an empty or new folder; `oms check` and `oms still` build the film and draw
-it; `oms render` exports it as an MP4. `oms motion search` and `oms motion use` find a motion on motionhub and take it
+it; `oms render` exports it as an MP4, and `oms player` as a folder a browser plays
+([ADR 0018](0018-a-film-plays-on-the-web-from-a-static-folder.md)). `oms motion search` and `oms motion use` find a motion on motionhub and take it
 into the project when a film asks for one, as the Studio's `search_motions` and `use_motion` do (`motions.ts`, through
 `@motionhub/cli`): `oms` ships no motions of its own. `oms sound` renders the project's motion's sound
 (`react/sound.json`) for cues the agent lists (`at:role`, refusing a role that sound lacks) into a WAV the film's

@@ -1,6 +1,6 @@
 # 4. A film's code runs in a sandboxed frame on its own scheme
 
-> **Status:** Accepted — the scheme also serves the project's own files and allows inline scripts, `data:` media and fetches within it, for Remotion and HyperFrames (see the architecture) · **Date:** 2026-11-10
+> **Status:** Accepted — the scheme also serves the project's own files and allows inline scripts, `data:` media and fetches within it, for Remotion and HyperFrames (see the architecture); on the web, the frame is a static folder's page that fetches nothing ([0018](0018-a-film-plays-on-the-web-from-a-static-folder.md)) · **Date:** 2026-11-10
 
 ## Context
 

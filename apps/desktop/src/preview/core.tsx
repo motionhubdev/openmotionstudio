@@ -7,7 +7,9 @@
 //   - In the Studio's preview it plays on its own clock and obeys play, pause and seek.
 //   - With ?render=1 it holds still and exposes window.__oms.seek(t) for the exporter and
 //     for stills, which resolves once the frame at t is committed; a DevTools screenshot then
-//     draws it.
+//     draws it. Its parent may move it too (oms:seek), as oms's web player does on its own clock
+//     (apps/cli/player.ts), and hears each frame drawn (oms:time) and whether an image it shows is
+//     still loading. With &framed=1 it draws nothing unless it is in a frame.
 //
 // Built by scripts/build-preview.mjs into resources/preview/core.js.
 
@@ -73,6 +75,9 @@ interface Spoken {
 
 /** The project's narration, read from voice/ through the scheme; null when it has none, or a clip will not read (said in the console). */
 async function spoken(): Promise<Spoken | null> {
+  // A page that carries its narration (oms's web player, on hosts a sandboxed frame cannot fetch from) gives it here.
+  const carried = document.getElementById('oms-voice');
+  if (carried) return JSON.parse(carried.textContent ?? 'null') as Spoken | null;
   const response = await fetch('project/voice/lines.json');
   if (!response.ok) return null;
   try {
@@ -270,20 +275,45 @@ function Player({ Film, film }: { Film: ComponentType; film: FilmInfo }) {
   return <Frame Film={Film} film={film} t={t} scale={scale} />;
 }
 
+/** Whether an image the page shows has not loaded yet. */
+const loadingImages = () => [...document.images].some((image) => !image.complete);
+
 function Still({ Film, film }: { Film: ComponentType; film: FilmInfo }) {
-  const [at, setAt] = useState({ t: 0, n: 0 });
+  const [at, setAt] = useState({ t: 0, n: 0, told: false });
   const painted = useRef<((t: number) => void) | null>(null);
+  useEffect(() => {
+    const onMessage = (event: MessageEvent<ToPreview>) => {
+      if (event.source !== parent || parent === window || event.data?.type !== 'oms:seek' || !Number.isFinite(event.data.t)) return;
+      const t = Math.max(0, Math.min(film.seconds, event.data.t));
+      setAt((a) => ({ t, n: a.n + 1, told: true }));
+    };
+    // An image that finishes loading may be the last one the frame waits for.
+    const onLoad = (event: Event) => {
+      if (parent !== window && event.target instanceof HTMLImageElement && !loadingImages()) post({ type: 'oms:time', t: atRef.current, playing: false, loading: false });
+    };
+    addEventListener('message', onMessage);
+    addEventListener('load', onLoad, true);
+    addEventListener('error', onLoad, true);
+    return () => {
+      removeEventListener('message', onMessage);
+      removeEventListener('load', onLoad, true);
+      removeEventListener('error', onLoad, true);
+    };
+  }, [film]);
+  const atRef = useRef(0);
+  atRef.current = at.t;
   useEffect(() => {
     window.__oms = {
       ...film,
       seek: (t) =>
         new Promise((done) => {
           painted.current = done;
-          setAt((a) => ({ t, n: a.n + 1 }));
+          setAt((a) => ({ t, n: a.n + 1, told: false }));
         }),
     };
   }, [film]);
   useEffect(() => {
+    if (at.told) post({ type: 'oms:time', t: at.t, playing: false, loading: loadingImages() });
     const done = painted.current;
     if (!done) return;
     painted.current = null;
@@ -332,6 +362,11 @@ async function start(): Promise<void> {
   reportErrors();
   const render = new URLSearchParams(location.search).get('render') === '1';
   const version = new URLSearchParams(location.search).get('v') ?? '';
+  // Opened on its own, a page meant for a sandboxed frame would run the film with its host's own origin.
+  if (new URLSearchParams(location.search).get('framed') === '1' && window === top) {
+    document.body.textContent = 'Open the player (index.html), which plays this film in a sandboxed frame.';
+    return;
+  }
   try {
     await motionFaces();
     await loadFaces();

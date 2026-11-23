@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 
 const root = dirname(fileURLToPath(import.meta.url));
-const usage = 'oms install <claude|codex> | init <folder> | check <folder> [--json] | still <folder> --at <seconds> --out <new.png> | render <folder> --out <new.mp4> | motion search <words…> [--json] | motion use <@scope/slug> <folder> | sound <folder> --cues <at:role,…> --seconds <s> --out <new.wav> [--motion <id>]';
+const usage = 'oms install <claude|codex> | init <folder> | check <folder> [--json] | still <folder> --at <seconds> --out <new.png> | render <folder> --out <new.mp4> | player <folder> --out <new folder> | preview <folder> [--port <n>] | motion search <words…> [--json] | motion use <@scope/slug> <folder> | sound <folder> --cues <at:role,…> --seconds <s> --out <new.wav> [--motion <id>]';
 
 /** `oms motion search <words…> [--json]` and `oms motion use <@scope/slug> <folder>`: motions from motionhub, on demand. */
 async function motion(args) {
@@ -57,7 +57,8 @@ async function run() {
   if (command === 'motion') return motion(args);
   if (command === 'sound') return sound(args);
   const options = command === 'still' ? { at: { type: 'string' }, out: { type: 'string' } }
-    : command === 'render' ? { out: { type: 'string' } }
+    : command === 'render' || command === 'player' ? { out: { type: 'string' } }
+    : command === 'preview' ? { port: { type: 'string' } }
     : command === 'check' ? { json: { type: 'boolean' } } : {};
   const { values, positionals } = parseArgs({ args, options, allowPositionals: true });
   if (positionals.length !== 1) throw new Error(usage);
@@ -90,7 +91,10 @@ async function run() {
     await copyFile(join(root, 'dist/starter.tsx'), join(dir, 'film.tsx'), constants.COPYFILE_EXCL);
     return console.log(dir);
   }
-  if (!['still', 'check', 'render'].includes(command)) throw new Error(usage);
+  if (!['still', 'check', 'render', 'player', 'preview'].includes(command)) throw new Error(usage);
+  if (command === 'player' && !values.out) throw new Error(usage);
+  const port = values.port === undefined ? 4173 : Number(values.port);
+  if (command === 'preview' && !(Number.isInteger(port) && port > 0 && port < 65536)) throw new Error(usage);
   if (command === 'render') {
     if (!values.out?.toLowerCase().endsWith('.mp4')) throw new Error(usage);
     // A render is moved into place whole; it never replaces a video, or the subtitles beside it.
@@ -113,6 +117,18 @@ async function run() {
       }, stop.signal);
       if (process.stderr.isTTY) process.stderr.write('\n');
       return console.log(resolve(values.out));
+    }
+    if (command === 'player') {
+      const { soundtrack } = await worker.player(dir, scratch, resolve(values.out));
+      console.log(resolve(values.out));
+      return console.error(`A web player${soundtrack ? ', with its soundtrack' : ''}: put the folder on any static web host and open index.html, or open it here with \`oms preview "${target}"\`.`);
+    }
+    if (command === 'preview') {
+      const stop = await worker.preview(dir, scratch, port, (text) => console.error(text));
+      console.log(`http://127.0.0.1:${port}/`);
+      console.error('Playing; it builds again when a file in the project changes. Ctrl-C stops it.');
+      await new Promise((done) => process.once('SIGINT', done));
+      return await stop();
     }
     if (command === 'still') {
       const png = await worker.still(dir, scratch, Number(values.at));

@@ -35,6 +35,8 @@ await build({
     },
   }],
 });
+// The web player's page script (apps/cli/player.ts), for the browsers it plays in.
+await build({ entryPoints: [join(cli, 'player.ts')], outfile: join(dist, 'player.js'), platform: 'browser', format: 'iife', bundle: true, minify: true, target: 'es2020' });
 await cp(join(desktop, 'resources/preview/core.js'), join(dist, 'resources/preview/core.js'));
 await cp(join(desktop, 'resources/preview/pick.js'), join(dist, 'resources/preview/pick.js'));
 await cp(join(desktop, 'src/main/film/starter.tsx.txt'), join(dist, 'starter.tsx'));

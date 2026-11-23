@@ -4,7 +4,7 @@
 import { createHash } from 'node:crypto';
 import { readdir, rm, stat } from 'node:fs/promises';
 import { availableParallelism, freemem, homedir } from 'node:os';
-import { join } from 'node:path';
+import { basename, join, resolve } from 'node:path';
 import type { FilmReview } from '../desktop/src/shared/api';
 import { buildFilmOnce } from '../desktop/src/main/film/film';
 import { soundFile } from '../desktop/src/main/film/mix';
@@ -12,6 +12,7 @@ import { reviewBuild } from '../desktop/src/main/film/review';
 import { exportFrames } from '../desktop/src/main/film/capture';
 import { findFfmpeg } from './ffmpeg';
 import { findChrome, openChromeStage } from './chrome';
+import { removeBuilt, servePlayer, watchProject, writePlayer } from './web';
 
 // Motions come from motionhub when a film asks for one, taken into the project as the Studio and @motionhub/cli take them.
 export { searchMotions, useMotion } from '../desktop/src/main/motions';
@@ -71,6 +72,69 @@ export async function render(dir: string, scratch: string, file: string, onProgr
       if (Date.now() - (await stat(at)).mtimeMs > KEPT_MS) await rm(at, { recursive: true, force: true });
     }
   await exportFrames(dir, build.version, file, onProgress, signal, open, ffmpeg, { output, stages: renderStages(), resume });
+}
+
+/** The preview core and the web player's page script, beside this worker. */
+const scripts = { core: join(studio, 'core.js'), player: join(__dirname, 'player.js') };
+
+/** The film's size, length, sounds and lines, read by drawing it once. */
+async function filmOf(open: () => Promise<{ film: import('../desktop/src/shared/preview').FilmInfo; close(): void | Promise<void> }>) {
+  const stage = await open();
+  try {
+    return stage.film;
+  } finally {
+    await stage.close();
+  }
+}
+
+/** The film as a web player in the new folder `out` (web.ts): plays in a browser without a render. */
+export async function player(dir: string, scratch: string, out: string): Promise<{ soundtrack: boolean }> {
+  const { build, output, open } = await opener(dir, scratch);
+  if (!build.ok) throw new Error(build.errors.join('\n'));
+  const film = await filmOf(open);
+  return writePlayer(dir, output, film, out, { scripts, work: join(scratch, 'mix'), ffmpeg: findFfmpeg, title: basename(resolve(dir)) });
+}
+
+/**
+ * Plays the film in `dir` at http://127.0.0.1:`port`/ and builds it again whenever a file in the project changes: a
+ * page open there comes back at the time it was at. A build that fails is said, and the last good one stays served.
+ */
+export async function preview(dir: string, scratch: string, port: number, say: (text: string) => void): Promise<() => Promise<void>> {
+  let n = 0;
+  let served = '';
+  const buildOnce = async () => {
+    const at = join(scratch, `build-${++n}`);
+    const { build, output, open } = await opener(dir, at);
+    if (!build.ok) throw new Error(build.errors.join('\n'));
+    const out = join(at, 'player');
+    await writePlayer(dir, output, await filmOf(open), out, { scripts, work: join(at, 'mix'), ffmpeg: findFfmpeg, title: basename(resolve(dir)), live: true });
+    return { at, out };
+  };
+  const first = await buildOnce();
+  served = first.out;
+  let last = first.at;
+  const { server, built } = servePlayer(() => served, port);
+  await new Promise<void>((done, fail) => server.once('listening', done).once('error', fail));
+  let busy: Promise<void> = Promise.resolve();
+  const stop = watchProject(dir, () => {
+    busy = busy.then(async () => {
+      try {
+        const next = await buildOnce();
+        served = next.out;
+        await removeBuilt(last);
+        last = next.at;
+        built();
+        say('Built again.');
+      } catch (error) {
+        say(`The film did not build; still playing the last one that did:\n${error instanceof Error ? error.message : String(error)}`);
+      }
+    });
+  });
+  return async () => {
+    stop();
+    await busy;
+    await new Promise((done) => server.close(done));
+  };
 }
 
 /** The frame at `seconds`, as a PNG. */

@@ -3,6 +3,14 @@
 Every key change to OpenMotionStudio, newest first, by date. What counts as key and the entry format are in
 `CLAUDE.md`, "The changelog".
 
+## 2026-11-23 — `oms player` and `oms preview` play a film in a browser without rendering it
+
+- **What:** `oms player <folder> --out <new folder>` writes a folder any static web host plays: a player page with motionhub's reel controls, and the film drawn by the Studio's preview core in a sandboxed frame. Its sounds are one soundtrack mixed as its MP4's, which keeps the clock. A stalled soundtrack or an image still loading holds the picture, an image for at most five seconds. A browser that refuses sound plays the film muted with a "Tap for sound" button. `oms preview <folder>` plays the same at http://127.0.0.1:4173/ and reloads it at its time when a project file changes. The preview core's still page can now be moved by its parent (`oms:seek`), says whether an image it shows is loading, and reads a narration embedded in its page.
+- **Why:** A film made with `oms` could only be watched once rendered; a web page lets it be shared and watched at once, as VisoTalk's works could.
+- **Breaking:** None.
+- **Upgrade:** Move the installed `skills/oms` folder aside and run `oms install claude` or `oms install codex` again, for the skill's note on the web player.
+- **Refs:** `apps/cli/web.ts`, `apps/cli/player.ts`, `apps/cli/oms.mjs`, `apps/cli/worker.ts`, `apps/desktop/src/preview/core.tsx`, `apps/desktop/src/shared/preview.ts`, `docs/adr/0018-a-film-plays-on-the-web-from-a-static-folder.md`.
+
 ## 2026-11-23 — A check finds characters no loaded face draws, and `oms sound` says what it made
 
 - **What:** The check before an export (and `oms check`) also warns when characters of a text fall past the faces the film loads to a face it never loaded (Chinese after a Latin face), naming them; it had looked only at the first face of each stack. `oms sound` refuses a cue in a role the motion's sound does not have, naming the roles it has, where it had rendered silence, and prints the track's peak and average level and each cue's peak, marking a cue that made no sound. The film format and the skill put a motion's own rules (its type sizes, how its components are placed) before their defaults, place a component drawn in the frame's coordinates in a layer the size of the frame, explain how loud to play a motion's effects track and its bed, and allow fonts under the SIL Open Font License.

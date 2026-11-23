@@ -11,5 +11,6 @@
     "skipLibCheck": true,
     "noEmit": true
   },
-  "include": ["electron.vite.config.mts", "vitest.config.mts", "src/main/**/*", "src/preload/**/*", "src/shared/**/*", "../cli/*.ts", "../cli/__tests__/*.ts"]
+  "include": ["electron.vite.config.mts", "vitest.config.mts", "src/main/**/*", "src/preload/**/*", "src/shared/**/*", "../cli/*.ts", "../cli/__tests__/*.ts"],
+  "exclude": ["../cli/player.ts"]
 }

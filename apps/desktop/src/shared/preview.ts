@@ -99,7 +99,8 @@ export type ToPreview =
 
 export type FromPreview =
   | { type: 'oms:ready'; film: FilmInfo }
-  | { type: 'oms:time'; t: number; playing: boolean }
+  /** Where the picture is; from a still (?render=1) told where by its parent, with whether an image it shows is still loading. */
+  | { type: 'oms:time'; t: number; playing: boolean; loading?: boolean }
   | { type: 'oms:error'; message: string }
   /** `levels` is how many elements, the innermost first, a pick at that point can step out through. */
   | { type: 'oms:picked'; element: PickedElement | null; box: Box | null; levels: number };
