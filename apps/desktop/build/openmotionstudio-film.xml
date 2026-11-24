@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- What a .oms film file is, for Linux desktops (shared-mime-info). A deb or rpm installs electron-builder's copy of
+     this; the AppImage and the tarball carry this one in resources/, for `xdg-mime install` (docs/tech/creator-workflow.md). -->
+<mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">
+  <mime-type type="application/vnd.openmotionstudio.film">
+    <comment>OpenMotionStudio film</comment>
+    <sub-class-of type="application/gzip"/>
+    <glob pattern="*.oms"/>
+    <icon name="x-office-document"/>
+  </mime-type>
+</mime-info>

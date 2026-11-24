@@ -3,6 +3,14 @@
 Every key change to OpenMotionStudio, newest first, by date. What counts as key and the entry format are in
 `CLAUDE.md`, "The changelog".
 
+## 2026-11-24 — A `.oms` film file opens in the Studio from the system
+
+- **What:** The installers register `.oms` (`application/vnd.openmotionstudio.film`) with a document icon, and the Studio takes a film file the system hands it (a double-click, Open with, a drop on the Dock) into a new project as Home's Import does, starting or bringing forward the running Studio. Windows's NSIS installer registers the type and its uninstaller removes it; macOS declares the type `dev.motionhub.studio.film`. On Linux the desktop file names the type, and `resources/openmotionstudio-film.xml` beside the program says what `*.oms` is, for `xdg-mime install`.
+- **Why:** A film file downloaded from openmotion.studio could only be opened from inside the Studio.
+- **Breaking:** None.
+- **Upgrade:** Install the new version with its installer (Windows, macOS). On Linux, install the desktop file and the mime file as `docs/tech/creator-workflow.md` says.
+- **Refs:** `apps/desktop/electron-builder.yml`, `apps/desktop/build/`, `apps/desktop/src/main/index.ts`, `apps/desktop/src/main/oms-file.ts`, [creator workflow](docs/tech/creator-workflow.md).
+
 ## 2026-11-24 — `oms font` cuts in words a film imports from outside its folder
 
 - **What:** `oms font` builds the film and takes the characters of every source it is built from, beside the project's own, so text a film imports from outside its folder (a copy file shared by several films) is in the face it cuts. A film that does not build (one importing the very fonts being fetched again, say) is cut from the project's own sources, and oms says what it left out and why.

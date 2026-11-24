@@ -6,13 +6,13 @@ import { createUpdateDownloader } from './installer-update';
 import { BaseWindow, BrowserWindow, Menu, Tray, app, dialog, ipcMain, nativeImage, webContents, session, shell, type Session, type WebContents } from 'electron';
 import { randomUUID } from 'node:crypto';
 import { mkdir, realpath, open as openFile, rm } from 'node:fs/promises';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 import { CHANNELS, EVENTS, MAX_BRIEF, type Project, type ProjectTask } from '../shared/api';
 import { keepFilmsInPlace, registerPreviewScheme, SCHEME, servePreview } from './film/preview';
 import { allowSoftwareWebGL } from './film/stage';
 import { startFilm } from './film/film';
 import { openExample } from './examples';
-import { OMS_EXTENSION, takeProject } from './oms-file';
+import { OMS_EXTENSION, filmFileQueue, filmFilesIn, takeProject } from './oms-file';
 import { createInWorkspace, duplicateProject, filmName, forgetProject, inLibrary, openProject, projectAt, projectLibrary, rememberProject, renameProject } from './project';
 import { providers, studioTranslator } from './providers';
 import { createWorkspace, type WorkspaceHost } from './workspace';
@@ -305,6 +305,30 @@ async function openKnownProject(path: unknown, separate: unknown): Promise<void>
   if (separate) openSeparate(entry); else openInMain(entry);
 }
 
+/**
+ * Opens a film file the system handed the Studio (a double-click, Open with, a drop on the Dock) as Home's Import does:
+ * taken into a new project in the workspace and opened. What goes wrong is said in a message box, since no view asked.
+ */
+async function openFilmFile(file: string): Promise<void> {
+  if (quitting || installingUpdate) return;
+  pendingActions++;
+  try {
+    const project = await takeProject(file, (await workspaceSettings()).path);
+    openInMain(await editorFor(project));
+  } catch (error) {
+    logFailure('film-file.open', error);
+    const tr = await studioTranslator();
+    showMain();
+    await dialog.showMessageBox(mainWindow, {
+      type: 'error', title: 'OpenMotionStudio', message: tr('Could not open the film file'),
+      detail: `${basename(file)}\n${error instanceof Error ? error.message : String(error)}`,
+    });
+  } finally {
+    pendingActions--;
+  }
+}
+const filmFiles = filmFileQueue(openFilmFile, (error) => logFailure('film-file.open', error));
+
 async function createMain(): Promise<void> {
   const partition = `oms-home-${randomUUID()}`;
   homeRenderSession = session.fromPartition(`${partition}-render`);
@@ -390,7 +414,14 @@ allowSoftwareWebGL();
 const primary = app.requestSingleInstanceLock();
 if (!primary) app.quit();
 else {
-  app.on('second-instance', () => { void app.whenReady().then(() => { if (mainWindow) showMain(); }); });
+  // A film file opened while the Studio runs comes as a second launch's argument (Windows, Linux) or as open-file
+  // (macOS, which also sends a cold start's that way, before ready); one from a cold start is in this launch's own.
+  filmFiles.add(filmFilesIn(process.argv.slice(1), process.cwd()));
+  app.on('open-file', (event, path) => { event.preventDefault(); filmFiles.add([path]); });
+  app.on('second-instance', (_event, argv, cwd) => {
+    filmFiles.add(filmFilesIn(argv.slice(1), cwd));
+    void app.whenReady().then(() => { if (mainWindow) showMain(); });
+  });
   app.on('before-quit', event => {
     if (quitReady) return;
     event.preventDefault();
@@ -574,6 +605,7 @@ else {
       { role: 'editMenu' }, { role: 'windowMenu' },
     ]) : null);
     await createMain();
+    filmFiles.start();
     if (app.isPackaged) {
       const check = async () => {
         if (quitting || installingUpdate) return;
