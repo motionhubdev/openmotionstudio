@@ -3,6 +3,13 @@
 Every key change to OpenMotionStudio, newest first, by date. What counts as key and the entry format are in
 `CLAUDE.md`, "The changelog".
 
+## 2026-11-24 — A `.oms` film file opens in the Studio from the system
+
+- **What:** The installers register `.oms` (`application/vnd.openmotionstudio.film`) with a document icon, and the Studio takes a film file the system hands it (a double-click, Open with, a drop on the Dock) into a new project as Home's Import does, starting or bringing forward the running Studio. Windows's NSIS installer registers the type and its uninstaller removes it; macOS declares the type `dev.motionhub.studio.film`. On Linux the desktop file names the type, and `resources/openmotionstudio-film.xml` beside the program says what `*.oms` is, for `xdg-mime install`.
+- **Why:** A film file downloaded from openmotion.studio could only be opened from inside the Studio.
+- **Breaking:** None.
+- **Upgrade:** Install the new version with its installer (Windows, macOS). On Linux, install the desktop file and the mime file as `docs/tech/creator-workflow.md` says.
+- **Refs:** `apps/desktop/electron-builder.yml`, `apps/desktop/build/`, `apps/desktop/src/main/index.ts`, `apps/desktop/src/main/oms-file.ts`, [creator workflow](docs/tech/creator-workflow.md).
 ## 2026-11-24 — The Studio exports in headless Chrome, several at once, with a GPU trial
 
 - **What:** The Studio draws its stills and exports in the same chrome-headless-shell `oms render` uses, one browser a core as memory allows, instead of one offscreen Electron window; the installer carries that Chrome. `OMS_RENDER_GPU=1` is a trial that draws a film's WebGL on the machine's GPU (ANGLE: Direct3D 11 on Windows, Metal on macOS, Vulkan on Linux) in place of SwiftShader. Also from the same work: the agent's `use_font`, thirty minutes for Claude Code's long tools, a film file saved from the export menu, MiniMax's split words taken once, a film's WebGL contexts freed as its canvases go, and the composer keeping its words when the agent is switched.

@@ -844,6 +844,7 @@ export const zh: Record<string, string> = {
   "Connected assistants": "已连接的创作助手",
   "A project folder, or a film file (.oms)": "项目文件夹，或影片文件（.oms）",
   "Import a project": "导入项目",
+  "Could not open the film file": "无法打开影片文件",
   "Project folder (film.tsx) or film file": "项目文件夹（film.tsx）或影片文件",
   "Switch to the light theme": "切换到浅色主题",
   "Switch to the dark theme": "切换到深色主题",

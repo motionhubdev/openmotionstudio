@@ -20,6 +20,12 @@ Import project (at the right of the prompt's foot, or Ctrl/⌘ O) takes what the
 where it is (on Windows and Linux, whose dialogs pick files or folders but not either, by its `film.tsx`), or a `.oms`
 an agent packed with `oms pack`, taken into a new folder in the workspace and opened
 ([ADR 0019](../adr/0019-a-film-travels-as-one-oms-file.md)).
+A `.oms` opened from the system (a double-click, Open with, a drop on the Dock) is imported the same way, by the
+running Studio or one it starts; a file that is not a film is said in a message box. The installers register the
+type: Windows's NSIS installer (and its uninstaller removes it), and macOS's app, which declares
+`dev.motionhub.studio.film`. On Linux the AppImage and the tarball name the type in their desktop file but install
+nothing; once that desktop file is installed, `xdg-mime install --novendor resources/openmotionstudio-film.xml` from
+beside the program (the AppImage's mount, or the tarball's folder) teaches the desktop what `*.oms` is.
 No provider is needed to play, inspect, check or export a starting point. The assistant's brief prepares a message with the subject, audience,
 length and aspect ratio; it never sends a message or edits the film by itself.
 

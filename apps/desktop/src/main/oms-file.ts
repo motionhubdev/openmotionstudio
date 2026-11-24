@@ -4,7 +4,7 @@
 // packages, and what a project ignores at its top (a render, its subtitles, stills).
 
 import { lstat, mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
-import { basename, dirname, join } from 'node:path';
+import { basename, dirname, join, resolve } from 'node:path';
 import { gunzipSync, gzipSync } from 'node:zlib';
 import type { Project } from '../shared/api';
 import { STATE_DIR, createInWorkspace, ignore, openProject, projectAt } from './project';
@@ -134,4 +134,27 @@ export async function takeProject(picked: string, workspace: string): Promise<Pr
   if ((await stat(picked)).isDirectory()) return openProject(picked);
   if (basename(picked) === 'film.tsx') return openProject(dirname(picked));
   throw new Error("Choose a project folder (or the film.tsx in it), or a film file (.oms).");
+}
+
+/**
+ * The film files among a launch's arguments, as Windows and Linux pass a double-clicked one: `argv` is the program's
+ * (or a second launch's), and a relative path is taken from `cwd`, where that launch started. Switches are not files.
+ */
+export function filmFilesIn(argv: readonly string[], cwd: string): string[] {
+  return argv.filter((arg) => !arg.startsWith('-') && arg.toLowerCase().endsWith(OMS_EXTENSION)).map((arg) => resolve(cwd, arg));
+}
+
+/**
+ * Takes film files the system hands the Studio one after another, holding those that arrive before it can open them
+ * (a cold start's, which come before its window) until `start`. `open` reports its own failures; one that still
+ * rejects goes to `failed` and the next file is opened all the same.
+ */
+export function filmFileQueue(open: (file: string) => Promise<void>, failed: (error: unknown) => void): { add(files: readonly string[]): void; start(): void } {
+  let held: string[] | null = [];
+  let last = Promise.resolve();
+  const take = (file: string) => { last = last.then(() => open(file)).catch(failed); };
+  return {
+    add(files) { if (held) held.push(...files); else files.forEach(take); },
+    start() { const waiting = held ?? []; held = null; waiting.forEach(take); },
+  };
 }

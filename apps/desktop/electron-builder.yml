@@ -25,6 +25,17 @@ npmRebuild: false
 # into the .icns and Linux's PNGs, and for Windows an .ico of 16 to 256 px. The window takes the same files
 # (src/main/index.ts).
 icon: resources/icon.png
+# A film file (.oms, ADR 0019) opens in the Studio, which takes it in as Home's Import does (src/main/index.ts). Its
+# document icon is the Studio's tile on a page, build/oms.ico and build/oms.icns. The name is Windows's ProgID and
+# macOS's document type; the description is what Explorer and Linux call the kind of file.
+fileAssociations:
+  - ext: oms
+    name: OpenMotionStudio film
+    description: OpenMotionStudio film
+    mimeType: application/vnd.openmotionstudio.film
+    role: Editor
+    rank: Owner
+    icon: oms
 # Generate update metadata with --publish never. CI attaches it to the draft release.
 publish:
   provider: github
@@ -34,6 +45,16 @@ mac:
   category: public.app-category.video
   hardenedRuntime: true
   target: [dmg, zip]
+  # The Studio declares the film file's type, so Finder names its kind and shows its icon.
+  extendInfo:
+    UTExportedTypeDeclarations:
+      - UTTypeIdentifier: dev.motionhub.studio.film
+        UTTypeDescription: OpenMotionStudio film
+        UTTypeConformsTo: [public.data]
+        UTTypeIconFile: oms.icns
+        UTTypeTagSpecification:
+          public.filename-extension: [oms]
+          public.mime-type: [application/vnd.openmotionstudio.film]
 win:
   icon: resources/icon.ico
   target: nsis
@@ -44,3 +65,8 @@ nsis:
 linux:
   category: AudioVideo
   target: [AppImage, tar.gz]
+  # The desktop file names the film file's type, but neither target installs what *.oms is: this file says it, for
+  # the person to install with xdg-mime (docs/tech/creator-workflow.md).
+  extraResources:
+    - from: build/openmotionstudio-film.xml
+      to: openmotionstudio-film.xml

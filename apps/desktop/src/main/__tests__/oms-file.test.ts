@@ -1,10 +1,10 @@
 import { existsSync } from 'node:fs';
 import { mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { gzipSync } from 'node:zlib';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { importProject, packProject, packedFiles, takeProject, unpackedFiles } from '../oms-file';
+import { filmFileQueue, filmFilesIn, importProject, packProject, packedFiles, takeProject, unpackedFiles } from '../oms-file';
 
 let dir: string;
 beforeEach(async () => {
@@ -129,5 +129,37 @@ describe('importing what the person picked', () => {
     await writeFile(file, (await packProject(root)).bytes);
     expect((await takeProject(file, workspace)).path).toBe(join(workspace, 'Sent'));
     await expect(takeProject(join(root, 'parts', 'kit.tsx'), workspace)).rejects.toThrow('Choose a project folder');
+  });
+});
+
+describe('film files the system hands the Studio', () => {
+  it('takes the .oms paths from a launch, resolved where it started, and nothing else', () => {
+    const cwd = resolve('/home/ann');
+    expect(filmFilesIn(['--allow-file-access-from-files', '.', 'Moon.OMS', resolve('/films/sun.oms'), 'film.tsx', '--x=a.oms'], cwd))
+      .toEqual([resolve(cwd, 'Moon.OMS'), resolve('/films/sun.oms')]);
+    expect(filmFilesIn([], cwd)).toEqual([]);
+  });
+
+  it('holds files until the Studio starts, then opens each one after the other, past a failure', async () => {
+    const events: string[] = [];
+    const failures: unknown[] = [];
+    let finish!: () => void;
+    const done = new Promise<void>((resolve) => { finish = resolve; });
+    const queue = filmFileQueue(async (file) => {
+      events.push(`start ${file}`);
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      events.push(`end ${file}`);
+      if (file === 'b.oms') throw new Error('broken');
+      if (file === 'c.oms') finish();
+    }, (error) => failures.push(error));
+    queue.add(['a.oms']);
+    queue.add(['b.oms']);
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(events).toEqual([]);
+    queue.start();
+    queue.add(['c.oms']);
+    await done;
+    expect(events).toEqual(['start a.oms', 'end a.oms', 'start b.oms', 'end b.oms', 'start c.oms', 'end c.oms']);
+    expect(failures).toEqual([new Error('broken')]);
   });
 });
