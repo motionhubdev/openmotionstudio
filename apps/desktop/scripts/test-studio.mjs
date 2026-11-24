@@ -4,9 +4,23 @@ import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
+import { createRequire } from 'node:module';
 import electron from 'electron';
 
 const desktop = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const ffmpeg = createRequire(import.meta.url)('ffmpeg-static');
+// A film of one clip whose colour changes on frame 89, in three scenes: whole, shown late and further in, held past its end.
+const clipFilm = `import {Film, Scene, Layer, Video} from '@motionhub/runtime';
+import clip from './media/clip.mp4';
+export const film = {width: 64, height: 64, fps: 30};
+export default function Main() {
+  return <Film><Layer id="ground"><div style={{width: '100%', height: '100%', background: '#000'}} /></Layer>
+    <Scene id="whole" duration={3}><Layer id="clip"><Video src={clip} /></Layer></Scene>
+    <Scene id="trimmed" duration={2}><Layer id="clip"><Video src={clip} startAt={1} trimBefore={2.5} /></Layer></Scene>
+    <Scene id="held" duration={5}><Layer id="clip"><Video src={clip} /></Layer></Scene>
+  </Film>;
+}
+`;
 const temp = await mkdtemp(join(tmpdir(), 'oms-studio-test-'));
 await mkdir(join(temp, 'user-data'));
 await writeFile(join(temp, 'user-data/settings.json'), JSON.stringify({ providers: [], active: null, workspace: join(temp, 'projects'), preferences: { language: 'zh-CN', theme: 'light' } }));
@@ -90,6 +104,22 @@ require(${JSON.stringify(join(desktop, 'out/main/index.js'))});
   await until(()=>js(editor,'!!document.querySelector('+JSON.stringify('[aria-label="键盘快捷键"]')+')'),'editor loaded');
   const project=await js(editor,'window.studio.currentProject()'); assert(project?.path);
   assert((await fs.readdir(project.path)).includes('film.tsx')); pass('template creates real independent project');
+  // A recorded clip: the Studio's own stage photographs each frame of an export at the clip's own frame, on a frame's boundary too.
+  const { execFileSync } = require('node:child_process');
+  const ffmpeg = ${JSON.stringify(ffmpeg)};
+  await fs.mkdir(path.join(project.path,'media'),{recursive:true});
+  execFileSync(ffmpeg,['-v','error','-filter_complex','color=red:s=64x64:r=30:d=3,trim=end_frame=89[a];color=lime:s=64x64:r=30:d=2,trim=end_frame=31[b];[a][b]concat=n=2:v=1[v]','-map','[v]','-c:v','libx264','-pix_fmt','yuv420p',path.join(project.path,'media/clip.mp4')]);
+  const template=await fs.readFile(path.join(project.path,'film.tsx'),'utf8');
+  await fs.writeFile(path.join(project.path,'film.tsx'),${JSON.stringify(clipFilm)});
+  await until(()=>js(editor,'document.body.innerText.includes("trimmed")'),'the clip film built');
+  const exported=path.join(temp,'clip.mp4');
+  require('electron').dialog.showSaveDialog=async()=>({canceled:false,filePath:exported});
+  await js(editor,'window.studio.exportFilm()');
+  const colour=frame=>{ const [r,g,b]=execFileSync(ffmpeg,['-v','error','-i',exported,'-vf','select=eq(n\\\\,'+frame+'),format=rgb24,crop=2:2:31:31,scale=1:1','-frames:v','1','-f','rawvideo','-pix_fmt','rgb24','-']);
+    return r>180&&g<80?'red':g>180&&r<80?'green':Math.max(r,g,b)<40?'black':'rgb('+[r,g,b]+')'; };
+  for (const [frame,expected] of [[88,'red'],[89,'green'],[119,'black'],[120,'red'],[133,'red'],[134,'green'],[299,'green']]) assert.equal(colour(frame),expected,'frame '+frame+' of the Studio export');
+  await fs.writeFile(path.join(project.path,'film.tsx'),template);
+  pass('a recorded clip in the Studio export');
   await button(editor,'键盘快捷键'); await button(editor,'打开设置');
   assert((await text(editor)).includes('偏好设置应用于所有 OpenMotionStudio 窗口'));
   await choice(editor,'主题','深色');

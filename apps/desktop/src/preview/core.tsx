@@ -28,8 +28,12 @@ import { FilmAudio } from './sound';
 
 declare global {
   interface Window {
-    /** In a render (?render=1): the film's size and length, and seek(t), resolved once the frame at t is committed (a DevTools screenshot then draws it). */
-    __oms?: FilmInfo & { seek(t: number): Promise<number> };
+    /**
+     * In a render (?render=1): the film's size and length; seek(t), resolved once the frame at t is committed (a DevTools
+     * screenshot then draws it); and moving(), whether a clip is still on its way to its frame, which, where oms drives
+     * Chrome's frames, only a drawn frame brings it (oms draws frames while it is).
+     */
+    __oms?: FilmInfo & { seek(t: number): Promise<number>; moving(): boolean };
     /** In a render: the first error the page met, for the main process to report. */
     __omsError?: string;
     /** The film's bundle, carried in the page by oms's web player: run once React and the runtime are provided. */
@@ -309,6 +313,7 @@ function Still({ Film, film }: { Film: ComponentType; film: FilmInfo }) {
   useEffect(() => {
     window.__oms = {
       ...film,
+      moving: footageLoading,
       seek: (t) =>
         new Promise((done) => {
           painted.current = done;

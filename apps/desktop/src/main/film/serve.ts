@@ -49,6 +49,8 @@ export const TYPES: Record<string, string> = {
   '.ttf': 'font/ttf',
   '.otf': 'font/otf',
   '.mp4': 'video/mp4',
+  // A screen recording from macOS: Chromium plays its H.264 when told it is MP4, and refuses video/quicktime in a data: URL.
+  '.mov': 'video/mp4',
   '.webm': 'video/webm',
   '.mp3': 'audio/mpeg',
   '.wav': 'audio/wav',

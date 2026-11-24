@@ -71,6 +71,7 @@ const ASSETS = [
   '.ttf',
   '.otf',
   '.mp4',
+  '.mov',
   '.webm',
   '.mp3',
   '.wav',

@@ -70,7 +70,7 @@ export async function openStage(version: number, session: Session): Promise<Stag
           if (error) throw new Error(error);
           const info = (await contents.executeJavaScript(
             // All the film is, but its seek, which is no data.
-            'window.__oms ? (({seek, ...film}) => film)(window.__oms) : null',
+            'window.__oms ? (({seek, moving, ...film}) => film)(window.__oms) : null',
           )) as FilmInfo | null;
           if (info) return info;
           await new Promise((done) => setTimeout(done, 50));
