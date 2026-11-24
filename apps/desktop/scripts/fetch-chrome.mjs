@@ -8,6 +8,11 @@ import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 
 const desktop = fileURLToPath(new URL('../', import.meta.url));
+// Linux on Arm has no chrome-headless-shell: the Studio draws in the system's Chromium there (chrome.ts systemChromium).
+if (process.platform === 'linux' && process.arch === 'arm64') {
+  console.log('Chrome to ship: none on Linux on Arm, which draws in the system Chromium');
+  process.exit(0);
+}
 // Inside the package, so the bundle finds the packages it leaves out (@puppeteer/browsers) in its node_modules.
 const scratch = join(desktop, 'node_modules', '.cache', 'fetch-chrome');
 await mkdir(scratch, { recursive: true });
