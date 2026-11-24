@@ -212,24 +212,35 @@ function StillFootage({ src, t, props, style }: { src: string; t: number; props:
   );
 }
 
-/** The clip playing beside the film's clock, put back on it when it drifts; held on its frame while the film is paused. */
+/**
+ * The clip playing beside the film's clock, put back on it when it drifts; held on its frame while the film is paused.
+ * Each move is for the newest `t`: one queued behind a slow load or seek is skipped once a newer one is queued, so it
+ * never pulls the clip back to a time already past, and a pause or a scrub waits behind none of them. A seek that is
+ * slow while scrubbing is left to the next move rather than fail the film: only a still must have its frame.
+ */
 function PlayingFootage({ src, t, props, playing, style }: { src: string; t: number; props: Timing; playing: boolean; style: CSSProperties }) {
   const ref = useRef<HTMLVideoElement>(null);
+  const newest = useRef(0);
   const { startAt, trimBefore, playbackRate } = props;
   useLayoutEffect(() => {
     const video = ref.current;
     if (!video) return;
+    const move = ++newest.current;
     const job = after(video, async () => {
+      if (move !== newest.current) return;
       await open(video, await playable(src));
+      if (move !== newest.current) return;
       const time = footageTime(t, { startAt, trimBefore, playbackRate }, video.duration);
       if (playing && time !== null && time < video.duration - 0.001) {
         video.playbackRate = playbackRate;
         if (Math.abs(video.currentTime - time) > DRIFT) video.currentTime = time;
-        if (video.paused) await video.play().catch(() => {});
+        // Not awaited: the queue would hold every later move until playback starts. A refused play() leaves the clip
+        // paused on its frame, and the next move tries again.
+        if (video.paused) void video.play().catch(() => {});
         return;
       }
       if (!video.paused) video.pause();
-      if (time !== null) await seek(video, time);
+      if (time !== null) await seek(video, time).catch(() => {});
     });
     job.catch((error: unknown) => fail(src, error));
   }, [src, t, startAt, trimBefore, playbackRate, playing]);
