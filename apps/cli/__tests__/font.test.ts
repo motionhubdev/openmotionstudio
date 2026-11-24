@@ -2,7 +2,7 @@ import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promis
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { faces, names, projectCharacters, slug, takeFont } from '../font';
+import { bundledSources, faces, names, projectCharacters, slug, takeFont } from '../font';
 
 let dir: string;
 beforeEach(async () => {
@@ -60,6 +60,17 @@ describe('oms font', () => {
     expect(chars).not.toMatch(/[龘鑫]/);
   });
 
+  it("takes the words a film imports from outside its folder, from its bundle's sources, but not its packages", async () => {
+    const map = { sources: ['../shared/copy.json', 'film.tsx', '../node_modules/react/index.js'], sourcesContent: ['{"hook": "网关"}', '<Line>四季</Line>', '龘'] };
+    const bundle = `(() => {})();\n//# sourceMappingURL=data:application/json;base64,${Buffer.from(JSON.stringify(map)).toString('base64')}\n`;
+    const sources = bundledSources(bundle);
+    expect(sources).toEqual(['{"hook": "网关"}', '<Line>四季</Line>']);
+    expect(bundledSources('(() => {})();')).toEqual([]);
+    const chars = await projectCharacters(dir, sources);
+    for (const c of '网关四季') expect(chars).toContain(c);
+    expect(chars).not.toContain('龘');
+  });
+
   it('writes each weight and the licence, the OFL after the font\'s copyright, and asks for exactly those characters', async () => {
     await writeFile(join(dir, 'film.tsx'), '<Line>四季</Line>');
     await mkdir(join(dir, 'media', 'fonts'), { recursive: true });
@@ -69,7 +80,7 @@ describe('oms font', () => {
       asked.push(url);
       return url.startsWith('https://fonts.googleapis.com/') ? new Response(CSS) : new Response(new Uint8Array(font({ 0: '© Adobe', 14: 'https://scripts.sil.org/OFL' })));
     };
-    const result = await takeFont(dir, 'Noto Sans SC', [700, 400], 'OFL TEXT', get);
+    const result = await takeFont(dir, 'Noto Sans SC', [700, 400], 'OFL TEXT', [], get);
     expect(result.files).toEqual(['media/fonts/noto-sans-sc-400.ttf', 'media/fonts/noto-sans-sc-700.ttf', 'media/fonts/noto-sans-sc-LICENSE.txt']);
     expect(result.licence).toBe('SIL Open Font License 1.1');
     expect((await readdir(join(dir, 'media', 'fonts'))).sort()).toEqual(['mine.woff2', 'noto-sans-sc-400.ttf', 'noto-sans-sc-700.ttf', 'noto-sans-sc-LICENSE.txt']);
@@ -81,11 +92,11 @@ describe('oms font', () => {
 
   it('says what is wrong: no such family, a weight it lacks, a licence it does not name', async () => {
     await writeFile(join(dir, 'film.tsx'), 'x');
-    await expect(takeFont(dir, 'No Such', [400], '', async () => new Response('', { status: 400 }))).rejects.toThrow('Google Fonts has no family "No Such"');
-    await expect(takeFont(dir, 'Noto Sans SC', [400, 900], '', async () => new Response(CSS))).rejects.toThrow('not in weight 900');
-    await expect(takeFont(dir, 'Noto Sans SC', [450.5], '', async () => new Response(CSS))).rejects.toThrow('weights from 1 to 1000');
+    await expect(takeFont(dir, 'No Such', [400], '', [], async () => new Response('', { status: 400 }))).rejects.toThrow('Google Fonts has no family "No Such"');
+    await expect(takeFont(dir, 'Noto Sans SC', [400, 900], '', [], async () => new Response(CSS))).rejects.toThrow('not in weight 900');
+    await expect(takeFont(dir, 'Noto Sans SC', [450.5], '', [], async () => new Response(CSS))).rejects.toThrow('weights from 1 to 1000');
     const get = async (url: string) => (url.startsWith('https://fonts.googleapis.com/') ? new Response(CSS) : new Response(new Uint8Array(font({ 0: '© Someone' }))));
-    expect((await takeFont(dir, 'Noto Sans SC', [400], 'OFL TEXT', get)).licence).toBe('see its licence file');
+    expect((await takeFont(dir, 'Noto Sans SC', [400], 'OFL TEXT', [], get)).licence).toBe('see its licence file');
     expect(await readFile(join(dir, 'media', 'fonts', 'noto-sans-sc-LICENSE.txt'), 'utf8')).toMatch(/^© Someone\n\nThe font names no licence/);
   });
 });

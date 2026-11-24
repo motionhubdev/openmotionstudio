@@ -68,9 +68,9 @@ try {
   assert.ok(packed.includes('film.tsx') && packed.includes('.gitignore') && !packed.includes('Voiced.mp4'));
   assert.throws(() => oms('pack', voiced, '--out', join(scratch, 'film.zip')), /ending in \.oms/);
 
-  // A face from Google Fonts, cut to the characters the project writes, with its licence.
+  // A face from Google Fonts, cut to the characters the film writes, with its licence.
   await writeFile(join(starter, 'parts.tsx'), "export const words = '四季';");
-  assert.match(oms('font', starter, '--family', 'Noto Sans SC', '--weights', '400'), /Wrote media\/fonts\/noto-sans-sc-400\.ttf, media\/fonts\/noto-sans-sc-LICENSE\.txt: Noto Sans SC cut to the \d+ characters the project writes \(SIL Open Font License 1\.1\)/);
+  assert.match(oms('font', starter, '--family', 'Noto Sans SC', '--weights', '400'), /Wrote media\/fonts\/noto-sans-sc-400\.ttf, media\/fonts\/noto-sans-sc-LICENSE\.txt: Noto Sans SC cut to the \d+ characters the film writes \(SIL Open Font License 1\.1\)/);
   // Several families at once, each in its own weights.
   const both = oms('font', starter, '--family', 'Noto Sans SC:700', '--family', 'Hanken Grotesk', '--weights', '500');
   assert.match(both, /Wrote media\/fonts\/noto-sans-sc-700\.ttf/);

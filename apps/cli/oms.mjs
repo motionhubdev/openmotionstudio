@@ -54,8 +54,9 @@ async function sound(args) {
 }
 
 /**
- * `oms font <folder> --family <name> [--weights 400,700]`: a face from Google Fonts cut to the characters the project
- * writes, into its media/fonts/ with its licence; run again when the words change.
+ * `oms font <folder> --family <name> [--weights 400,700]`: a face from Google Fonts cut to the characters the film
+ * writes (its sources and what it imports from outside the project), into its media/fonts/ with its licence; run again
+ * when the words change.
  */
 async function font(args) {
   const { values, positionals } = parseArgs({ args, options: { family: { type: 'string', multiple: true }, weights: { type: 'string' } }, allowPositionals: true });
@@ -73,10 +74,15 @@ async function font(args) {
   const ofl = await readFile(worker.OFL, 'utf8');
   const name = (file) => file.replace(/^.*\//, '').replace(/\.ttf$/, '').replace(/-/g, '_').replace(/^(\d)/, '_$1');
   const declared = [];
-  for (const { family, weights } of asked) {
-    const { files, characters, licence } = await worker.takeFont(dir, family, weights, ofl);
-    console.log(`Wrote ${files.join(', ')}: ${family} cut to the ${characters} characters the project writes (${licence}).`);
-    for (const file of files.filter((f) => f.endsWith('.ttf'))) declared.push({ family, file, weight: /-(\d+)\.ttf$/.exec(file)[1] });
+  const scratch = await mkdtemp(join(tmpdir(), 'oms-font-'));
+  try {
+    for (const { family, weights } of asked) {
+      const { files, characters, licence } = await worker.font(dir, scratch, family, weights, ofl);
+      console.log(`Wrote ${files.join(', ')}: ${family} cut to the ${characters} characters the film writes (${licence}).`);
+      for (const file of files.filter((f) => f.endsWith('.ttf'))) declared.push({ family, file, weight: /-(\d+)\.ttf$/.exec(file)[1] });
+    }
+  } finally {
+    await rm(scratch, { recursive: true, force: true, maxRetries: 4 });
   }
   console.log('Run this again when the words change. Declare them where the film draws:');
   for (const { file } of declared) console.log(`  import ${name(file)} from './${file}';`);
