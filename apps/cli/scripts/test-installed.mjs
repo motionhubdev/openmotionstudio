@@ -151,10 +151,8 @@ export default function Main() {
 `;
   await writeFile(join(clipped, 'film.tsx'), clipFilm('clip'));
   // Red, green or black, from a picture's middle pixel as ffmpeg decodes it.
-  const colour = (file, frame = 0) => {
-    const [r, g, b] = execFileSync('ffmpeg', ['-v', 'error', '-i', file, '-vf', `select=eq(n\\,${frame}),format=rgb24,crop=2:2:31:31,scale=1:1`, '-frames:v', '1', '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-']);
-    return r > 180 && g < 80 ? 'red' : g > 180 && r < 80 ? 'green' : Math.max(r, g, b) < 40 ? 'black' : `rgb(${r}, ${g}, ${b})`;
-  };
+  const named = ([r, g, b]) => (r > 180 && g < 80 ? 'red' : g > 180 && r < 80 ? 'green' : Math.max(r, g, b) < 40 ? 'black' : `rgb(${r}, ${g}, ${b})`);
+  const colour = (file) => named(execFileSync('ffmpeg', ['-v', 'error', '-i', file, '-vf', 'format=rgb24,crop=2:2:31:31,scale=1:1', '-frames:v', '1', '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-']));
   for (const [at, expected] of [[88 / 30, 'red'], [89 / 30, 'green'], [3.5, 'black'], [4.5, 'green'], [9.8, 'green']]) {
     const still = join(scratch, `clipped-${at.toFixed(3)}.png`);
     oms('still', clipped, '--at', String(at), '--out', still);
@@ -162,8 +160,16 @@ export default function Main() {
   }
   const clippedVideo = join(scratch, 'clipped.mp4');
   oms('render', clipped, '--out', clippedVideo);
-  for (const [frame, expected] of [[88, 'red'], [89, 'green'], [119, 'black'], [120, 'red'], [133, 'red'], [134, 'green'], [299, 'green']])
-    assert.equal(colour(clippedVideo, frame), expected, `frame ${frame} of the render`);
+  // Every frame of it, decoded at once: a frame photographed before its clip reached it is one frame in a few hundred,
+  // in some renders only. The clip's frame at film frame n: n in the whole scene, nothing for its first second in the
+  // trimmed one and then 75 (2.5 s) on, and held on its last (119) in the third.
+  const pixels = execFileSync('ffmpeg', ['-v', 'error', '-i', clippedVideo, '-vf', 'format=rgb24,crop=2:2:31:31,scale=1:1', '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-'], { maxBuffer: 1 << 20 });
+  assert.equal(pixels.length / 3, 300, 'the render has every frame');
+  const sourceFrame = (n) => (n < 90 ? n : n < 150 ? (n < 120 ? null : 75 + n - 120) : Math.min(n - 150, 119));
+  for (let n = 0; n < 300; n++) {
+    const source = sourceFrame(n);
+    assert.equal(named(pixels.subarray(n * 3, n * 3 + 3)), source === null ? 'black' : source < 89 ? 'red' : 'green', `frame ${n} of the render`);
+  }
   // A clip named by its path is refused with how to give it: the web player carries only what the film imports.
   await writeFile(join(clipped, 'film.tsx'), clipFilm('"media/clip.mp4"'));
   assert.throws(() => oms('check', clipped, '--json'), error =>

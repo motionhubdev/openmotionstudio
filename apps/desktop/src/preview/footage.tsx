@@ -119,12 +119,15 @@ export function loaded(video: HTMLVideoElement): Promise<void> {
   });
 }
 
+/** Where a seek to `time` moves `video`: INTO_FRAME into its frame, and just inside the clip's end. */
+const seekTarget = (video: HTMLVideoElement, time: number): number => Math.min(time + INTO_FRAME, video.duration - 0.0005);
+
 /**
  * Moves a paused `video` to the frame at `time` and resolves once that frame is decoded (`seeked`); rejects after
  * SEEK_TIMEOUT, so the film fails with it rather than show the frame before.
  */
 export function seek(video: HTMLVideoElement, time: number): Promise<void> {
-  const target = Math.min(time + INTO_FRAME, video.duration - 0.0005);
+  const target = seekTarget(video, time);
   if (Math.abs(video.currentTime - target) < 0.0005 && !video.seeking) return Promise.resolve();
   return new Promise((done, refuse) => {
     const timer = setTimeout(() => {
@@ -139,6 +142,70 @@ export function seek(video: HTMLVideoElement, time: number): Promise<void> {
     video.addEventListener('seeked', onSeeked);
     video.currentTime = target;
   });
+}
+
+/** The longest a source frame is taken to last, in seconds: a frame from more than this before a seek's time is not its. */
+const LONGEST_FRAME = 0.1;
+/** How long a frame that does not look like a seek's is waited on before it is taken anyway, in milliseconds. */
+const SAME_FRAME = 250;
+/** Clips that have painted a frame since they were opened. */
+const painted = new WeakSet<HTMLVideoElement>();
+
+/**
+ * Paints into `picture` the frame `video` was moved to at `target`. Just after `seeked`, the frame a video hands a canvas
+ * can still be the one it showed before: a clip just opened hands its first frame for a while. So each frame's own time
+ * is checked. A clip's first picture is taken once its frame has changed from the one it opened on (`opening`); later
+ * ones once the frame lies just before `target`. A frame that never looks right is taken after SAME_FRAME: the clip's
+ * own first frame asked for, or a long frame of a screen recording holding a still screen. Without WebCodecs the video
+ * is painted as it is.
+ */
+async function paint(video: HTMLVideoElement, picture: HTMLCanvasElement, target: number, opening: number | null): Promise<void> {
+  const draw = (image: CanvasImageSource) => {
+    if (picture.width !== video.videoWidth || picture.height !== video.videoHeight) {
+      picture.width = video.videoWidth;
+      picture.height = video.videoHeight;
+    }
+    picture.getContext('2d')?.drawImage(image, 0, 0, picture.width, picture.height);
+  };
+  if (typeof VideoFrame === 'undefined') return draw(video);
+  const start = performance.now();
+  for (;;) {
+    const frame = frameOf(video);
+    const at = frame ? frame.timestamp / 1e6 : Number.NaN;
+    const waited = performance.now() - start;
+    const looks = opening === null ? at > target - LONGEST_FRAME : at !== opening;
+    if (frame && at <= target + 0.0005 && (looks || waited >= SAME_FRAME)) {
+      draw(frame);
+      frame.close();
+      painted.add(video);
+      return;
+    }
+    frame?.close();
+    if (waited >= SEEK_TIMEOUT) throw new Error(`<Video>: a clip did not show its frame at ${target.toFixed(3)} s in ${SEEK_TIMEOUT / 1000} s.`);
+    await new Promise((done) => setTimeout(done, 4));
+  }
+}
+
+/** The frame `video` hands a canvas now, or null while it has none to hand (it throws InvalidStateError then). */
+function frameOf(video: HTMLVideoElement): VideoFrame | null {
+  try {
+    return new VideoFrame(video);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The time of the frame a clip opened on, while it has painted none; null after, where the browser does not say, or
+ * while it has no frame to say it of (its picture is then checked by its time alone).
+ */
+function openingFrame(video: HTMLVideoElement): number | null {
+  if (painted.has(video) || typeof VideoFrame === 'undefined') return null;
+  const frame = frameOf(video);
+  if (!frame) return null;
+  const at = frame.timestamp / 1e6;
+  frame.close();
+  return at;
 }
 
 /** Puts `video` on `url` and waits until it has a frame. */
@@ -194,12 +261,9 @@ function StillFootage({ src, t, props, style }: { src: string; t: number; props:
       await open(clip, await playable(src));
       const time = footageTime(t, { startAt, trimBefore, playbackRate }, clip.duration);
       if (time === null) return;
+      const opening = openingFrame(clip);
       await seek(clip, time);
-      if (picture.width !== clip.videoWidth || picture.height !== clip.videoHeight) {
-        picture.width = clip.videoWidth;
-        picture.height = clip.videoHeight;
-      }
-      picture.getContext('2d')?.drawImage(clip, 0, 0, picture.width, picture.height);
+      await paint(clip, picture, seekTarget(clip, time), opening);
     });
     waitFor(job);
     job.catch((error: unknown) => fail(src, error));

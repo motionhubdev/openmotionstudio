@@ -1,14 +1,18 @@
 import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { bundledSources, faces, names, projectCharacters, slug, takeFont } from '../font';
+import { font as filmFont } from '../worker';
 
 let dir: string;
 beforeEach(async () => {
   dir = await mkdtemp(join(tmpdir(), 'oms-font-'));
 });
-afterEach(() => rm(dir, { recursive: true, force: true }));
+afterEach(async () => {
+  vi.unstubAllGlobals();
+  await rm(dir, { recursive: true, force: true });
+});
 
 /** A font file with only a name table: each record a Windows US English string. */
 function font(records: Record<number, string>): Buffer {
@@ -88,6 +92,33 @@ describe('oms font', () => {
     const query = new URL(asked[0]!).searchParams;
     expect(query.get('family')).toBe('Noto Sans SC:wght@400;700');
     expect(query.get('text')).toContain('四季');
+  });
+
+  it('says how many of too many characters are only in files the film imports', async () => {
+    await writeFile(join(dir, 'film.tsx'), '<Line>四季</Line>');
+    const shared = String.fromCodePoint(...Array.from({ length: 3200 }, (_, i) => 0x4e00 + i));
+    await expect(takeFont(dir, 'Noto Sans SC', [400], '', [shared], async () => new Response(CSS))).rejects.toThrow(
+      /The film writes \d+ different characters, 3199 of them only in files it imports from outside its folder/,
+    );
+  });
+
+  it('cuts a film that does not build from its own sources, and says why the rest was left out', async () => {
+    // The film imports the very face being fetched again: it cannot build until it is there.
+    await writeFile(join(dir, 'film.tsx'), "import face from './media/fonts/noto-sans-sc-400.ttf';\nexport default () => <div>{face}四季</div>;\n");
+    const asked: string[] = [];
+    vi.stubGlobal('fetch', async (url: string) => {
+      asked.push(url);
+      return url.startsWith('https://fonts.googleapis.com/') ? new Response(CSS) : new Response(new Uint8Array(font({ 0: '© Adobe' })));
+    });
+    const scratch = await mkdtemp(join(tmpdir(), 'oms-font-build-'));
+    try {
+      const result = await filmFont(dir, scratch, 'Noto Sans SC', [400], 'OFL TEXT');
+      expect(result.files).toContain('media/fonts/noto-sans-sc-400.ttf');
+      expect(result.unbuilt).toMatch(/noto-sans-sc-400\.ttf/);
+      expect(decodeURIComponent(asked[0]!)).toContain('四季');
+    } finally {
+      await rm(scratch, { recursive: true, force: true });
+    }
   });
 
   it('says what is wrong: no such family, a weight it lacks, a licence it does not name', async () => {

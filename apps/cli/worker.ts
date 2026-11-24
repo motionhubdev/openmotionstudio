@@ -26,12 +26,13 @@ export { effectsTrack, parseCues } from '../desktop/src/main/film/effects';
 import { bundledSources, takeFont } from './font';
 /**
  * A face from Google Fonts cut to the characters the film writes: its project's sources and every source the film is
- * built from, so words it imports from outside the project are in it too. A film that does not build is said first.
+ * built from, so words it imports from outside the project are in it too. A film that does not build (one whose fonts
+ * this is to fetch again, say) is cut from the project's own sources, and `unbuilt` says why the rest was left out.
  */
-export async function font(dir: string, scratch: string, family: string, weights: number[], ofl: string): Promise<{ files: string[]; characters: number; licence: string }> {
+export async function font(dir: string, scratch: string, family: string, weights: number[], ofl: string): Promise<{ files: string[]; characters: number; licence: string; unbuilt?: string }> {
   const output = join(scratch, 'build');
   const build = await buildFilmOnce(dir, output);
-  if (!build.ok) throw new Error(build.errors.join('\n'));
+  if (!build.ok) return { ...(await takeFont(dir, family, weights, ofl)), unbuilt: build.errors.join('\n') };
   return takeFont(dir, family, weights, ofl, bundledSources(await readFile(join(output, `film-${build.version}.js`), 'utf8')));
 }
 

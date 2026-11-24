@@ -228,7 +228,12 @@ One engine, the Studio's own ([ADR 0005](../adr/0005-the-studio-has-one-engine-i
   into the frame (a time on a frame's boundary reaches the browser a hair early), decoded (`seeked`) and painted into a
   canvas that stands in for the `<video>`. A `<video>` is drawn by the compositor from the frame it was last handed,
   which a screenshot can catch a frame late (Chrome drawing on demand without being driven showed the frame before a seek
-  about one time in four); a canvas is painted with the page, so the frame photographed is the one decoded. A clip's moves
+  about one time in four); a canvas is painted with the page, so the frame photographed is the one decoded. After
+  `seeked` the frame a video hands a canvas can still be the one from before (a clip just opened hands its first, which
+  put that frame in about one render in six where a render's stages start mid-film), so the frame is taken as a WebCodecs
+  `VideoFrame` and checked by its own time: a clip's first picture once its frame differs from the one it opened on,
+  later ones once it lies just before the seek's time, and a frame that never looks right after 250 ms (the clip's own
+  first frame, or a long frame of a recording holding a still screen). A clip's moves
   run one after another. Driven, oms draws frames, unphotographed, while the page says a clip is on its way to its frame
   (`__oms.moving()`); a film without a clip draws none extra. While the preview plays, a clip plays beside the film's clock and is
   put back on it past 0.15 s of drift. A clip plays muted, from `startAt` seconds of its sequence, its source from

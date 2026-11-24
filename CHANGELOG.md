@@ -5,7 +5,7 @@ Every key change to OpenMotionStudio, newest first, by date. What counts as key 
 
 ## 2026-11-24 — `oms font` cuts in words a film imports from outside its folder
 
-- **What:** `oms font` builds the film and takes the characters of every source it is built from, beside the project's own, so text a film imports from outside its folder (a copy file shared by several films) is in the face it cuts. A film that does not build is said before anything is fetched.
+- **What:** `oms font` builds the film and takes the characters of every source it is built from, beside the project's own, so text a film imports from outside its folder (a copy file shared by several films) is in the face it cuts. A film that does not build (one importing the very fonts being fetched again, say) is cut from the project's own sources, and oms says what it left out and why.
 - **Why:** A film drawing words from a shared file outside its project got a face without them, and those characters fell to the machine's own font.
 - **Breaking:** None.
 - **Upgrade:** Update oms, and run `oms font` again in a film that imports words from outside its folder.

@@ -95,7 +95,13 @@ export async function takeFont(
 ): Promise<{ files: string[]; characters: number; licence: string }> {
   if (!family.trim() || !weights.length || weights.some((w) => !Number.isInteger(w) || w < 1 || w > 1000)) throw new Error('Name a family and weights from 1 to 1000, as --family "Noto Sans SC" --weights 400,700.');
   const text = await projectCharacters(dir, sources);
-  if ([...text].length > MOST) throw new Error(`The project writes ${[...text].length} different characters, more than ${MOST}: oms font cuts a face for a film's words, not a whole script.`);
+  const count = [...text].length;
+  if (count > MOST) {
+    // Imported files count whole, code and comments too: say how much of it is theirs, which the project alone does not show.
+    const imported = sources.length ? count - [...(await projectCharacters(dir))].length : 0;
+    const theirs = imported ? `, ${imported} of them only in files it imports from outside its folder (their code and comments count too)` : '';
+    throw new Error(`The film writes ${count} different characters${theirs}, more than ${MOST}: oms font cuts a face for a film's words, not a whole script.`);
+  }
   const query = `family=${encodeURIComponent(family.trim()).replace(/%20/g, '+')}:wght@${[...new Set(weights)].sort((a, b) => a - b).join(';')}&text=${encodeURIComponent(text)}`;
   const response = await get(`https://fonts.googleapis.com/css2?${query}`);
   if (!response.ok)

@@ -77,8 +77,9 @@ async function font(args) {
   const scratch = await mkdtemp(join(tmpdir(), 'oms-font-'));
   try {
     for (const { family, weights } of asked) {
-      const { files, characters, licence } = await worker.font(dir, scratch, family, weights, ofl);
-      console.log(`Wrote ${files.join(', ')}: ${family} cut to the ${characters} characters the film writes (${licence}).`);
+      const { files, characters, licence, unbuilt } = await worker.font(dir, scratch, family, weights, ofl);
+      console.log(`Wrote ${files.join(', ')}: ${family} cut to the ${characters} characters the ${unbuilt ? 'project' : 'film'} writes (${licence}).`);
+      if (unbuilt) console.warn(`The film does not build, so words it imports from outside its folder are not in this face; run this again once it builds:\n${unbuilt}`);
       for (const file of files.filter((f) => f.endsWith('.ttf'))) declared.push({ family, file, weight: /-(\d+)\.ttf$/.exec(file)[1] });
     }
   } finally {
