@@ -3,15 +3,15 @@
 // Studio's preview scripts (resources/preview/).
 import { createHash } from 'node:crypto';
 import { readFile, readdir, rename, rm, stat, writeFile } from 'node:fs/promises';
-import { availableParallelism, freemem, homedir } from 'node:os';
+import { homedir } from 'node:os';
 import { basename, join, resolve } from 'node:path';
 import type { FilmReview } from '../desktop/src/shared/api';
 import { buildFilmOnce, located } from '../desktop/src/main/film/film';
 import { soundFile } from '../desktop/src/main/film/mix';
 import { reviewBuild } from '../desktop/src/main/film/review';
-import { exportFrames } from '../desktop/src/main/film/capture';
+import { exportFrames, renderStages } from '../desktop/src/main/film/capture';
 import { findFfmpeg } from './ffmpeg';
-import { findChrome, openChromeStage } from './chrome';
+import { findChrome, openChromeStage } from '../desktop/src/main/film/chrome';
 import { voiceFilm } from '../desktop/src/main/narration';
 import { TRANSCRIBERS, voiceRecording, type RecordedFilm } from '../desktop/src/main/recording';
 import { VOICE_NAMES, voicesOf, type VoiceSetup } from '../desktop/src/main/voice';
@@ -23,7 +23,7 @@ import { OMS_EXTENSION, packProject } from '../desktop/src/main/oms-file';
 export { motionWords, searchMotions, useMotion } from '../desktop/src/main/motions';
 // Sound effects from the project's motion's sound, for the cues of its picture.
 export { effectsTrack, parseCues } from '../desktop/src/main/film/effects';
-import { bundledSources, takeFont } from './font';
+import { bundledSources, takeFont } from '../desktop/src/main/font';
 /**
  * A face from Google Fonts cut to the characters the film writes: its project's sources and every source the film is
  * built from, so words it imports from outside the project are in it too. A film that does not build (one whose fonts
@@ -56,8 +56,7 @@ async function opener(dir: string, scratch: string) {
 }
 
 /** How many Chromes draw a render at once: one a core, as memory allows (about 1.5 GB each, as VisoTalk measured), at most 8. */
-export const renderStages = (cores = availableParallelism(), free = freemem()): number =>
-  Math.max(1, Math.min(cores, Math.floor(free / 1.5e9), 8));
+export { renderStages } from '../desktop/src/main/film/capture';
 
 /** The film's review: build errors, its scenes and layers, a draw of its start, each scene's middle and its end, and its sounds. */
 export async function check(dir: string, scratch: string): Promise<FilmReview> {

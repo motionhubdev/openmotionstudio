@@ -368,8 +368,66 @@ async function loadFaces(): Promise<void> {
     if (result.status === 'rejected') console.warn(`The face ${faces[i]?.family} did not load:`, result.reason);
 }
 
+/**
+ * WebGL contexts the film makes. A browser keeps at most 16 at once in a page and drops the oldest beyond that, so a
+ * film whose layers each make a renderer, and do not lose their context when they go (three.js's dispose() does not),
+ * draws blank once enough scenes have played. A canvas that was in the page and has left it has its context lost here,
+ * so only the canvases on screen count; a context the browser drops all the same is the film's error, with its cure.
+ */
+function watchWebGL(): void {
+  const contexts = new Map<HTMLCanvasElement, { context: WebGLRenderingContext | WebGL2RenderingContext; shown: boolean }>();
+  const released = new WeakSet<HTMLCanvasElement>();
+  // A context the film loses itself (three.js's forceContextLoss() asks WEBGL_lose_context) is its own choice, not
+  // the browser's: noted here, so only a context the browser drops is the film's error.
+  for (const proto of [WebGLRenderingContext.prototype, WebGL2RenderingContext.prototype]) {
+    const getExtension = proto.getExtension as (this: WebGLRenderingContext, name: string) => unknown;
+    proto.getExtension = function (this: WebGLRenderingContext, name: string) {
+      const extension = getExtension.call(this, name) as WEBGL_lose_context | null;
+      if (name !== 'WEBGL_lose_context' || !extension) return extension;
+      const canvas = this.canvas;
+      return {
+        loseContext: () => {
+          if (canvas instanceof HTMLCanvasElement) released.add(canvas);
+          extension.loseContext();
+        },
+        restoreContext: () => extension.restoreContext(),
+      };
+    } as typeof proto.getExtension;
+  }
+  const getContext = HTMLCanvasElement.prototype.getContext;
+  HTMLCanvasElement.prototype.getContext = function (this: HTMLCanvasElement, type: string, ...rest: unknown[]) {
+    const context = (getContext as (this: HTMLCanvasElement, type: string, ...rest: unknown[]) => RenderingContext | null).call(this, type, ...rest);
+    if (context && /^(webgl2?|experimental-webgl)$/.test(type) && !contexts.has(this)) {
+      contexts.set(this, { context: context as WebGLRenderingContext, shown: this.isConnected });
+      this.addEventListener('webglcontextrestored', () => released.delete(this));
+      this.addEventListener('webglcontextlost', () => {
+        if (released.has(this)) return;
+        post({
+          type: 'oms:error',
+          message:
+            'A WebGL canvas lost its context: the page had more than the 16 a browser keeps at once, and its picture is blank. ' +
+            'Draw with fewer renderers at once (one a layer, or one shared), and lose a renderer’s context when its layer goes ' +
+            '(three.js: renderer.dispose(); renderer.forceContextLoss()).',
+        });
+      });
+    }
+    return context;
+  } as typeof HTMLCanvasElement.prototype.getContext;
+  new MutationObserver(() => {
+    for (const [canvas, entry] of contexts) {
+      if (canvas.isConnected) entry.shown = true;
+      else if (entry.shown) {
+        released.add(canvas);
+        contexts.delete(canvas);
+        entry.context.getExtension('WEBGL_lose_context')?.loseContext();
+      }
+    }
+  }).observe(document, { childList: true, subtree: true });
+}
+
 async function start(): Promise<void> {
   reportErrors();
+  watchWebGL();
   const inline = window.__omsInline;
   const render = inline !== undefined || new URLSearchParams(location.search).get('render') === '1';
   const version = new URLSearchParams(location.search).get('v') ?? '';

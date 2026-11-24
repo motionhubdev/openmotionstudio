@@ -1,6 +1,6 @@
-// `oms font`: a face from Google Fonts, cut to the characters the film writes, into its media/fonts/ with its licence.
-// What it writes is the project's sources and every source its bundle was built from, so words a film imports from
-// outside its folder (a shared copy file) are cut in too.
+// `use_font` (the Studio's agent) and `oms font`: a face from Google Fonts, cut to the characters the film writes, into
+// its media/fonts/ with its licence. What it writes is the project's sources and every source its bundle was built from,
+// so words a film imports from outside its folder (a shared copy file) are cut in too.
 // Google Fonts subsets a family to the characters a request names (`text=`), so a Chinese face of tens of megabytes
 // comes as a few tens of kilobytes; run it again when the film's words change. The licence comes from the font's own
 // name table: its copyright, and the SIL Open Font License beside it when that is the font's licence.

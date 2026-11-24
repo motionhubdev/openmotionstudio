@@ -1,6 +1,6 @@
 # 14. Project sessions outlive editor windows
 
-> **Status:** Accepted · **Date:** 2026-11-15
+> **Status:** Accepted, amended by [0021](0021-the-studio-draws-stills-and-exports-in-the-headless-chrome-oms-uses.md) (no render session: stills and exports are drawn in headless Chrome) · **Date:** 2026-11-15
 
 How the main window, dedicated editors and background agents share a project's live session without restarting it.
 

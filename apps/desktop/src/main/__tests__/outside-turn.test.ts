@@ -79,7 +79,7 @@ afterEach(async () => {
 
 it('keeps a motion the Studio takes during the turn, and puts back what the agent changed in one', async () => {
   const window = { webContents: { send: vi.fn() }, isDestroyed: () => false, isFocused: () => true, isMinimized: () => false, isVisible: () => true, focus: vi.fn(), setTitle: vi.fn() };
-  const state = createWorkspace(window as never, {} as never, vi.fn());
+  const state = createWorkspace(window as never, vi.fn());
   workspaces.push(state);
   await state.open(projectAt(project));
   mocks.turn = async () => {

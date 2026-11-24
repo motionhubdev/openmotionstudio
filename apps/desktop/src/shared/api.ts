@@ -147,6 +147,15 @@ export interface VoicedFilm {
   kept: number;
   characters: number;
   seconds: number;
+  /** Words a line spoken now was read otherwise than written (MiniMax's "Sun." as "Sunday"): rewrite and voice again. */
+  misread: Misread[];
+}
+
+/** A word the voice said otherwise than it is written, in a line. */
+export interface Misread {
+  line: string;
+  written: string;
+  said: string;
 }
 
 /** A model a coding agent offers, and the efforts it takes. */
@@ -672,6 +681,8 @@ export interface StudioApi {
   cancelExport(): Promise<void>;
   /** Asks for an empty (or new) folder, then writes the film there as a Remotion project; the folder, or null when the person cancels. */
   exportRemotion(): Promise<string | null>;
+  /** Asks where to save, then writes the project as one film file (.oms, ADR 0019); the path, or null when the person cancels. */
+  exportFilmFile(): Promise<string | null>;
   /** Shows the last exported file or folder in the system's file manager. */
   showExported(): Promise<void>;
 }
@@ -754,6 +765,7 @@ export const CHANNELS = {
   exportFilm: 'film:export',
   cancelExport: 'film:cancel-export',
   exportRemotion: 'film:export-remotion',
+  exportFilmFile: 'film:export-file',
   showExported: 'film:show-exported',
 } as const;
 

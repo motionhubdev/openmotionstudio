@@ -100,6 +100,7 @@ const api: StudioApi = {
   onVoiceProgress: (listener) => subscribe(EVENTS.voiceProgress, listener),
   cancelExport: () => ipcRenderer.invoke(CHANNELS.cancelExport),
   exportRemotion: () => ipcRenderer.invoke(CHANNELS.exportRemotion),
+  exportFilmFile: () => ipcRenderer.invoke(CHANNELS.exportFilmFile),
   showExported: () => ipcRenderer.invoke(CHANNELS.showExported),
 };
 

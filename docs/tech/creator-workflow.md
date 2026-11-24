@@ -134,8 +134,8 @@ dependencies and symlinks escaping the permitted root. New modal dialogs use nat
 film shortcuts do not run while a dialog is open. Colour meanings stay paper/ink, vermilion for Export, cobalt for
 picture annotations, in both system themes.
 
-## GPU-assisted export
+## Drawing frames
 
-OpenMotionStudio captures film frames in an offscreen Electron window. The desktop app normally lets Chromium choose its graphics backend. To explicitly request GPU rasterization, launch a new Studio process with `OMS_RENDER_GPU=1`. The setting selects ANGLE with D3D11 on Windows, Metal on macOS, or EGL on Linux and applies to the entire Studio process.
+OpenMotionStudio draws a film's stills and its export in headless Chrome, the chrome-headless-shell build `oms` pins, which the installer carries ([ADR 0021](../adr/0021-the-studio-draws-stills-and-exports-in-the-headless-chrome-oms-uses.md)); an export draws with several at once, as `oms render` does, and the two give the same frames. The Studio's own preview is Electron's: to ask it for GPU rasterization, launch a new Studio process with `OMS_RENDER_GPU=1`, which selects ANGLE with D3D11 on Windows, Metal on macOS, or EGL on Linux.
 
-The local `graphics.status` log records Chromium's compositing, rasterization, and WebGL status. Chromium can use software rendering when hardware acceleration is unavailable; for WebGL (a three.js film) the Studio and `oms` turn on SwiftShader, Chromium's software renderer, which Chromium no longer falls back to by itself (`allowSoftwareWebGL` in `film/stage.ts`, and `apps/cli/chrome.ts`). MP4 export encodes the captured frames with FFmpeg's `libx264`.
+The local `graphics.status` log records the preview's compositing, rasterization, and WebGL status. Where no GPU can draw WebGL (a three.js film), the preview and the stills' Chrome turn on SwiftShader, Chromium's software renderer, which Chromium no longer falls back to by itself (`allowSoftwareWebGL` in `film/stage.ts`, and `film/chrome.ts`). MP4 export encodes the frames with FFmpeg's `libx264`.

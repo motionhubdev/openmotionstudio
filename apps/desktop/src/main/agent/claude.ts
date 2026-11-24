@@ -14,6 +14,9 @@ import { CLAUDE_EFFORTS, claudeEnv } from './harness';
 import { moment, question, summary } from './loop';
 import { NO_TOKENS, type Spent, addSpent, claudeResult } from '../usage';
 
+/** How long one Studio tool call may take, for Claude Code (MCP_TOOL_TIMEOUT). */
+const TOOL_MS = 30 * 60_000;
+
 /** The name the Studio's MCP server has in a Claude Code session, and so the prefix of its tools there. */
 export const CLAUDE_STUDIO_SERVER = 'open_motion_studio';
 const STUDIO_PREFIX = `mcp__${CLAUDE_STUDIO_SERVER}__`;
@@ -86,7 +89,10 @@ export class ClaudeSession {
   readonly ended: Promise<void>;
 
   constructor(bin: string, dir: string, args: string[]) {
-    this.child = spawn(bin, args, { cwd: dir, stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true, env: claudeEnv() });
+    // A Studio tool can take minutes (voice_lines speaks every line of a film): give its calls longer than Claude Code's
+    // default, so a narration is not cut off part way and asked for again.
+    const env = { ...claudeEnv(), MCP_TOOL_TIMEOUT: String(TOOL_MS) };
+    this.child = spawn(bin, args, { cwd: dir, stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true, env });
     let buffer = '';
     this.child.stdout!.setEncoding('utf8');
     this.child.stdout!.on('data', (chunk: string) => {

@@ -24,6 +24,8 @@ export interface Word {
 export interface Speech {
   audio: Buffer;
   words: Word[];
+  /** Words the provider says it read otherwise than written, where it says what it read. */
+  misread?: { written: string; said: string }[];
 }
 
 /** A provider as the person set it up, its key opened for the call. */
@@ -216,12 +218,44 @@ async function elevenLabs(setup: VoiceSetup, voice: string, text: string, speed:
   return { audio: Buffer.from(json.audio_base64, 'base64'), words: json.alignment ? elevenLabsWords(json.alignment) : [] };
 }
 
-/** MiniMax's subtitle entries (a syllable, a character, or the blank between two words, in milliseconds), read into words. */
+interface MiniMaxEntry {
+  word: string;
+  time_begin: number;
+  time_end: number;
+  word_begin?: number;
+  word_end?: number;
+  pronounce_word?: string;
+}
+
+/**
+ * MiniMax's subtitle entries (a syllable, a character, or the blank between two words, in milliseconds), each piece of
+ * the written text once: MiniMax gives a written word again for each piece it says it as ("29.5" for each of
+ * "twenty", "nine", "point", "five"), and those are one piece, from the first's start to the last's end.
+ */
+function miniMaxPieces(subtitles: unknown): { text: string; start: number; end: number; said: string }[] {
+  const entries = (Array.isArray(subtitles) ? subtitles : [subtitles]).flatMap((s) => (s as { timestamped_words?: MiniMaxEntry[] } | null)?.timestamped_words ?? []);
+  const pieces: { text: string; start: number; end: number; said: string; span?: string }[] = [];
+  for (const e of entries) {
+    const span = e.word_begin !== undefined && e.word_end !== undefined ? `${e.word_begin}:${e.word_end}` : undefined;
+    const last = pieces[pieces.length - 1];
+    if (span && last?.span === span) {
+      last.end = e.time_end / 1000;
+      last.said += e.pronounce_word ?? '';
+    } else pieces.push({ text: e.word, start: e.time_begin / 1000, end: e.time_end / 1000, said: e.pronounce_word ?? e.word, span });
+  }
+  return pieces;
+}
+
 export function miniMaxWords(subtitles: unknown): Word[] {
-  const entries = (Array.isArray(subtitles) ? subtitles : [subtitles]).flatMap(
-    (s) => ((s as { timestamped_words?: { word: string; time_begin: number; time_end: number }[] } | null)?.timestamped_words ?? []),
-  );
-  return groupWords(entries.map((e) => ({ text: e.word, start: e.time_begin / 1000, end: e.time_end / 1000 })));
+  return groupWords(miniMaxPieces(subtitles));
+}
+
+/** Words MiniMax read as other words ("Sun." as "Sunday"); figures and symbols, which are always read out in words, are not. */
+export function miniMaxMisread(subtitles: unknown): { written: string; said: string }[] {
+  const letters = (s: string) => s.toLowerCase().replace(/[^\p{L}]/gu, '');
+  return miniMaxPieces(subtitles)
+    .filter((p) => p.text.trim() && !/[\p{N}%$€£¥&@#+=/]/u.test(p.text) && letters(p.text) && letters(p.said) && letters(p.text) !== letters(p.said))
+    .map((p) => ({ written: p.text.trim(), said: p.said.trim() }));
 }
 
 async function miniMax(setup: VoiceSetup, voice: string, text: string, speed: number, io: VoiceIo): Promise<Speech> {
@@ -246,7 +280,7 @@ async function miniMax(setup: VoiceSetup, voice: string, text: string, speed: nu
   if (!json.data?.audio || !/^https:\/\//.test(json.data.audio)) throw new Error('MiniMax answered with no speech.');
   const audio = Buffer.from(await (await io.fetch(json.data.audio)).arrayBuffer());
   const subtitles = json.data.subtitle_file && /^https:\/\//.test(json.data.subtitle_file) ? await (await io.fetch(json.data.subtitle_file)).json() : null;
-  return { audio, words: subtitles ? miniMaxWords(subtitles) : [] };
+  return { audio, words: subtitles ? miniMaxWords(subtitles) : [], misread: subtitles ? miniMaxMisread(subtitles) : [] };
 }
 
 /** OpenAI's transcription words, as `verbose_json` with word timestamps gives them. */

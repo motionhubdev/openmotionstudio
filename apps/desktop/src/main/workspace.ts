@@ -1,8 +1,9 @@
 // A project-owned session: its editor view, agent, previews and tasks survive moving between native windows.
 
 import { studioTranslator } from './providers';
-import { BrowserWindow, Notification, app, dialog, shell, type BaseWindow, type IpcMainInvokeEvent, type Session, type OpenDialogOptions, type WebContents } from 'electron';
-import { mkdir, readFile, realpath, writeFile } from 'node:fs/promises';
+import { BrowserWindow, Notification, app, dialog, shell, type BaseWindow, type IpcMainInvokeEvent, type OpenDialogOptions, type WebContents } from 'electron';
+import { mkdir, mkdtemp, readFile, realpath, rename, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import { join, sep } from 'node:path';
 import { log } from './log';
 import {
@@ -47,8 +48,10 @@ import { type MessageParam, caller, failure } from './agent/model';
 import { testProvider } from './agent/test-connection';
 import { TOOLS, type ToolContext, projectPath } from './agent/tools';
 import type { BuildContext } from 'esbuild';
-import { exportFrames, sceneStills, type Stage } from './film/capture';
-import { openStage as captureStage } from './film/stage';
+import { exportFrames, renderStages, sceneStills, type Stage } from './film/capture';
+import { openChromeStage, studioChrome } from './film/chrome';
+import { studioStage } from './film/stage';
+import { studioScripts } from './film/preview';
 import ffmpegStatic from 'ffmpeg-static';
 import { soundPeaks } from './film/mix';
 import { voiceFilm } from './narration';
@@ -69,6 +72,9 @@ import { NO_TOKENS, type Spent, readUsage, recordUsage, totals } from './usage';
 import { randomUUID } from 'node:crypto';
 import { isAbsolute, relative, resolve } from 'node:path';
 import { ProviderStore, providers } from './providers';
+import { packProject } from './oms-file';
+import { takeFont } from './font';
+import OFL from './ofl.txt?raw';
 
 /** The ffmpeg shipped with the app; inside a package it is unpacked beside the archive. */
 export function ffmpegPath(): string {
@@ -87,7 +93,7 @@ const projectOwners = new Map<string, WorkspaceHost>();
 
 type Handler = (event: IpcMainInvokeEvent, ...args: unknown[]) => unknown;
 
-export function createWorkspace(host: WorkspaceHost, renderSession: Session, changed: () => void = () => {}) {
+export function createWorkspace(host: WorkspaceHost, changed: () => void = () => {}) {
   const handlers = new Map<string, Handler>();
   const tasks = new Set<Promise<unknown>>();
   // Which window the project is in is the app's to say (index.ts taskList), not the project's.
@@ -149,18 +155,30 @@ export function createWorkspace(host: WorkspaceHost, renderSession: Session, cha
     claimed = null;
   };
   const stages = new Set<Stage>();
+  // A film still, for a review, a still or an export: drawn in the headless Chrome the Studio ships (ADR 0021), from the
+  // project's files and its build, with a profile of its own that goes when it closes.
   const openStage = async (version: number): Promise<Stage> => {
     const source = open;
-    const stage = await captureStage(version, renderSession);
+    if (!source) throw new Error('No project is open.');
+    const profile = await mkdtemp(join(tmpdir(), 'oms-stage-'));
+    const forget = () => rm(profile, { recursive: true, force: true, maxRetries: 5 }).catch(() => {});
+    let chrome: Awaited<ReturnType<typeof openChromeStage>>;
+    try {
+      const binary = await studioChrome(join(app.getAppPath(), 'resources'));
+      chrome = await openChromeStage(binary, source.project.path, buildDir(source.project.path), studioScripts(), profile, version);
+    } catch (error) {
+      await forget();
+      throw error;
+    }
+    const stage = studioStage(chrome);
+    stage.close = () => {
+      stages.delete(stage);
+      void Promise.resolve(chrome.close()).finally(forget);
+    };
     if (host.isDestroyed() || open !== source) {
       stage.close();
       throw new Error('The window was closed.');
     }
-    const close = stage.close;
-    stage.close = () => {
-      stages.delete(stage);
-      close();
-    };
     stages.add(stage);
     return stage;
   };
@@ -548,6 +566,12 @@ export function createWorkspace(host: WorkspaceHost, renderSession: Session, cha
               const folder = taken.path.split(sep).join('/') + '/';
               for (const [path, bytes] of await noteFiles(dir, true)) if (path.startsWith(folder)) state.published.set(path, bytes);
             }
+            return taken;
+          },
+          useFont: async (family, weights) => {
+            const taken = await takeFont(dir, family, weights, OFL);
+            // Written by the Studio, as a motion it takes is: published as they are now.
+            if (state.published) for (const [path, bytes] of await noteFiles(dir, true)) if (taken.files.includes(path)) state.published.set(path, bytes);
             return taken;
           },
           voiceKinds: async () => (await providers().voices()).map((v) => v.kind),
@@ -968,6 +992,7 @@ export function createWorkspace(host: WorkspaceHost, renderSession: Session, cha
           stage: (version) => openStage(version),
           searchMotions: (words) => searchMotions(words),
           useMotion: (id) => useMotion(dir, id),
+          useFont: (family, weights) => takeFont(dir, family, weights, OFL),
           voiceKinds: async () => (await providers().voices()).map((v) => v.kind),
           voiceChoices: async (kind) => voicesOf(await providers().voiceSetup(kind)),
           voiceFilm: () => voiceOpenFilm(state),
@@ -1051,7 +1076,8 @@ export function createWorkspace(host: WorkspaceHost, renderSession: Session, cha
         controller.signal.throwIfAborted();
         if (open !== state || state.build?.version !== build.version)
           throw new Error('The film changed before export. Review the latest preview and export again.');
-        await exportFrames(state.project.path, build.version, result.filePath, (done) => send(EVENTS.exportProgress, done), controller.signal, openStage, ffmpegPath());
+        // Several stages at once, each a window drawing every n-th frame, as `oms render` draws with several browsers.
+        await exportFrames(state.project.path, build.version, result.filePath, (done) => send(EVENTS.exportProgress, done), controller.signal, openStage, ffmpegPath(), { stages: renderStages() });
         exported = result.filePath;
         return result.filePath;
       } finally {
@@ -1060,6 +1086,27 @@ export function createWorkspace(host: WorkspaceHost, renderSession: Session, cha
     });
 
     handle(CHANNELS.cancelExport, () => exporting?.abort());
+    // The project as one film file (ADR 0019): its own files, packed as `oms pack` packs them, written whole then moved into place.
+    handle(CHANNELS.exportFilmFile, async (event) => {
+      const state = requireOpen();
+      if (working || exporting) throw new Error('Wait for the current task to finish before exporting.');
+      if (!state.project.film) throw new Error('The project has no film to save.');
+      const tr = await studioTranslator();
+      const window = host.window?.() ?? BrowserWindow.fromWebContents(event.sender);
+      const options = {
+        title: tr('Save the film file'),
+        defaultPath: join(state.project.path, `${state.project.name}.oms`),
+        filters: [{ name: tr('Film file'), extensions: ['oms'] }],
+      };
+      const result = window ? await dialog.showSaveDialog(window, options) : await dialog.showSaveDialog(options);
+      if (result.canceled || !result.filePath) return null;
+      const { bytes } = await packProject(state.project.path);
+      const partial = `${result.filePath}.partial`;
+      await writeFile(partial, bytes);
+      await rename(partial, result.filePath);
+      exported = result.filePath;
+      return result.filePath;
+    });
     handle(CHANNELS.exportRemotion, async (event) => {
       const state = requireOpen();
       if (working || exporting) throw new Error('Wait for the current task to finish before exporting.');

@@ -95,7 +95,7 @@ export async function voiceFilm(
   await mkdir(folder, { recursive: true });
   const kept = new Set((await readdir(folder)).filter((file) => CLIP.test(file)));
   const narration: Narration = { voice: film.voice!, lines: {} };
-  const outcome: VoicedFilm = { spoken: 0, kept: 0, characters: 0, seconds: 0 };
+  const outcome: VoicedFilm = { spoken: 0, kept: 0, characters: 0, seconds: 0, misread: [] };
   for (const [i, line] of lines.entries()) {
     const key = clipKey(film.voice!, setup.model, line.text);
     narration.lines[line.id] = key;
@@ -115,6 +115,7 @@ export async function voiceFilm(
       const seconds = await mediaSeconds(ffmpeg, join(folder, `${key}.mp3`));
       const clip: Clip = { text: line.text, voice: film.voice!, seconds, words: spoken.words.map((w) => ({ ...w, end: Math.min(w.end, seconds) })) };
       await writeFile(join(folder, `${key}.json`), `${JSON.stringify(clip, null, 2)}\n`);
+      for (const m of spoken.misread ?? []) outcome.misread.push({ line: line.id, ...m });
       outcome.spoken++;
       outcome.characters += line.text.length;
       outcome.seconds += seconds;
