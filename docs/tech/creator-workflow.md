@@ -1,6 +1,6 @@
 # The creator's workflow
 
-> **Status:** Current · **Updated:** 2026-11-23
+> **Status:** Current · **Updated:** 2026-11-24
 
 How a creator explores a film, points at a change, checks the result and returns to earlier source.
 
@@ -43,7 +43,8 @@ from the picker is checked. A file the video does not use can be renamed beside 
 (`renameAsset`), or moved to the system's trash (`trashAsset`, Electron's `shell.trashItem`), never deleted
 outright; both take only a path the Studio listed, and refuse one the film's code names. Imports keep originals, avoid overwriting names, and are capped at 50 MB per file.
 A font is listed, not installed into the operating system. A film's sounds are `<Sound>` elements
-(see the architecture, "Sound"); video playback and media generation are outside this slice.
+(see the architecture, "Sound"), and a recorded clip is a `<Video>` the film imports (the architecture, "Video"); the
+Assets panel does not list clips yet, and media generation is outside this slice.
 
 ## Make a precise request
 

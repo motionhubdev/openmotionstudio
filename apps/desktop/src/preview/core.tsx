@@ -6,9 +6,10 @@
 //
 //   - In the Studio's preview it plays on its own clock and obeys play, pause and seek.
 //   - With ?render=1 it holds still and exposes window.__oms.seek(t) for the exporter and
-//     for stills, which resolves once the frame at t is committed; a DevTools screenshot then
-//     draws it. Its parent may move it too (oms:seek), and hears each frame drawn (oms:time) and
-//     whether an image it shows is still loading.
+//     for stills, which resolves once the frame at t is committed and each <Video> shows its
+//     frame of t (footage.tsx); a DevTools screenshot then draws it. Its parent may move it
+//     too (oms:seek), and hears each frame drawn (oms:time) and whether an image it shows is
+//     still loading or a clip still moving to its frame.
 //   - In oms's web player (apps/cli/web.ts) the page is a document of its own, written into a
 //     sandboxed frame whole: the film comes in it (window.__omsInline), and it is a still the player moves.
 //
@@ -22,12 +23,17 @@ import * as jsxRuntime from 'react/jsx-runtime';
 import { flushSync } from 'react-dom';
 import { createRoot } from 'react-dom/client';
 import type { FilmInfo, FromPreview, ToPreview } from '../shared/preview';
+import { Footage, FootageClockContext, type FootageClock, footageLoading, footageSettled } from './footage';
 import { FilmAudio } from './sound';
 
 declare global {
   interface Window {
-    /** In a render (?render=1): the film's size and length, and seek(t), resolved once the frame at t is committed (a DevTools screenshot then draws it). */
-    __oms?: FilmInfo & { seek(t: number): Promise<number> };
+    /**
+     * In a render (?render=1): the film's size and length; seek(t), resolved once the frame at t is committed (a DevTools
+     * screenshot then draws it); and moving(), whether a clip is still on its way to its frame, which, where oms drives
+     * Chrome's frames, only a drawn frame brings it (oms draws frames while it is).
+     */
+    __oms?: FilmInfo & { seek(t: number): Promise<number>; moving(): boolean };
     /** In a render: the first error the page met, for the main process to report. */
     __omsError?: string;
     /** The film's bundle, carried in the page by oms's web player: run once React and the runtime are provided. */
@@ -149,7 +155,8 @@ function outlineOf(Film: ComponentType, frame: { width: number; height: number; 
   let outline: FilmOutline | null = null;
   let failure: unknown = null;
   const root = createRoot(document.createElement('div'), { onUncaughtError: (error) => (failure ??= error) });
-  const value = { useTime: () => 0, useCompositionTime: () => 0, ...frame, Video: Footage, voice, onFilm: (o: FilmOutline) => (outline = o) };
+  // Drawn off the page only to learn the film's structure: a clip has nothing to say to it.
+  const value = { useTime: () => 0, useCompositionTime: () => 0, ...frame, Video: () => null, voice, onFilm: (o: FilmOutline) => (outline = o) };
   flushSync(() =>
     root.render(
       <MotionRuntimeProvider value={value}>
@@ -162,12 +169,7 @@ function outlineOf(Film: ComponentType, frame: { width: number; height: number; 
   return outline;
 }
 
-/** A <Video> stand-in until the Studio plays footage. */
-const Footage = ({ style }: { style?: React.CSSProperties }) => (
-  <div style={{ width: '100%', height: '100%', background: '#2a2d33', ...style }} />
-);
-
-function Frame({ Film, film, t, scale }: { Film: ComponentType; film: FilmInfo; t: number; scale: number }) {
+function Frame({ Film, film, t, scale, clock }: { Film: ComponentType; film: FilmInfo; t: number; scale: number; clock: FootageClock }) {
   const value = {
     useTime: () => t,
     useCompositionTime: () => t,
@@ -189,9 +191,11 @@ function Frame({ Film, film, t, scale }: { Film: ComponentType; film: FilmInfo; 
         transform: `translate(-50%, -50%) scale(${scale})`,
       }}
     >
-      <MotionRuntimeProvider value={value}>
-        <Film />
-      </MotionRuntimeProvider>
+      <FootageClockContext.Provider value={clock}>
+        <MotionRuntimeProvider value={value}>
+          <Film />
+        </MotionRuntimeProvider>
+      </FootageClockContext.Provider>
     </div>
   );
 }
@@ -274,12 +278,13 @@ function Player({ Film, film }: { Film: ComponentType; film: FilmInfo }) {
   }, [playing, film, audio, from]);
 
   useEffect(() => post({ type: 'oms:time', t, playing }), [t, playing]);
+  const clock = useMemo(() => ({ playing }), [playing]);
 
-  return <Frame Film={Film} film={film} t={t} scale={scale} />;
+  return <Frame Film={Film} film={film} t={t} scale={scale} clock={clock} />;
 }
 
-/** Whether an image the page shows has not loaded yet. */
-const loadingImages = () => [...document.images].some((image) => !image.complete);
+/** Whether an image the page shows has not loaded yet, or a clip has not reached its frame. */
+const loading = () => [...document.images].some((image) => !image.complete) || footageLoading();
 
 function Still({ Film, film }: { Film: ComponentType; film: FilmInfo }) {
   const [at, setAt] = useState({ t: 0, n: 0, told: false });
@@ -292,7 +297,7 @@ function Still({ Film, film }: { Film: ComponentType; film: FilmInfo }) {
     };
     // An image that finishes loading may be the last one the frame waits for.
     const onLoad = (event: Event) => {
-      if (parent !== window && event.target instanceof HTMLImageElement && !loadingImages()) post({ type: 'oms:time', t: atRef.current, playing: false, loading: false });
+      if (parent !== window && event.target instanceof HTMLImageElement && !loading()) post({ type: 'oms:time', t: atRef.current, playing: false, loading: false });
     };
     addEventListener('message', onMessage);
     addEventListener('load', onLoad, true);
@@ -308,6 +313,7 @@ function Still({ Film, film }: { Film: ComponentType; film: FilmInfo }) {
   useEffect(() => {
     window.__oms = {
       ...film,
+      moving: footageLoading,
       seek: (t) =>
         new Promise((done) => {
           painted.current = done;
@@ -316,14 +322,15 @@ function Still({ Film, film }: { Film: ComponentType; film: FilmInfo }) {
     };
   }, [film]);
   useEffect(() => {
-    if (at.told) post({ type: 'oms:time', t: at.t, playing: false, loading: loadingImages() });
     const done = painted.current;
-    if (!done) return;
     painted.current = null;
-    // Committed: the DevTools screenshot that follows draws a frame from the page as it now is.
-    done(at.t);
+    // Committed, and each clip on its frame: the DevTools screenshot that follows draws a frame from the page as it now is.
+    void footageSettled().then(() => {
+      if (at.told) post({ type: 'oms:time', t: at.t, playing: false, loading: loading() });
+      done?.(at.t);
+    });
   }, [at]);
-  return <Frame Film={Film} film={film} t={at.t} scale={1} />;
+  return <Frame Film={Film} film={film} t={at.t} scale={1} clock="still" />;
 }
 
 function load(src: string): Promise<void> {

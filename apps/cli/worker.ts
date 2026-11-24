@@ -2,7 +2,7 @@
 // headless Chrome (chrome.ts) and encoded by the person's ffmpeg (ffmpeg.ts). Bundled into dist/worker.cjs beside the
 // Studio's preview scripts (resources/preview/).
 import { createHash } from 'node:crypto';
-import { readdir, rename, rm, stat, writeFile } from 'node:fs/promises';
+import { readFile, readdir, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { availableParallelism, freemem, homedir } from 'node:os';
 import { basename, join, resolve } from 'node:path';
 import type { FilmReview } from '../desktop/src/shared/api';
@@ -23,8 +23,19 @@ import { OMS_EXTENSION, packProject } from '../desktop/src/main/oms-file';
 export { motionWords, searchMotions, useMotion } from '../desktop/src/main/motions';
 // Sound effects from the project's motion's sound, for the cues of its picture.
 export { effectsTrack, parseCues } from '../desktop/src/main/film/effects';
-// Faces from Google Fonts, cut to the project's characters.
-export { takeFont } from './font';
+import { bundledSources, takeFont } from './font';
+/**
+ * A face from Google Fonts cut to the characters the film writes: its project's sources and every source the film is
+ * built from, so words it imports from outside the project are in it too. A film that does not build (one whose fonts
+ * this is to fetch again, say) is cut from the project's own sources, and `unbuilt` says why the rest was left out.
+ */
+export async function font(dir: string, scratch: string, family: string, weights: number[], ofl: string): Promise<{ files: string[]; characters: number; licence: string; unbuilt?: string }> {
+  const output = join(scratch, 'build');
+  const build = await buildFilmOnce(dir, output);
+  if (!build.ok) return { ...(await takeFont(dir, family, weights, ofl)), unbuilt: build.errors.join('\n') };
+  return takeFont(dir, family, weights, ofl, bundledSources(await readFile(join(output, `film-${build.version}.js`), 'utf8')));
+}
+
 /** The SIL Open Font License's text, beside this worker. */
 export const OFL = join(__dirname, 'OFL.txt');
 

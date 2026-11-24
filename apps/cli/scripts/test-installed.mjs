@@ -68,9 +68,9 @@ try {
   assert.ok(packed.includes('film.tsx') && packed.includes('.gitignore') && !packed.includes('Voiced.mp4'));
   assert.throws(() => oms('pack', voiced, '--out', join(scratch, 'film.zip')), /ending in \.oms/);
 
-  // A face from Google Fonts, cut to the characters the project writes, with its licence.
+  // A face from Google Fonts, cut to the characters the film writes, with its licence.
   await writeFile(join(starter, 'parts.tsx'), "export const words = '四季';");
-  assert.match(oms('font', starter, '--family', 'Noto Sans SC', '--weights', '400'), /Wrote media\/fonts\/noto-sans-sc-400\.ttf, media\/fonts\/noto-sans-sc-LICENSE\.txt: Noto Sans SC cut to the \d+ characters the project writes \(SIL Open Font License 1\.1\)/);
+  assert.match(oms('font', starter, '--family', 'Noto Sans SC', '--weights', '400'), /Wrote media\/fonts\/noto-sans-sc-400\.ttf, media\/fonts\/noto-sans-sc-LICENSE\.txt: Noto Sans SC cut to the \d+ characters the film writes \(SIL Open Font License 1\.1\)/);
   // Several families at once, each in its own weights.
   const both = oms('font', starter, '--family', 'Noto Sans SC:700', '--family', 'Hanken Grotesk', '--weights', '500');
   assert.match(both, /Wrote media\/fonts\/noto-sans-sc-700\.ttf/);
@@ -132,6 +132,49 @@ export default function Main() {
   oms('still', heavy, '--at', '5', '--out', join(scratch, 'heavy-5.png'));
   assert.notDeepEqual(await readFile(join(scratch, 'heavy-5.png')), await readFile(join(scratch, 'heavy-0.png')), 'the still at 5 s is the stage\'s earlier frame');
 
+  // A recorded clip the film imports: a still, and each frame of a render, shows the clip's own frame at its time, on a
+  // frame's boundary too (89 / 30 s), from startAt and trimBefore, held on its last frame once it has ended.
+  const clipped = join(scratch, 'Clipped');
+  await mkdir(join(clipped, 'media'), { recursive: true });
+  execFileSync('ffmpeg', ['-v', 'error', '-filter_complex', 'color=red:s=64x64:r=30:d=3,trim=end_frame=89[a];color=lime:s=64x64:r=30:d=2,trim=end_frame=31[b];[a][b]concat=n=2:v=1[v]',
+    '-map', '[v]', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', join(clipped, 'media/clip.mp4')]);
+  const clipFilm = (src) => `import {Film, Scene, Layer, Video} from '@motionhub/runtime';
+import clip from './media/clip.mp4';
+export const film = {width: 64, height: 64, fps: 30};
+export default function Main() {
+  return <Film><Layer id="ground"><div style={{width: '100%', height: '100%', background: '#000'}} /></Layer>
+    <Scene id="whole" duration={3}><Layer id="clip"><Video src={${src}} /></Layer></Scene>
+    <Scene id="trimmed" duration={2}><Layer id="clip"><Video src={${src}} startAt={1} trimBefore={2.5} /></Layer></Scene>
+    <Scene id="held" duration={5}><Layer id="clip"><Video src={${src}} /></Layer></Scene>
+  </Film>;
+}
+`;
+  await writeFile(join(clipped, 'film.tsx'), clipFilm('clip'));
+  // Red, green or black, from a picture's middle pixel as ffmpeg decodes it.
+  const named = ([r, g, b]) => (r > 180 && g < 80 ? 'red' : g > 180 && r < 80 ? 'green' : Math.max(r, g, b) < 40 ? 'black' : `rgb(${r}, ${g}, ${b})`);
+  const colour = (file) => named(execFileSync('ffmpeg', ['-v', 'error', '-i', file, '-vf', 'format=rgb24,crop=2:2:31:31,scale=1:1', '-frames:v', '1', '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-']));
+  for (const [at, expected] of [[88 / 30, 'red'], [89 / 30, 'green'], [3.5, 'black'], [4.5, 'green'], [9.8, 'green']]) {
+    const still = join(scratch, `clipped-${at.toFixed(3)}.png`);
+    oms('still', clipped, '--at', String(at), '--out', still);
+    assert.equal(colour(still), expected, `the still at ${at.toFixed(3)} s`);
+  }
+  const clippedVideo = join(scratch, 'clipped.mp4');
+  oms('render', clipped, '--out', clippedVideo);
+  // Every frame of it, decoded at once: a frame photographed before its clip reached it is one frame in a few hundred,
+  // in some renders only. The clip's frame at film frame n: n in the whole scene, nothing for its first second in the
+  // trimmed one and then 75 (2.5 s) on, and held on its last (119) in the third.
+  const pixels = execFileSync('ffmpeg', ['-v', 'error', '-i', clippedVideo, '-vf', 'format=rgb24,crop=2:2:31:31,scale=1:1', '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-'], { maxBuffer: 1 << 20 });
+  assert.equal(pixels.length / 3, 300, 'the render has every frame');
+  const sourceFrame = (n) => (n < 90 ? n : n < 150 ? (n < 120 ? null : 75 + n - 120) : Math.min(n - 150, 119));
+  for (let n = 0; n < 300; n++) {
+    const source = sourceFrame(n);
+    assert.equal(named(pixels.subarray(n * 3, n * 3 + 3)), source === null ? 'black' : source < 89 ? 'red' : 'green', `frame ${n} of the render`);
+  }
+  // A clip named by its path is refused with how to give it: the web player carries only what the film imports.
+  await writeFile(join(clipped, 'film.tsx'), clipFilm('"media/clip.mp4"'));
+  assert.throws(() => oms('check', clipped, '--json'), error =>
+    error.status === 1 && JSON.parse(error.stdout).issues.some(issue => issue.text.includes('import the clip')));
+
   // A render: the film's picture, its sound mixed in and its lines as subtitles, beside and inside the MP4.
   const scored = join(scratch, 'Scored');
   await mkdir(join(scored, 'media'), { recursive: true });
@@ -191,7 +234,7 @@ export default function Main() {
 `);
   assert.throws(() => oms('check', silent, '--json'), error =>
     error.status === 1 && JSON.parse(error.stdout).issues.some(issue => issue.text.includes('media/chime.wav')));
-  console.log('PASS installed skill, starter, editable example, PNG, bounds, a fresh frame, a render (with and without a subtitle track), a web player, a face from Google Fonts, a narration voice and its key, a film file for the Studio, a motion from motionhub and its sound, and missing audio');
+  console.log('PASS installed skill, starter, editable example, PNG, bounds, a fresh frame, a recorded clip in stills and a render, a render (with and without a subtitle track), a web player, a face from Google Fonts, a narration voice and its key, a film file for the Studio, a motion from motionhub and its sound, and missing audio');
 } finally {
   await rm(scratch, { recursive: true, force: true });
 }

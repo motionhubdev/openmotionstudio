@@ -3,6 +3,22 @@
 Every key change to OpenMotionStudio, newest first, by date. What counts as key and the entry format are in
 `CLAUDE.md`, "The changelog".
 
+## 2026-11-24 — `oms font` cuts in words a film imports from outside its folder
+
+- **What:** `oms font` builds the film and takes the characters of every source it is built from, beside the project's own, so text a film imports from outside its folder (a copy file shared by several films) is in the face it cuts. A film that does not build (one importing the very fonts being fetched again, say) is cut from the project's own sources, and oms says what it left out and why.
+- **Why:** A film drawing words from a shared file outside its project got a face without them, and those characters fell to the machine's own font.
+- **Breaking:** None.
+- **Upgrade:** Update oms, and run `oms font` again in a film that imports words from outside its folder.
+- **Refs:** `apps/cli/font.ts`, `apps/cli/worker.ts`, `apps/cli/oms.mjs`.
+
+## 2026-11-24 — A film plays recorded clips: `<Video>`
+
+- **What:** `<Video src={clip}>` (from `@motionhub/runtime`, the clip imported as an image is) draws the clip in the preview, stills, the export, oms's web player and the timeline's scene frames, where it was a grey box. Each frame of a still or an export shows the clip's own frame at that time: the page waits until the clip has been moved there and its frame painted, and oms, where it drives Chrome's frames, draws them while it waits. While the preview plays, the clip plays beside the film's clock. It honours `startAt`, `trimBefore`, `playbackRate` and `objectFit`, plays muted and holds its last frame once it has ended. A film may import a MOV (a macOS screen recording) as well as MP4 and WebM. A clip named by a path, not imported, is refused with how to give it, and one that cannot play, load or reach its frame fails the film with its reason. Each place a film plays holds each whole clip in memory, so clips are cut to the seconds they are shown.
+- **Why:** Films made from screen recordings and footage (a product walkthrough, a demo) could not be made: every clip rendered as a placeholder.
+- **Breaking:** None: a film that drew `<Video>` showed a grey box and now shows its clip.
+- **Upgrade:** Update oms (`npm install -g @motionhub/oms@latest`) and the skill (`npx skills update oms -g`, or `oms install` again) for the film format that names `<Video>`.
+- **Refs:** `apps/desktop/src/preview/footage.tsx`, `apps/desktop/src/preview/core.tsx`, `apps/cli/chrome.ts`, `apps/cli/scripts/test-installed.mjs`, `apps/desktop/scripts/test-studio.mjs`, [architecture](docs/tech/architecture.md) ("Video"), `apps/desktop/src/main/film/film.md`.
+
 ## 2026-11-23 — The oms skill installs with `npx skills add`
 
 - **What:** `npx skills add motionhubdev/openmotionstudio --skill oms -g` installs the oms skill for Claude Code, Codex and the other agents the `skills` installer knows. The skill folder now holds its film format and example film itself, so it is whole however it is installed; `oms install` copies that folder alone. The repository's `run-desktop` skill, for working on the Studio, is marked internal and not offered.

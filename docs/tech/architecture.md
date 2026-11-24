@@ -1,6 +1,6 @@
 # Architecture
 
-> **Status:** Plan — steps 1 to 3 and 6 built, 7 under way; signing waits for its accounts · **Updated:** 2026-11-23
+> **Status:** Plan — steps 1 to 3 and 6 built, 7 under way; signing waits for its accounts · **Updated:** 2026-11-24
 
 The components of the Studio and what each owns, the film, the agent and its providers, what is expensive to change, and the order of work.
 
@@ -66,7 +66,8 @@ apps/desktop/
     providers.ts       the providers, and their keys sealed with safeStorage
     motions.ts         the catalogue and a project's motions, through @motionhub/cli's library
   src/preview/         the Studio's preview scripts: core.tsx (React, @motionhub/runtime and the film's player),
-                       sound.ts (its sounds through Web Audio) and pick.ts (pointing at the picture)
+                       sound.ts (its sounds through Web Audio), footage.tsx (its recorded clips, <Video>) and
+                       pick.ts (pointing at the picture)
   src/preload/         the typed bridge the renderer calls (contextIsolation on, no Node in the renderer)
   src/shared/          what both sides agree on: StudioApi, the preview bridge's messages, and the interface's
                        messages in Chinese (i18n.ts, translations.ts)
@@ -215,6 +216,30 @@ One engine, the Studio's own ([ADR 0005](../adr/0005-the-studio-has-one-engine-i
   and clip) is its `src/voice.json`, given to the provider and the film, so Remotion times the lines as the Studio does,
   plays the clips from `public/voice/` and ducks under them; rendered by Remotion, its sound matches the Studio's own
   export within a frame's worth of fade.
+- **Video**: a recorded clip is the runtime's `<Video src>`, given a file the film imports (`build/…`, carried as a
+  data: URL by the web player; MP4, WebM, or MOV, served as MP4 since Chromium refuses `video/quicktime` in a data:
+  URL), which the preview core draws (`preview/footage.tsx`); a clip named by a path is refused, since the web player
+  carries only what the bundle imports. The core fetches each file once and plays it from a blob: URL, so it seeks
+  anywhere although neither the scheme nor oms's server answers a range; the price is each page holding each whole
+  clip in memory, and the web player's page carrying it as base64. A clip that cannot play, does not load in 30 s or
+  does not reach a frame in 10 s fails the film with that reason (`reportError`, the page's error), rather than leave a
+  still waiting or photograph the frame before. A still, a frame of an export
+  and a frame of the web player wait until each clip shows its own frame of the time asked for: it is moved there 1 ms
+  into the frame (a time on a frame's boundary reaches the browser a hair early), decoded (`seeked`) and painted into a
+  canvas that stands in for the `<video>`. A `<video>` is drawn by the compositor from the frame it was last handed,
+  which a screenshot can catch a frame late (Chrome drawing on demand without being driven showed the frame before a seek
+  about one time in four); a canvas is painted with the page, so the frame photographed is the one decoded. After
+  `seeked` the frame a video hands a canvas can still be the one from before (a clip just opened hands its first, which
+  put that frame in about one render in six where a render's stages start mid-film), so the frame is taken as a WebCodecs
+  `VideoFrame` and checked by its own time: a clip's first picture once its frame differs from the one it opened on,
+  later ones once it lies just before the seek's time, and a frame that never looks right after 250 ms (the clip's own
+  first frame, or a long frame of a recording holding a still screen). A clip's moves
+  run one after another. Driven, oms draws frames, unphotographed, while the page says a clip is on its way to its frame
+  (`__oms.moving()`); a film without a clip draws none extra. While the preview plays, a clip plays beside the film's clock and is
+  put back on it past 0.15 s of drift. A clip plays muted, from `startAt` seconds of its sequence, its source from
+  `trimBefore` at `playbackRate`, and holds its last frame once it has ended. `apps/cli/scripts/test-installed.mjs`
+  holds a still and each frame of oms's render to the clip's own frame, on a frame's boundary too, and
+  `scripts/test-studio.mjs` the Studio's own export the same way.
 - **Lines and captions**: the runtime times each `<Line>` in its scene (its `at` and `dur`, else an equal share) and
   reports its `start` and `end`; `<Film captions>` makes the runtime draw the line being said as a `<Caption>`, so the
   preview and the export show it alike. Every export also carries the lines as subtitles (`film/captions.ts`): SubRip
