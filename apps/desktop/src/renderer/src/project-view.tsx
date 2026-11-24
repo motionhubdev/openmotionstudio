@@ -909,7 +909,9 @@ export function ProjectView({ onGlobalSettings, settingsOpen, project, providers
               brief={brief}
               onBriefTaken={() => setBrief(null)}
               draft={draft.current}
-              onDraft={(text) => (draft.current = text)}
+              onDraft={(text) => {
+                draft.current = text;
+              }}
               onReference={reference}
               onImport={() => void importForMessage()}
               onOpenPanel={(panel) => (panel === 'motions' ? setCentre({ kind: 'motions' }) : openSide(panel))}

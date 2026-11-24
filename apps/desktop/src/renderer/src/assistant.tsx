@@ -502,7 +502,9 @@ export function Assistant({
     window.studio.projectUsage().then(setUsage, (e) => setItems((items) => [...items, { kind: 'notice', text: reason(e), error: true }]));
   useEffect(() => void refreshUsage(), []);
   const [draft, setDraft] = useState(kept);
-  useEffect(() => onDraft(draft), [draft]);
+  useEffect(() => {
+    onDraft(draft);
+  }, [draft]);
   /** The question (its tool id) the person chose to answer in their own words. */
   const [answeringOwn, setAnsweringOwn] = useState<string | null>(null);
   /** Asks the agent menu to open, from an error card's Use another agent. */
