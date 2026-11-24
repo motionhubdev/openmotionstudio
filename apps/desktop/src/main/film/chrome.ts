@@ -331,6 +331,10 @@ async function start(binary: string, profile: string, sandbox: boolean, driven: 
     '--disable-partial-raster',
     // WebGL in software where there is no GPU, as the Studio does (stage.ts allowSoftwareWebGL).
     '--enable-unsafe-swiftshader',
+    // OMS_RENDER_GPU=1 (a trial): WebGL on the machine's GPU, through ANGLE on the platform's own graphics API.
+    ...(process.env.OMS_RENDER_GPU === '1'
+      ? ['--enable-gpu', '--ignore-gpu-blocklist', `--use-angle=${process.platform === 'win32' ? 'd3d11' : process.platform === 'darwin' ? 'metal' : 'vulkan'}`]
+      : []),
     // Nothing leaves the machine: every name fails to resolve and every request not answered from the film goes to a
     // proxy that is not there.
     '--host-resolver-rules=MAP * ~NOTFOUND',

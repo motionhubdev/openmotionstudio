@@ -3,6 +3,14 @@
 Every key change to OpenMotionStudio, newest first, by date. What counts as key and the entry format are in
 `CLAUDE.md`, "The changelog".
 
+## 2026-11-24 — The Studio exports in headless Chrome, several at once, with a GPU trial
+
+- **What:** The Studio draws its stills and exports in the same chrome-headless-shell `oms render` uses, one browser a core as memory allows, instead of one offscreen Electron window; the installer carries that Chrome. `OMS_RENDER_GPU=1` is a trial that draws a film's WebGL on the machine's GPU (ANGLE: Direct3D 11 on Windows, Metal on macOS, Vulkan on Linux) in place of SwiftShader. Also from the same work: the agent's `use_font`, thirty minutes for Claude Code's long tools, a film file saved from the export menu, MiniMax's split words taken once, a film's WebGL contexts freed as its canvases go, and the composer keeping its words when the agent is switched.
+- **Why:** A 1:55 three.js film took over an hour to export from the Studio. In headless Chrome it took 391 s on a Windows laptop (3 browsers), and 129 s with `OMS_RENDER_GPU=1` on its Intel Arc GPU, the picture the same to the eye (PSNR 44-46 dB against the software draw).
+- **Breaking:** None. A GPU draw is not bit for bit the software one, so it stays opt-in until it is checked on macOS and Linux.
+- **Upgrade:** Install the new version. To try the GPU, start the Studio or `oms render` with `OMS_RENDER_GPU=1`.
+- **Refs:** ADR 0021, `apps/desktop/src/main/film/chrome.ts`, `apps/desktop/src/main/film/capture.ts`, `apps/desktop/src/main/film/stage.ts`, `apps/desktop/scripts/fetch-chrome.mjs`.
+
 ## 2026-11-24 — `oms font` cuts in words a film imports from outside its folder
 
 - **What:** `oms font` builds the film and takes the characters of every source it is built from, beside the project's own, so text a film imports from outside its folder (a copy file shared by several films) is in the face it cuts. A film that does not build (one importing the very fonts being fetched again, say) is cut from the project's own sources, and oms says what it left out and why.
