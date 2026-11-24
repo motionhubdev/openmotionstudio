@@ -14,7 +14,7 @@
     "test:ui": "pnpm build && node scripts/test-select.mjs && node scripts/test-i18n.mjs && node scripts/test-studio.mjs",
     "templates": "pnpm build && node scripts/render-templates.mjs",
     "build": "node scripts/build-preview.mjs && electron-vite build",
-    "package": "install-electron && pnpm build && electron-builder --publish never"
+    "package": "install-electron && pnpm build && node scripts/fetch-chrome.mjs && electron-builder --publish never"
   },
   "devDependencies": {
     "@fontsource-variable/inter": "5.3.0",
@@ -38,6 +38,7 @@
   "dependencies": {
     "@anthropic-ai/sdk": "1.7.0",
     "@motionhub/cli": "0.8.1",
+    "@puppeteer/browsers": "3.2.7",
     "electron-updater": "6.8.3",
     "esbuild": "0.28.2",
     "ffmpeg-static": "5.3.0",

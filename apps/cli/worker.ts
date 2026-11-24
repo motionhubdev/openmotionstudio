@@ -11,7 +11,7 @@ import { soundFile } from '../desktop/src/main/film/mix';
 import { reviewBuild } from '../desktop/src/main/film/review';
 import { exportFrames, renderStages } from '../desktop/src/main/film/capture';
 import { findFfmpeg } from './ffmpeg';
-import { findChrome, openChromeStage } from './chrome';
+import { findChrome, openChromeStage } from '../desktop/src/main/film/chrome';
 import { voiceFilm } from '../desktop/src/main/narration';
 import { TRANSCRIBERS, voiceRecording, type RecordedFilm } from '../desktop/src/main/recording';
 import { VOICE_NAMES, voicesOf, type VoiceSetup } from '../desktop/src/main/voice';

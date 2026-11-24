@@ -30,7 +30,7 @@ provider's settings beside it) at the moment of a call, and never writes, prints
 `check`, `still` and `render` run the Studio's own build, review, sound lookup and export, not a copy: `apps/desktop/scripts/build-cli.mjs`
 bundles `apps/cli/worker.ts` against `film.ts` (`buildFilmOnce`, the Studio's esbuild options and reporter), `serve.ts`,
 `review.ts`, `mix.ts` and `capture.ts` (`exportFrames`), with the preview core from the same build. The film is drawn in **chrome-headless-shell**,
-not in Electron (`apps/cli/chrome.ts`):
+not in Electron (`apps/desktop/src/main/film/chrome.ts`, which the Studio now draws in too, [ADR 0021](0021-the-studio-draws-stills-and-exports-in-the-headless-chrome-oms-uses.md)):
 
 - **Which Chrome**: the build HyperFrames pins (158.0.8127.36; 150.0.7871.124 on macOS 12 and older, which Chrome
   left after 150), so either tool can use the other's download. `oms` takes

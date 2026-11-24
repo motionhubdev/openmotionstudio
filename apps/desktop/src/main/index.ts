@@ -3,7 +3,7 @@
 import './logging-startup';
 import { StudioUpdates, downloads } from './updates';
 import { createUpdateDownloader } from './installer-update';
-import { BaseWindow, BrowserWindow, Menu, Tray, app, dialog, ipcMain, nativeImage, webContents, session, shell, type Session, type WebContents } from 'electron';
+import { BaseWindow, BrowserWindow, Menu, Tray, app, dialog, ipcMain, nativeImage, webContents, session, shell, type WebContents } from 'electron';
 import { randomUUID } from 'node:crypto';
 import { mkdir, realpath, open as openFile, rm } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -20,7 +20,7 @@ import { WebContentsView } from 'electron';
 import { log, logFailure } from './log';
 
 // Chromium's graphics backend is selected before app readiness and applies to
-// every window, including the offscreen stage used for export.
+// every window: the UI and the film's preview (stills and exports are drawn in headless Chrome, ADR 0021).
 if (process.env.OMS_RENDER_GPU === '1') {
   app.commandLine.appendSwitch('use-gl', 'angle');
   app.commandLine.appendSwitch('use-angle', process.platform === 'win32' ? 'd3d11' : process.platform === 'darwin' ? 'metal' : 'gl-egl');
@@ -37,7 +37,6 @@ interface Editor {
   project: Project;
   view: WebContentsView;
   workspace: Workspace;
-  renderSession: Session;
   host: BaseWindow | null;
   window: BaseWindow | null;
   ready: Promise<void>;
@@ -49,7 +48,6 @@ const surfaces = new Map<number, Workspace>();
 const editors = new Map<string, Editor>();
 let mainWindow: BrowserWindow;
 let homeWorkspace: Workspace;
-let homeRenderSession: Session;
 let activeEditor: Editor | null = null;
 let tray: Tray;
 let quitting = false;
@@ -206,7 +204,6 @@ async function editorFor(project: Project, brief: string | null = null): Promise
   const existing = editors.get(key);
   if (existing) { await existing.ready; return existing; }
   const partition = `oms-project-${randomUUID()}`;
-  const renderSession = session.fromPartition(`${partition}-render`);
   const view = new WebContentsView({ webPreferences: {
     partition, preload: join(__dirname, '../preload/index.js'), sandbox: true, contextIsolation: true,
     nodeIntegration: false, autoplayPolicy: 'no-user-gesture-required',
@@ -224,12 +221,11 @@ async function editorFor(project: Project, brief: string | null = null): Promise
     flashFrame: (flash) => entry?.host?.flashFrame(flash),
     setTitle: (title) => entry?.host?.setTitle(title),
   };
-  const workspace = createWorkspace(host, renderSession, changed);
-  entry = { project, view, workspace, renderSession, host: null, window: null, ready: Promise.resolve(), openedAt: Date.now(), brief };
+  const workspace = createWorkspace(host, changed);
+  entry = { project, view, workspace, host: null, window: null, ready: Promise.resolve(), openedAt: Date.now(), brief };
   editors.set(key, entry); surfaces.set(view.webContents.id, workspace);
   secure(view.webContents);
   servePreview(view.webContents.session, workspace.previewSource);
-  servePreview(renderSession, workspace.previewSource);
   entry.ready = (async () => {
     await workspace.open(project);
     await loadUI(view.webContents);
@@ -238,7 +234,7 @@ async function editorFor(project: Project, brief: string | null = null): Promise
   catch (error) {
     editors.delete(key); surfaces.delete(view.webContents.id);
     await workspace.dispose();
-    view.webContents.session.protocol.unhandle(SCHEME); renderSession.protocol.unhandle(SCHEME);
+    view.webContents.session.protocol.unhandle(SCHEME);
     view.webContents.close(); throw error;
   }
   changed(); return entry;
@@ -252,7 +248,6 @@ async function retire(entry: Editor): Promise<void> {
   detach(entry);
   if (entry.window && !entry.window.isDestroyed()) entry.window.destroy();
   entry.view.webContents.session.protocol.unhandle(SCHEME);
-  entry.renderSession.protocol.unhandle(SCHEME);
   entry.view.webContents.close();
   changed();
 }
@@ -307,13 +302,12 @@ async function openKnownProject(path: unknown, separate: unknown): Promise<void>
 
 async function createMain(): Promise<void> {
   const partition = `oms-home-${randomUUID()}`;
-  homeRenderSession = session.fromPartition(`${partition}-render`);
   mainWindow = new BrowserWindow({
     width: 1440, height: 900, minWidth: 960, minHeight: 600, show: false,
     title: 'OpenMotionStudio', icon: icon(),
     webPreferences: { partition, preload: join(__dirname, '../preload/index.js'), contextIsolation: true, sandbox: true, nodeIntegration: false },
   });
-  homeWorkspace = createWorkspace(mainWindow, homeRenderSession, changed);
+  homeWorkspace = createWorkspace(mainWindow, changed);
   surfaces.set(mainWindow.webContents.id, homeWorkspace);
   secure(mainWindow.webContents);
   let explainingClose = false;
@@ -370,7 +364,6 @@ async function shutdown(exit: () => void): Promise<void> {
       detach(entry);
       if (entry.window && !entry.window.isDestroyed()) entry.window.destroy();
       entry.view.webContents.session.protocol.unhandle(SCHEME);
-      entry.renderSession.protocol.unhandle(SCHEME);
       entry.view.webContents.close();
     }
     tray?.destroy();

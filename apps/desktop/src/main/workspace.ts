@@ -1,8 +1,9 @@
 // A project-owned session: its editor view, agent, previews and tasks survive moving between native windows.
 
 import { studioTranslator } from './providers';
-import { BrowserWindow, Notification, app, dialog, shell, type BaseWindow, type IpcMainInvokeEvent, type Session, type OpenDialogOptions, type WebContents } from 'electron';
-import { mkdir, readFile, realpath, rename, writeFile } from 'node:fs/promises';
+import { BrowserWindow, Notification, app, dialog, shell, type BaseWindow, type IpcMainInvokeEvent, type OpenDialogOptions, type WebContents } from 'electron';
+import { mkdir, mkdtemp, readFile, realpath, rename, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import { join, sep } from 'node:path';
 import { log } from './log';
 import {
@@ -48,7 +49,9 @@ import { testProvider } from './agent/test-connection';
 import { TOOLS, type ToolContext, projectPath } from './agent/tools';
 import type { BuildContext } from 'esbuild';
 import { exportFrames, renderStages, sceneStills, type Stage } from './film/capture';
-import { openStage as captureStage } from './film/stage';
+import { openChromeStage, studioChrome } from './film/chrome';
+import { studioStage } from './film/stage';
+import { studioScripts } from './film/preview';
 import ffmpegStatic from 'ffmpeg-static';
 import { soundPeaks } from './film/mix';
 import { voiceFilm } from './narration';
@@ -90,7 +93,7 @@ const projectOwners = new Map<string, WorkspaceHost>();
 
 type Handler = (event: IpcMainInvokeEvent, ...args: unknown[]) => unknown;
 
-export function createWorkspace(host: WorkspaceHost, renderSession: Session, changed: () => void = () => {}) {
+export function createWorkspace(host: WorkspaceHost, changed: () => void = () => {}) {
   const handlers = new Map<string, Handler>();
   const tasks = new Set<Promise<unknown>>();
   // Which window the project is in is the app's to say (index.ts taskList), not the project's.
@@ -152,18 +155,30 @@ export function createWorkspace(host: WorkspaceHost, renderSession: Session, cha
     claimed = null;
   };
   const stages = new Set<Stage>();
+  // A film still, for a review, a still or an export: drawn in the headless Chrome the Studio ships (ADR 0021), from the
+  // project's files and its build, with a profile of its own that goes when it closes.
   const openStage = async (version: number): Promise<Stage> => {
     const source = open;
-    const stage = await captureStage(version, renderSession);
+    if (!source) throw new Error('No project is open.');
+    const profile = await mkdtemp(join(tmpdir(), 'oms-stage-'));
+    const forget = () => rm(profile, { recursive: true, force: true, maxRetries: 5 }).catch(() => {});
+    let chrome: Awaited<ReturnType<typeof openChromeStage>>;
+    try {
+      const binary = await studioChrome(join(app.getAppPath(), 'resources'));
+      chrome = await openChromeStage(binary, source.project.path, buildDir(source.project.path), studioScripts(), profile, version);
+    } catch (error) {
+      await forget();
+      throw error;
+    }
+    const stage = studioStage(chrome);
+    stage.close = () => {
+      stages.delete(stage);
+      void Promise.resolve(chrome.close()).finally(forget);
+    };
     if (host.isDestroyed() || open !== source) {
       stage.close();
       throw new Error('The window was closed.');
     }
-    const close = stage.close;
-    stage.close = () => {
-      stages.delete(stage);
-      close();
-    };
     stages.add(stage);
     return stage;
   };

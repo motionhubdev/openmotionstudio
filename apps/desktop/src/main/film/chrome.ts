@@ -1,19 +1,19 @@
-// The headless Chrome oms draws films in: chrome-headless-shell at the build HyperFrames pins, taken from where HyperFrames
-// or Puppeteer keep it or downloaded once into Puppeteer's shared cache, checked against the build's digests, and driven
-// over the DevTools protocol on a pipe. The film's page is served by request interception from the same files and under
+// The headless Chrome the Studio and oms draw films in (ADR 0021): chrome-headless-shell at the build HyperFrames pins,
+// shipped inside the Studio's installer, and for oms taken from where HyperFrames or Puppeteer keep it or downloaded once
+// into Puppeteer's shared cache, checked against the build's digests; driven over the DevTools protocol on a pipe. The film's page is served by request interception from the same files and under
 // the same policy as the Studio's oms-preview: scheme (serve.ts, ADR 0004), and nothing else reaches the network.
 
 import { install, Browser, detectBrowserPlatform } from '@puppeteer/browsers';
 import { spawn, type ChildProcess } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync, lstatSync, readdirSync, readFileSync, realpathSync, statSync } from 'node:fs';
-import { mkdir, rm, stat } from 'node:fs/promises';
+import { mkdir, rename, rm, stat } from 'node:fs/promises';
 import { homedir, release as osRelease } from 'node:os';
 import { basename, dirname, join, resolve } from 'node:path';
 import type { Readable, Writable } from 'node:stream';
-import { filmFile, filmPolicy } from '../desktop/src/main/film/serve';
-import { inspectScript, seekScript, type FilmInfo, type Inspection } from '../desktop/src/shared/preview';
-import type { PhotoStage } from '../desktop/src/main/film/stage';
+import { filmFile, filmPolicy } from './serve';
+import { inspectScript, seekScript, type Box, type FilmInfo, type Inspection } from '../../shared/preview';
+import type { PhotoStage } from './stage';
 
 /**
  * The chrome-headless-shell build HyperFrames pins, so either tool can use the other's download: Chrome 158, or on macOS 12
@@ -172,6 +172,44 @@ export async function findChrome(): Promise<string> {
     if (!pinned(installed.executablePath, DIGESTS[build] ?? [])) throw new Error(`The downloaded Chrome is not the build oms pins (${build}).`);
     return installed.executablePath;
   });
+}
+
+/**
+ * The Chrome the Studio draws in: the pinned build its installer carries (resources/chrome/<build>/, written by
+ * scripts/fetch-chrome.mjs, unpacked beside the app's archive), else one found as oms finds it: in development, on Linux
+ * on Arm, and on macOS 12, whose build the installer does not carry.
+ */
+export async function studioChrome(resources: string): Promise<string> {
+  const where = EXECUTABLE[`${process.platform}/${process.arch}`];
+  if (where && !process.env.OMS_CHROME) {
+    const shipped = join(resources.replace(/app\.asar(?=[\\/]|$)/, 'app.asar.unpacked'), 'chrome', chromeBuild(), ...where);
+    if (existsSync(shipped)) return shipped;
+  }
+  return findChrome();
+}
+
+/**
+ * The pinned build for this platform, downloaded into `folder`/<build>/ and checked against its digests: what
+ * scripts/fetch-chrome.mjs puts into resources/chrome/ before electron-builder packs the Studio. Its path, or that of
+ * the build already there.
+ */
+export async function fetchChromeInto(folder: string): Promise<string> {
+  const build = chromeBuild();
+  const where = EXECUTABLE[`${process.platform}/${process.arch}`];
+  const platform = detectBrowserPlatform();
+  if (!where || !platform) throw new Error(`No Chrome ${build} for ${process.platform} ${process.arch} to ship.`);
+  const target = join(folder, build);
+  const executable = join(target, ...where);
+  if (existsSync(executable) && pinned(executable, DIGESTS[build] ?? [])) return executable;
+  const download = join(folder, '.download');
+  await rm(download, { recursive: true, force: true });
+  const installed = await install({ browser: Browser.CHROMEHEADLESSSHELL, buildId: build, cacheDir: download, platform });
+  if (!pinned(installed.executablePath, DIGESTS[build] ?? [])) throw new Error(`The downloaded Chrome is not the build the Studio pins (${build}).`);
+  await rm(target, { recursive: true, force: true });
+  await mkdir(target, { recursive: true });
+  await rename(dirname(installed.executablePath), join(target, where[0]));
+  await rm(download, { recursive: true, force: true });
+  return executable;
 }
 
 const NO_SANDBOX = ['--no-sandbox', '--disable-setuid-sandbox', '--no-zygote'];
@@ -342,20 +380,23 @@ let undriven = false;
  * gives it back with that frame, so a frame is never waited for, nor ever an earlier one. A Chrome that cannot be
  * driven so is opened again for screenshots, and oms says so once.
  */
-export async function openChromeStage(binary: string, dir: string, output: string, studio: string, profile: string): Promise<PhotoStage> {
-  if (!drivable(binary) || undriven) return openIn(binary, dir, output, studio, profile, false);
+export async function openChromeStage(binary: string, dir: string, output: string, studio: string, profile: string, version = 1): Promise<ChromeStage> {
+  if (!drivable(binary) || undriven) return openIn(binary, dir, output, studio, profile, false, version);
   try {
-    return await openIn(binary, dir, output, studio, profile, true);
+    return await openIn(binary, dir, output, studio, profile, true, version);
   } catch (driving) {
     // Opened for screenshots instead; when that fails too, the film's own error is the one to give.
-    const stage = await openIn(binary, dir, output, studio, `${profile}-screenshots`, false);
+    const stage = await openIn(binary, dir, output, studio, `${profile}-screenshots`, false, version);
     undriven = true;
     console.error(`oms: Chrome could not draw frames on demand here (${String(driving).split('\n')[0]}); it takes screenshots instead.`);
     return stage;
   }
 }
 
-async function openIn(binary: string, dir: string, output: string, studio: string, profile: string, driven: boolean): Promise<PhotoStage> {
+/** A stage in Chrome: a frame as a PNG, with a box outlined in red where the person marked it (preview/pick.ts). */
+export type ChromeStage = PhotoStage & { png(t: number, box?: Box): Promise<Buffer> };
+
+async function openIn(binary: string, dir: string, output: string, studio: string, profile: string, driven: boolean, version: number): Promise<ChromeStage> {
   let sandbox = sandboxWanted();
   let started: { child: ChildProcess; pipe: Pipe };
   try {
@@ -417,7 +458,7 @@ async function openIn(binary: string, dir: string, output: string, studio: strin
     const failed = () => evaluate<string | null>('window.__omsError ?? null');
 
     await pipe.send('Emulation.setDeviceMetricsOverride', { width: 1920, height: 1080, deviceScaleFactor: 1, mobile: false }, sessionId);
-    await timeout(pipe.send('Page.navigate', { url: `${ORIGIN}/?render=1&v=1` }, sessionId), 'Loading the film');
+    await timeout(pipe.send('Page.navigate', { url: `${ORIGIN}/?render=1&v=${version}` }, sessionId), 'Loading the film');
     const film = await timeout(
       (async () => {
         for (;;) {
@@ -482,20 +523,28 @@ async function openIn(binary: string, dir: string, output: string, studio: strin
     return {
       film,
       inspect: () => timeout(evaluate<Inspection>(inspectScript), 'Inspecting the frame'),
-      async png(t) {
+      async png(t: number, box?: Box) {
         const error = await timeout(seekTo(t), `The frame at ${t.toFixed(2)} s`);
         if (error) throw new Error(error);
-        // Driven, the frame comes back with the begin frame that draws it; otherwise DevTools' screenshot waits for a
-        // frame drawn from the page as it is now (stage.ts says why that matters).
-        if (driven) return (await timeout(beginFrame(true), `Photographing the frame at ${t.toFixed(2)} s`))!;
-        const shot = await timeout(
-          pipe.send<{ data: string }>('Page.captureScreenshot', { format: 'png', optimizeForSpeed: true }, sessionId),
-          `Photographing the frame at ${t.toFixed(2)} s`,
-        );
-        return Buffer.from(shot.data, 'base64');
+        if (box) await evaluate(`window.__omsMark?.(${JSON.stringify(box)})`);
+        try {
+          return await photograph(t);
+        } finally {
+          if (box) await evaluate('window.__omsMark?.(null)');
+        }
       },
       close,
     };
+    // Driven, the frame comes back with the begin frame that draws it; otherwise DevTools' screenshot waits for a frame
+    // drawn from the page as it is now.
+    async function photograph(t: number): Promise<Buffer> {
+      if (driven) return (await timeout(beginFrame(true), `Photographing the frame at ${t.toFixed(2)} s`))!;
+      const shot = await timeout(
+        pipe.send<{ data: string }>('Page.captureScreenshot', { format: 'png', optimizeForSpeed: true }, sessionId),
+        `Photographing the frame at ${t.toFixed(2)} s`,
+      );
+      return Buffer.from(shot.data, 'base64');
+    }
   } catch (error) {
     await close();
     throw error;

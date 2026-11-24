@@ -40,7 +40,7 @@ function windowStub() {
 const workspaces: ReturnType<typeof createWorkspace>[] = [];
 function workspace() {
   const window = windowStub();
-  const state = createWorkspace(window as never, {} as never, vi.fn());
+  const state = createWorkspace(window as never, vi.fn());
   workspaces.push(state);
   return { state, window };
 }

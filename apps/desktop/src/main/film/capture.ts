@@ -1,5 +1,5 @@
-// Stills and export: the film's page opened with ?render=1 in an
-// offscreen window, moved to each frame's time and photographed. Export pipes the frames
+// Stills and export: the film's page opened with ?render=1 in headless
+// Chrome (chrome.ts, ADR 0021), moved to each frame's time and photographed. Export pipes the frames
 // to ffmpeg as H.264 (High, level 4.1, BT.709, a key frame every two seconds, the index
 // ahead of the frames), which any phone plays, with the film's sounds mixed beside them
 // as AAC (mix.ts). Nothing in the film runs on a clock, so a time always draws the same frame.
