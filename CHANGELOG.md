@@ -3,6 +3,14 @@
 Every key change to OpenMotionStudio, newest first, by date. What counts as key and the entry format are in
 `CLAUDE.md`, "The changelog".
 
+## 2026-11-24 — A film plays recorded clips: `<Video>`
+
+- **What:** `<Video src={clip}>` (from `@motionhub/runtime`, the clip imported as an image is) draws the clip in the preview, stills, the export, oms's web player and the timeline's scene frames, where it was a grey box. Each frame of a still or an export shows the clip's own frame at that time: the page waits until the clip has been moved there and shown, and oms, where it draws frames only on demand, draws them while it waits. While the preview plays, the clip plays beside the film's clock. It honours `startAt`, `trimBefore`, `playbackRate` and `objectFit`, plays muted and holds its last frame once it has ended. A clip named by a path, not imported, is refused with how to give it.
+- **Why:** Films made from screen recordings and footage (a product walkthrough, a demo) could not be made: every clip rendered as a placeholder.
+- **Breaking:** None: a film that drew `<Video>` showed a grey box and now shows its clip.
+- **Upgrade:** Update oms (`npm install -g @motionhub/oms@latest`) and the skill (`npx skills update oms -g`, or `oms install` again) for the film format that names `<Video>`.
+- **Refs:** `apps/desktop/src/preview/footage.tsx`, `apps/desktop/src/preview/core.tsx`, `apps/cli/chrome.ts`, `apps/cli/scripts/test-installed.mjs`, [architecture](docs/tech/architecture.md) ("Video"), `apps/desktop/src/main/film/film.md`.
+
 ## 2026-11-23 — The oms skill installs with `npx skills add`
 
 - **What:** `npx skills add motionhubdev/openmotionstudio --skill oms -g` installs the oms skill for Claude Code, Codex and the other agents the `skills` installer knows. The skill folder now holds its film format and example film itself, so it is whole however it is installed; `oms install` copies that folder alone. The repository's `run-desktop` skill, for working on the Studio, is marked internal and not offered.

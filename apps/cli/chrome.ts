@@ -449,11 +449,22 @@ async function openIn(binary: string, dir: string, output: string, studio: strin
       }
       throw new Error('Chrome drew no frame in five begin frames.');
     };
+    /**
+     * Moves the page to `t`. Driven, frames are drawn, unphotographed, until it is there: a clip's frame (footage.tsx)
+     * waits to be shown, which only a drawn frame does.
+     */
+    const seekTo = async (t: number): Promise<string | null> => {
+      if (!driven) return evaluate<string | null>(seekScript(t));
+      let moving = true;
+      const moved = evaluate<string | null>(seekScript(t)).finally(() => (moving = false));
+      while (moving) await beginFrame(false);
+      return moved;
+    };
     if (driven) {
       // Warmed up: the page's load drawn and let go, then one frame of the film itself, also let go. Without the second,
       // the first frame asked for came back as the page was before its seek.
       await timeout(beginFrame(false), 'Drawing the first frame');
-      const error = await timeout(evaluate<string | null>(seekScript(0)), 'The frame at 0 s');
+      const error = await timeout(seekTo(0), 'The frame at 0 s');
       if (error) throw new Error(error);
       await timeout(beginFrame(true), 'Drawing the first frame');
     }
@@ -461,7 +472,7 @@ async function openIn(binary: string, dir: string, output: string, studio: strin
       film,
       inspect: () => timeout(evaluate<Inspection>(inspectScript), 'Inspecting the frame'),
       async png(t) {
-        const error = await timeout(evaluate<string | null>(seekScript(t)), `The frame at ${t.toFixed(2)} s`);
+        const error = await timeout(seekTo(t), `The frame at ${t.toFixed(2)} s`);
         if (error) throw new Error(error);
         // Driven, the frame comes back with the begin frame that draws it; otherwise DevTools' screenshot waits for a
         // frame drawn from the page as it is now (stage.ts says why that matters).

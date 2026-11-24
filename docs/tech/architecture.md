@@ -1,6 +1,6 @@
 # Architecture
 
-> **Status:** Plan — steps 1 to 3 and 6 built, 7 under way; signing waits for its accounts · **Updated:** 2026-11-23
+> **Status:** Plan — steps 1 to 3 and 6 built, 7 under way; signing waits for its accounts · **Updated:** 2026-11-24
 
 The components of the Studio and what each owns, the film, the agent and its providers, what is expensive to change, and the order of work.
 
@@ -66,7 +66,8 @@ apps/desktop/
     providers.ts       the providers, and their keys sealed with safeStorage
     motions.ts         the catalogue and a project's motions, through @motionhub/cli's library
   src/preview/         the Studio's preview scripts: core.tsx (React, @motionhub/runtime and the film's player),
-                       sound.ts (its sounds through Web Audio) and pick.ts (pointing at the picture)
+                       sound.ts (its sounds through Web Audio), footage.tsx (its recorded clips, <Video>) and
+                       pick.ts (pointing at the picture)
   src/preload/         the typed bridge the renderer calls (contextIsolation on, no Node in the renderer)
   src/shared/          what both sides agree on: StudioApi, the preview bridge's messages, and the interface's
                        messages in Chinese (i18n.ts, translations.ts)
@@ -215,6 +216,19 @@ One engine, the Studio's own ([ADR 0005](../adr/0005-the-studio-has-one-engine-i
   and clip) is its `src/voice.json`, given to the provider and the film, so Remotion times the lines as the Studio does,
   plays the clips from `public/voice/` and ducks under them; rendered by Remotion, its sound matches the Studio's own
   export within a frame's worth of fade.
+- **Video**: a recorded clip is the runtime's `<Video src>`, given a file the film imports (`build/…`, carried as a
+  data: URL by the web player), which the preview core draws (`preview/footage.tsx`); a clip named by a path is refused,
+  since the web player carries only what the bundle imports. The core fetches each file once and plays it from a blob:
+  URL, so it seeks anywhere although neither the scheme nor oms's server answers a range. A still, a frame of an export
+  and a frame of the web player wait until each clip shows its own frame of the time asked for: it is moved there 1 ms
+  into the frame (a time on a frame's boundary reaches the browser a hair early), decoded (`seeked`) and then shown
+  (`requestVideoFrameCallback` with that frame's own time, so a frame from earlier arriving late, such as a clip's first,
+  is not taken for it; or three frames drawn with none shown, when the seek left the frame on the page as it was). A
+  clip just opened shows its first frame before it is moved, and a clip's moves run one after another. Where oms draws
+  frames only on demand, it draws them, unphotographed, while the seek waits. While the preview plays, a clip plays beside the film's clock and is
+  put back on it past 0.15 s of drift. A clip plays muted, from `startAt` seconds of its sequence, its source from
+  `trimBefore` at `playbackRate`, and holds its last frame once it has ended. `apps/cli/scripts/test-installed.mjs`
+  holds a still and each frame of a render to the clip's own frame, on a frame's boundary too.
 - **Lines and captions**: the runtime times each `<Line>` in its scene (its `at` and `dur`, else an equal share) and
   reports its `start` and `end`; `<Film captions>` makes the runtime draw the line being said as a `<Caption>`, so the
   preview and the export show it alike. Every export also carries the lines as subtitles (`film/captions.ts`): SubRip

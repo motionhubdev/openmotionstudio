@@ -132,6 +132,43 @@ export default function Main() {
   oms('still', heavy, '--at', '5', '--out', join(scratch, 'heavy-5.png'));
   assert.notDeepEqual(await readFile(join(scratch, 'heavy-5.png')), await readFile(join(scratch, 'heavy-0.png')), 'the still at 5 s is the stage\'s earlier frame');
 
+  // A recorded clip the film imports: a still, and each frame of a render, shows the clip's own frame at its time, on a
+  // frame's boundary too (89 / 30 s), from startAt and trimBefore, held on its last frame once it has ended.
+  const clipped = join(scratch, 'Clipped');
+  await mkdir(join(clipped, 'media'), { recursive: true });
+  execFileSync('ffmpeg', ['-v', 'error', '-filter_complex', 'color=red:s=64x64:r=30:d=3,trim=end_frame=89[a];color=lime:s=64x64:r=30:d=2,trim=end_frame=31[b];[a][b]concat=n=2:v=1[v]',
+    '-map', '[v]', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', join(clipped, 'media/clip.mp4')]);
+  const clipFilm = (src) => `import {Film, Scene, Layer, Video} from '@motionhub/runtime';
+import clip from './media/clip.mp4';
+export const film = {width: 64, height: 64, fps: 30};
+export default function Main() {
+  return <Film><Layer id="ground"><div style={{width: '100%', height: '100%', background: '#000'}} /></Layer>
+    <Scene id="whole" duration={3}><Layer id="clip"><Video src={${src}} /></Layer></Scene>
+    <Scene id="trimmed" duration={2}><Layer id="clip"><Video src={${src}} startAt={1} trimBefore={2.5} /></Layer></Scene>
+    <Scene id="held" duration={5}><Layer id="clip"><Video src={${src}} /></Layer></Scene>
+  </Film>;
+}
+`;
+  await writeFile(join(clipped, 'film.tsx'), clipFilm('clip'));
+  // Red, green or black, from a picture's middle pixel as ffmpeg decodes it.
+  const colour = (file, frame = 0) => {
+    const [r, g, b] = execFileSync('ffmpeg', ['-v', 'error', '-i', file, '-vf', `select=eq(n\\,${frame}),format=rgb24,crop=2:2:31:31,scale=1:1`, '-frames:v', '1', '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-']);
+    return r > 180 && g < 80 ? 'red' : g > 180 && r < 80 ? 'green' : Math.max(r, g, b) < 40 ? 'black' : `rgb(${r}, ${g}, ${b})`;
+  };
+  for (const [at, expected] of [[88 / 30, 'red'], [89 / 30, 'green'], [3.5, 'black'], [4.5, 'green'], [9.8, 'green']]) {
+    const still = join(scratch, `clipped-${at.toFixed(3)}.png`);
+    oms('still', clipped, '--at', String(at), '--out', still);
+    assert.equal(colour(still), expected, `the still at ${at.toFixed(3)} s`);
+  }
+  const clippedVideo = join(scratch, 'clipped.mp4');
+  oms('render', clipped, '--out', clippedVideo);
+  for (const [frame, expected] of [[88, 'red'], [89, 'green'], [119, 'black'], [120, 'red'], [133, 'red'], [134, 'green'], [299, 'green']])
+    assert.equal(colour(clippedVideo, frame), expected, `frame ${frame} of the render`);
+  // A clip named by its path is refused with how to give it: the web player carries only what the film imports.
+  await writeFile(join(clipped, 'film.tsx'), clipFilm('"media/clip.mp4"'));
+  assert.throws(() => oms('check', clipped, '--json'), error =>
+    error.status === 1 && JSON.parse(error.stdout).issues.some(issue => issue.text.includes('import the clip')));
+
   // A render: the film's picture, its sound mixed in and its lines as subtitles, beside and inside the MP4.
   const scored = join(scratch, 'Scored');
   await mkdir(join(scored, 'media'), { recursive: true });
@@ -191,7 +228,7 @@ export default function Main() {
 `);
   assert.throws(() => oms('check', silent, '--json'), error =>
     error.status === 1 && JSON.parse(error.stdout).issues.some(issue => issue.text.includes('media/chime.wav')));
-  console.log('PASS installed skill, starter, editable example, PNG, bounds, a fresh frame, a render (with and without a subtitle track), a web player, a face from Google Fonts, a narration voice and its key, a film file for the Studio, a motion from motionhub and its sound, and missing audio');
+  console.log('PASS installed skill, starter, editable example, PNG, bounds, a fresh frame, a recorded clip in stills and a render, a render (with and without a subtitle track), a web player, a face from Google Fonts, a narration voice and its key, a film file for the Studio, a motion from motionhub and its sound, and missing audio');
 } finally {
   await rm(scratch, { recursive: true, force: true });
 }
