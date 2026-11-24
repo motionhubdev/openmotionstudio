@@ -116,6 +116,7 @@ async function voice(args) {
     const done = await worker.voice(dir, scratch, (n, of) => process.stderr.isTTY && process.stderr.write(`\rSpeaking ${n}/${of}`));
     if (process.stderr.isTTY) process.stderr.write('\n');
     console.log(`Spoke ${done.spoken} line${done.spoken === 1 ? '' : 's'} (${done.characters} characters, ${done.seconds.toFixed(1)} s of speech) into voice/; ${done.kept} kept as they were. Run oms check: each voiced line now lasts as long as its speech.`);
+    for (const m of done.misread ?? []) console.log(`warning: in line ${m.line}, the voice read "${m.written}" as "${m.said}". Write it so it cannot be read otherwise (spell it out, or move it from the line's end), then voice again.`);
   } finally {
     await rm(scratch, { recursive: true, force: true, maxRetries: 4 });
   }

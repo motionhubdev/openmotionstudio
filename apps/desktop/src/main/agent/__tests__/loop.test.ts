@@ -27,6 +27,7 @@ function setup(replies: Message[]) {
     stage: vi.fn(),
     searchMotions: vi.fn().mockResolvedValue([]),
     useMotion: vi.fn(),
+    useFont: vi.fn(),
     voiceKinds: vi.fn(),
     voiceChoices: vi.fn(),
     voiceFilm: vi.fn(),

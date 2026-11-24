@@ -46,5 +46,5 @@ await cp(join(desktop, 'src/main/film/starter.tsx.txt'), join(dist, 'starter.tsx
 const guide = await readFile(join(desktop, 'src/main/film/film.md'), 'utf8');
 await writeFile(join(cli, 'skills/oms/film-format.md'), guide.slice(guide.indexOf('# The film'), guide.indexOf('# How you work')));
 await cp(join(desktop, '../../LICENSE'), join(dist, 'LICENSE'));
-await cp(join(cli, 'OFL.txt'), join(dist, 'OFL.txt'));
+await cp(join(desktop, 'src/main/ofl.txt'), join(dist, 'OFL.txt'));
 

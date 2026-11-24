@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { type SocketLike, type VoiceIo, azureAudio, azureWords, groupWords, miniMaxWords, openAiWords, speak, voicesOf } from '../voice';
+import { type SocketLike, type VoiceIo, azureAudio, azureWords, groupWords, miniMaxMisread, miniMaxWords, openAiWords, speak, voicesOf } from '../voice';
 
 vi.mock('electron', () => ({}));
 
@@ -57,6 +57,31 @@ describe('the words of a provider’s answer', () => {
       { text: 'moves', start: 0.35, end: 0.7 },
     ]);
     expect(openAiWords({ words: [{ word: ' Heat', start: 0.04, end: 0.38 }, { word: '', start: 0.4, end: 0.4 }] })).toEqual([{ text: 'Heat', start: 0.04, end: 0.38 }]);
+  });
+});
+
+describe('MiniMax’s pieces of one written word', () => {
+  // As MiniMax gives them: a written word again for each piece it says it as.
+  const sun = [{ timestamped_words: [
+    { word: 'the', word_begin: 0, word_end: 3, pronounce_word: 'the', time_begin: 0, time_end: 200 },
+    { word: ' ', word_begin: 3, word_end: 4, pronounce_word: ' ', time_begin: 200, time_end: 240 },
+    { word: 'Sun.', word_begin: 4, word_end: 8, pronounce_word: 'Sun', time_begin: 240, time_end: 400 },
+    { word: 'Sun.', word_begin: 4, word_end: 8, pronounce_word: 'day', time_begin: 400, time_end: 700 },
+    { word: ' ', word_begin: 8, word_end: 9, pronounce_word: ' ', time_begin: 700, time_end: 740 },
+    { word: '29.5', word_begin: 9, word_end: 13, pronounce_word: 'twenty', time_begin: 740, time_end: 900 },
+    { word: '29.5', word_begin: 9, word_end: 13, pronounce_word: ' nine', time_begin: 900, time_end: 1100 },
+  ] }];
+
+  it('are one word, from the first piece’s start to the last’s end', () => {
+    expect(miniMaxWords(sun)).toEqual([
+      { text: 'the', start: 0, end: 0.2 },
+      { text: 'Sun.', start: 0.24, end: 0.7 },
+      { text: '29.5', start: 0.74, end: 1.1 },
+    ]);
+  });
+
+  it('say which words were read as other words, and not figures, which are always read out', () => {
+    expect(miniMaxMisread(sun)).toEqual([{ written: 'Sun.', said: 'Sunday' }]);
   });
 });
 

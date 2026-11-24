@@ -26,6 +26,8 @@ export interface ToolContext {
   stage(version: number): Promise<Stage>;
   searchMotions(words: string): Promise<{ id: string; name: string; line: string; fit: string }[]>;
   useMotion(id: string): Promise<{ id: string; path: string }>;
+  /** Takes a face from Google Fonts, cut to the characters the project writes, into media/fonts/ with its licence. */
+  useFont(family: string, weights: number[]): Promise<{ files: string[]; characters: number; licence: string }>;
   /** The voice providers the person has set up. */
   voiceKinds(): Promise<VoiceKind[]>;
   /** The voices a set-up provider offers. */
@@ -130,6 +132,19 @@ export const TOOLS: Tool[] = [
     description:
       "Speaks the film's <Line>s in its <Film voice> into the project's voice/ (only lines whose words changed; each one is paid for), then builds the film again, timing each voiced line by its speech. Run check after it.",
     input_schema: { type: 'object', properties: {} },
+  },
+  {
+    name: 'use_font',
+    description:
+      "Takes a face from Google Fonts into the project's media/fonts/, cut to the characters the project's sources write, with its licence, and says how to declare it. Take it again whenever the words change.",
+    input_schema: {
+      type: 'object',
+      properties: {
+        family: { type: 'string', description: 'The family as fonts.google.com names it, as Inter Tight or Noto Sans SC.' },
+        weights: { type: 'array', items: { type: 'integer' }, description: 'The weights to take, as [400, 700].' },
+      },
+      required: ['family', 'weights'],
+    },
   },
   {
     name: 'use_motion',
@@ -268,7 +283,25 @@ export async function runTool(name: string, raw: unknown, ctx: ToolContext): Pro
       case 'voice_lines': {
         const voiced = await ctx.voiceFilm();
         return text(
-          `${voiced.spoken ? `Spoke ${voiced.spoken} line${voiced.spoken === 1 ? '' : 's'} (${voiced.characters} characters, ${voiced.seconds.toFixed(1)} s)` : 'Spoke nothing new'}; kept ${voiced.kept}. The film is built again with them: check it.`,
+          `${voiced.spoken ? `Spoke ${voiced.spoken} line${voiced.spoken === 1 ? '' : 's'} (${voiced.characters} characters, ${voiced.seconds.toFixed(1)} s)` : 'Spoke nothing new'}; kept ${voiced.kept}. The film is built again with them: check it.${misreadNote(voiced.misread)}`,
+        );
+      }
+      case 'use_font': {
+        const family = field(input, 'family');
+        const weights = Array.isArray(input.weights) ? input.weights.map(Number) : [];
+        const taken = await ctx.useFont(family, weights);
+        const faces = taken.files.filter((file) => file.endsWith('.ttf'));
+        const name = (file: string) => file.replace(/^media\/fonts\//, '').replace(/\.ttf$/, '').replace(/[^a-z0-9]+/gi, '_');
+        const declare = faces.map((file) => `@font-face { font-family: '${family}'; font-weight: ${/-(\d+)\.ttf$/.exec(file)![1]}; src: url(\${${name(file)}}); }`);
+        return text(
+          [
+            `Took ${family} (${taken.licence}), cut to the ${taken.characters} characters the project writes: ${taken.files.join(', ')}. Declare it where the film draws:`,
+            ...faces.map((file) => `import ${name(file)} from './${file}';`),
+            '<style>{`',
+            ...declare,
+            '`}</style>',
+            'Take it again with use_font when the words change.',
+          ].join('\n'),
         );
       }
       case 'use_motion': {
@@ -312,6 +345,13 @@ async function check(ctx: ToolContext): Promise<ToolOutcome> {
 }
 
 /** One scene as `check` reports it: its span, its layers' boxes, and what it says. */
+/** What voicing heard read otherwise than written, for the agent to rewrite. */
+function misreadNote(misread: VoicedFilm['misread']): string {
+  if (!misread.length) return '';
+  const each = misread.map((m) => `in ${m.line}, "${m.written}" was read as "${m.said}"`).join('; ');
+  return ` The voice misread words: ${each}. Write each so it cannot be read otherwise (spell it out, or move it from the line's end), then voice_lines again.`;
+}
+
 function outlineLine(scene: SceneInfo): string {
   const seconds = (s: number) => `${Math.round(s * 100) / 100}`;
   const layers = scene.layers.map((l) => `${l.id} (${l.x},${l.y} ${l.w}×${l.h})`).join(', ') || 'no layers';

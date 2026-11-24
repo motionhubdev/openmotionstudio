@@ -17,6 +17,7 @@ beforeEach(async () => {
     stage: vi.fn(),
     searchMotions: vi.fn(),
     useMotion: vi.fn(),
+    useFont: vi.fn(),
     voiceKinds: vi.fn(),
     voiceChoices: vi.fn(),
     voiceFilm: vi.fn(),
@@ -186,9 +187,19 @@ describe('voices', () => {
     expect(ctx.voiceChoices).not.toHaveBeenCalled();
   });
 
+  it('takes a face from Google Fonts and says how to declare it', async () => {
+    ctx.useFont = vi.fn().mockResolvedValue({ files: ['media/fonts/inter-tight-400.ttf', 'media/fonts/inter-tight-700.ttf', 'media/fonts/inter-tight-LICENSE.txt'], characters: 97, licence: 'SIL Open Font License 1.1' });
+    const out = (await runTool('use_font', { family: 'Inter Tight', weights: [400, 700] }, ctx)).text;
+    expect(ctx.useFont).toHaveBeenCalledWith('Inter Tight', [400, 700]);
+    expect(out).toContain("import inter_tight_700 from './media/fonts/inter-tight-700.ttf';");
+    expect(out).toContain("@font-face { font-family: 'Inter Tight'; font-weight: 700; src: url(${inter_tight_700}); }");
+  });
+
   it('voices the film and says what it spoke, or why it could not', async () => {
-    ctx.voiceFilm = vi.fn().mockResolvedValueOnce({ spoken: 2, kept: 1, characters: 33, seconds: 3.42 });
+    ctx.voiceFilm = vi.fn().mockResolvedValueOnce({ spoken: 2, kept: 1, characters: 33, seconds: 3.42, misread: [] });
     expect((await runTool('voice_lines', {}, ctx)).text).toBe('Spoke 2 lines (33 characters, 3.4 s); kept 1. The film is built again with them: check it.');
+    ctx.voiceFilm = vi.fn().mockResolvedValueOnce({ spoken: 1, kept: 0, characters: 9, seconds: 1, misread: [{ line: 'end', written: 'Sun.', said: 'Sunday' }] });
+    expect((await runTool('voice_lines', {}, ctx)).text).toContain('in end, "Sun." was read as "Sunday"');
     ctx.voiceFilm = vi.fn().mockRejectedValue(new Error('Azure is not set up: add it in Models, under Voices.'));
     expect(await runTool('voice_lines', {}, ctx)).toMatchObject({ ok: false, text: 'Azure is not set up: add it in Models, under Voices.' });
   });

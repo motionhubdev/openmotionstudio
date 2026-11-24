@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { bundledSources, faces, names, projectCharacters, slug, takeFont } from '../font';
-import { font as filmFont } from '../worker';
+import { font as filmFont } from '../../../../cli/worker';
 
 let dir: string;
 beforeEach(async () => {

@@ -483,6 +483,8 @@ export function ProjectView({ onGlobalSettings, settingsOpen, project, providers
    * agent itself: finding it out when the project opens must not draw the assistant again and drop what is in it.
    */
   const [switches, setSwitches] = useState(0);
+  /** The composer's words, kept here: a switch of agent draws the assistant again, and must not drop them. */
+  const draft = useRef('');
   async function useAgent(kind: AgentKind) {
     try {
       setAgents(await window.studio.useAgent(kind));
@@ -639,6 +641,18 @@ export function ProjectView({ onGlobalSettings, settingsOpen, project, providers
       setToast({ text: reason(e), error: true });
     } finally {
       setImporting(false);
+    }
+  }
+
+  async function exportFilmFile() {
+    if (busy || importing || checking || progress !== null) return;
+    setMenu(false);
+    setToast(null);
+    try {
+      const file = await window.studio.exportFilmFile();
+      if (file) setToast({ text: translate("Saved {0}", false, {0: file.split(/[/\\]/).pop()}), error: false, file });
+    } catch (e) {
+      setToast({ text: reason(e), error: true });
     }
   }
 
@@ -819,6 +833,10 @@ export function ProjectView({ onGlobalSettings, settingsOpen, project, providers
               </button>
               {menu && (
                 <span className="menu" role="menu">
+                  <button type="button" role="menuitem" onClick={() => void exportFilmFile()}>
+                    <strong><Translated text="Film file (.oms)…" /></strong>
+                    <span>{tr("The project as one file, to share or keep: Import project opens it")}</span>
+                  </button>
                   <button type="button" role="menuitem" onClick={() => void exportRemotion()}>
                     <strong><Translated text="Remotion project…" /></strong>
                     <span>{tr("The film as a Remotion project, each scene a Series.Sequence")}</span>
@@ -890,6 +908,10 @@ export function ProjectView({ onGlobalSettings, settingsOpen, project, providers
               focusRequest={focusRequest}
               brief={brief}
               onBriefTaken={() => setBrief(null)}
+              draft={draft.current}
+              onDraft={(text) => {
+                draft.current = text;
+              }}
               onReference={reference}
               onImport={() => void importForMessage()}
               onOpenPanel={(panel) => (panel === 'motions' ? setCentre({ kind: 'motions' }) : openSide(panel))}

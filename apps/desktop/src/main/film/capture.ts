@@ -1,5 +1,5 @@
-// Stills and export: the film's page opened with ?render=1 in an
-// offscreen window, moved to each frame's time and photographed. Export pipes the frames
+// Stills and export: the film's page opened with ?render=1 in headless
+// Chrome (chrome.ts, ADR 0021), moved to each frame's time and photographed. Export pipes the frames
 // to ffmpeg as H.264 (High, level 4.1, BT.709, a key frame every two seconds, the index
 // ahead of the frames), which any phone plays, with the film's sounds mixed beside them
 // as AAC (mix.ts). Nothing in the film runs on a clock, so a time always draws the same frame.
@@ -16,6 +16,7 @@ import { buildDir } from './film';
 import { srt } from './captions';
 import { MIX_FORMAT, mixFinish, mixSounds, soundInputs } from './mix';
 import { spokenSound } from '../../shared/sound';
+import { availableParallelism, freemem } from 'node:os';
 
 const VIDEO = [
   '-vf',
@@ -204,6 +205,13 @@ const run = (ffmpeg: string, args: string[]) =>
  * encoder in turn, a stage holding at most the one frame it waits to write: a frame is a function of its time alone,
  * so the video is the same however many draw it.
  */
+/**
+ * How many stages draw an export at once: one a core, as memory allows (about 1.5 GB each, a browser drawing the
+ * film), at most eight. The Studio's export and `oms render` both draw with this many.
+ */
+export const renderStages = (cores = availableParallelism(), free = freemem()): number =>
+  Math.max(1, Math.min(cores, Math.floor(free / 1.5e9), 8));
+
 export async function exportFrames(
   dir: string,
   version: number,

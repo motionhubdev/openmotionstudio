@@ -163,6 +163,10 @@ jobs:
           esbuild=$(find "$tools_dir" -path "*/@esbuild/*/esbuild$suffix" -type f -print -quit)
           "$ffmpeg" -version
           "$esbuild" --version
+          # The headless Chrome the Studio draws in starts and draws a page, except where it ships none (Linux on Arm).
+          chrome=$(find "$tools_dir" -path "*/resources/chrome/*" \( -name chrome-headless-shell -o -name chrome-headless-shell.exe \) -type f -print -quit)
+          if [[ -n "$chrome" ]]; then "$chrome" --no-sandbox --dump-dom 'data:text/html,<p>drawn</p>' | grep -q drawn; echo "$chrome draws"
+          elif [[ "$RUNNER_ARCH" != ARM64 || "$RUNNER_OS" != Linux ]]; then echo "No Chrome in the package"; exit 1; fi
       - name: Collect update metadata
         shell: bash
         env:

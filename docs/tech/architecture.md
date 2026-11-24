@@ -41,8 +41,9 @@ apps/desktop/
       film.ts          film.tsx: start one, bundle it with esbuild on every change; film.md is the agent's skill
       preview.ts       the oms-preview: scheme the film's page, the Studio's preview scripts, the film's bundle and
                        the project's own files are served on
-      serve.ts         those files and their policy, without Electron, for the scheme and for oms's Chrome
-      stage.ts         an offscreen window that photographs the film at a time, through DevTools' screenshot
+      serve.ts         those files and their policy, without Electron, for the scheme and for the stills' Chrome
+      chrome.ts        headless Chrome at the pinned build (shipped, or found as oms finds it) that draws a still or an export
+      stage.ts         a stage as the Studio uses it: Chrome's PNG, also decoded
       capture.ts       stills, the timeline's scene frames, and export through ffmpeg, from a stage
       effects.ts       a film's sound effects: its motion's sound.json, or oms's own, rendered for cues into a WAV (oms sound)
       mix.ts           a film's sounds for the export: each <Sound>'s file found in the project, decoded by ffmpeg
@@ -87,7 +88,7 @@ apps/cli/
 
 | Component | Owns | Never does |
 | --- | --- | --- |
-| `workspace` | One project's tasks, conversation, approvals and capture stages; preview and render sessions serving only that project ([ADR 0014](../adr/0014-project-sessions-outlive-editor-windows.md)) | Read another project's files or stop its tasks |
+| `workspace` | One project's tasks, conversation, approvals and capture stages; a preview session serving only that project ([ADR 0014](../adr/0014-project-sessions-outlive-editor-windows.md)) | Read another project's files or stop its tasks |
 | `project` | The folder is the truth: files on disk, git if the person uses it. The Studio's own state for a project is `.motion-studio/` (the film's bundle in `build/`, the conversation in `session.json` and those set aside by New conversation in `conversations/<ms>.json` (as shown, without stills), the checkpoints in `history.json`, the timeline's scene frames in `thumbs/`, each turn's tokens and time in `usage.jsonl` (ADR 0009)), which a new project's `.gitignore` leaves out | Keep a copy of the project elsewhere |
 | `film/*` | Turning `film.tsx` into a playable preview, a still at a time, and an MP4 | Know about the agent or the UI |
 | `agent` | The conversation, the tools, what the agent may do | Hold a key longer than a turn, or write the Studio's state, a motion from motionhub, dependencies or git |
@@ -103,8 +104,8 @@ here and Open in editor window. The first close of the main window explains this
 tray (`showTasksInTray`): its tooltip, a menu item per project waiting on the person, and the badge count where the
 system has one (`app.setBadgeCount`; the tray's title on a Mac). Views pause playback when hidden; task events and approvals remain live.
 
-Each project retains separate in-memory UI/preview and offscreen-render sessions. Stills and exports receive its
-stage opener. IPC is routed by the calling view's webContents id and main frame, even when the view moves between
+Each project retains an in-memory UI/preview session. Stills and exports receive its stage opener, which draws in
+headless Chrome ([ADR 0021](../adr/0021-the-studio-draws-stills-and-exports-in-the-headless-chrome-oms-uses.md)). IPC is routed by the calling view's webContents id and main frame, even when the view moves between
 native windows. Provider settings, preferences, keys and the project library are shared, with queued atomic mutations. A change to
 any of them is broadcast to every view (`EVENTS.preferences`, `EVENTS.settings`, the latter saying whether another view
 made it), so an open Settings page never overwrites what the person is typing. Explicit Quit aborts
@@ -192,10 +193,11 @@ One engine, the Studio's own ([ADR 0005](../adr/0005-the-studio-has-one-engine-i
   scheme alone, and answers with `access-control-allow-origin: *`, since a sandboxed frame's origin is null and its fonts
   are CORS requests.
 - **Playing, stills and export**: the Studio plays the film on the core's own clock; a still or an export opens the page
-  with `?render=1` in an offscreen window, moves it to each frame's time (`window.__oms.seek`; oms's web player writes
-  the same page whole into a sandboxed frame and moves it from its parent with `oms:seek`, [ADR 0018](../adr/0018-a-film-plays-on-the-web-from-a-static-folder.md)) and photographs it with
-  DevTools' `Page.captureScreenshot`, which waits for a frame drawn from the page as it is (`capturePage` returned the
-  last painted frame, a frame behind while a heavy one was still rasterizing), passing its PNG on as it is, and
+  with `?render=1` in headless Chrome, the pinned build the installer carries and oms uses
+  ([ADR 0021](../adr/0021-the-studio-draws-stills-and-exports-in-the-headless-chrome-oms-uses.md)), several at once for an export, moves it to each frame's time (`window.__oms.seek`; oms's web player writes
+  the same page whole into a sandboxed frame and moves it from its parent with `oms:seek`, [ADR 0018](../adr/0018-a-film-plays-on-the-web-from-a-static-folder.md)) and photographs it
+  with the frame Chrome draws when asked (`HeadlessExperimental.beginFrame`), or DevTools' screenshot where it cannot be
+  driven so, passing its PNG on as it is, and
   export pipes the frames to ffmpeg (shipped with the app) as H.264 High at level 4.1, BT.709, a key frame every two
   seconds, faststart, in segments joined as they are, with the sound mixed in blocks and added after
   ([ADR 0017](../adr/0017-an-export-is-encoded-in-segments-and-mixed-in-blocks.md)).

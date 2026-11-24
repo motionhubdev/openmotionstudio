@@ -18,6 +18,8 @@ asarUnpack:
   - '**/node_modules/@esbuild/**'
   - '**/node_modules/ffmpeg-static/**'
   - '**/node_modules/three/**'
+  # The headless Chrome the Studio draws its stills and exports in (scripts/fetch-chrome.mjs, ADR 0021).
+  - 'resources/chrome/**'
 npmRebuild: false
 # The Studio's eased-square icon (resources/icon.svg, docs/design.md): a 1024 px picture electron-builder turns
 # into the .icns and Linux's PNGs, and for Windows an .ico of 16 to 256 px. The window takes the same files

@@ -386,6 +386,10 @@ interface Props {
   brief: string | null;
   /** The brief has gone, or the person sent something else first; it must not go again. */
   onBriefTaken(): void;
+  /** What the composer held when this assistant was drawn: a switch of agent draws it again, and the words stay. */
+  draft: string;
+  /** Hears the composer's words as they change, to give them back when the assistant is drawn again. */
+  onDraft(text: string): void;
   onRemoveMark(index: number): void;
   onNoteMark(index: number, note: string): void;
   /** The mark whose row is in hand, or null. */
@@ -460,6 +464,8 @@ export function Assistant({
   focusRequest,
   brief,
   onBriefTaken,
+  draft: kept,
+  onDraft,
 }: Props) {
   const { t: tr } = usePreferences();
   const [items, setItems] = useState<Row[]>([]);
@@ -495,7 +501,10 @@ export function Assistant({
   const refreshUsage = () =>
     window.studio.projectUsage().then(setUsage, (e) => setItems((items) => [...items, { kind: 'notice', text: reason(e), error: true }]));
   useEffect(() => void refreshUsage(), []);
-  const [draft, setDraft] = useState('');
+  const [draft, setDraft] = useState(kept);
+  useEffect(() => {
+    onDraft(draft);
+  }, [draft]);
   /** The question (its tool id) the person chose to answer in their own words. */
   const [answeringOwn, setAnsweringOwn] = useState<string | null>(null);
   /** Asks the agent menu to open, from an error card's Use another agent. */
