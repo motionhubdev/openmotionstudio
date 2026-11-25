@@ -1,6 +1,6 @@
 # Design
 
-> **Status:** Current · **Updated:** 2026-11-23
+> **Status:** Current · **Updated:** 2026-11-24
 
 The Studio's visual system: its identity, colour, type, shape, icons, the workspace's layout, and the rules components follow.
 
@@ -181,10 +181,11 @@ shortcuts) and the content.
 - **Home** asks what the person wants to make next, over a prompt: a field for the film in their own words, three
   starts to finish (a launch teaser, an explainer, kinetic type) and **Start creating**; the prompt's foot holds, on its
   left, the note that no assistant is connected while none is, else the mark of each assistant ready to take a film
-  (the built-in agent's robot, named by its model on hover, then Claude Code's and Codex's own), and on its right **Import project**: a film the person
+  (the built-in agent's robot, named by its model on hover, then Claude Code's and Codex's own), one of them picked
+  (the first unless the person clicks another), and on its right **Import project**: a film the person
   already has, as a project folder or an `.oms` an agent packed (ADR 0019). Enter sends it, Shift+Enter
   is a new line, `/` goes to it. It creates a project named from the words' first line and opens it, and the words
-  are the assistant's first message, sent as soon as the agent and the film are ready; with no assistant connected,
+  are the picked assistant's first message, the project's agent from then on, sent as soon as the agent and the film are ready; with no assistant connected,
   the prompt says so and the words wait in the composer. The field keeps them until the project exists. Below it, while
   tasks run in the background, a line counts those that need the person and those running and opens to a row per task.
   Then Continue creating: the project opened last as a large card (its cover beside its name and **Continue
