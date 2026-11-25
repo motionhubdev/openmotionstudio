@@ -25,8 +25,6 @@ const NOTE = 'Make the tallest bar vermilion, and let the bars rise one after an
 const REGION = [0.04, 0.12, 0.5, 0.5]; // the bars, as fractions of the film: left, top, right, bottom
 
 app.setPath('userData', USER_DATA);
-// Xvfb has no keyring: without a store named, safeStorage cannot seal the voice's key at all.
-app.commandLine.appendSwitch('password-store', 'basic');
 app.setAppPath(DESKTOP);
 
 const marks = [];
@@ -117,9 +115,10 @@ require(path.join(DESKTOP, 'out/main/index.js'));
     home.setZoomFactor(ZOOM);
     await until(async () => !home.isLoading() && (await exists(home, `() => document.querySelector('.home-prompt textarea')`)), 'home', 30000);
     await sleep(1500);
-    // On Linux the store opens a little after the app is ready, with its first window.
-    const voiced = !!process.env.MINIMAX_API_KEY &&
-      !!(await until(() => safeStorage.isEncryptionAvailable(), 'safe storage', 15000).catch(() => false)) && sealVoice();
+    // Xvfb has no keyring, so the store would refuse to seal: this take's process seals in plain text instead (Linux
+    // only), and the key's file is deleted when the take ends.
+    if (process.env.MINIMAX_API_KEY && !safeStorage.isEncryptionAvailable()) safeStorage.setUsePlainTextEncryption?.(true);
+    const voiced = sealVoice();
     console.log('voice', voiced ? 'sealed' : 'left out', safeStorage.getSelectedStorageBackend?.());
     mark('home');
 
