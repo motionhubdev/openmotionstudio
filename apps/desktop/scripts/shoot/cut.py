@@ -81,7 +81,7 @@ def shots_for(work_len):
         s += [
             (m["voice"] - 0.2, voiced_from + 0.8, ("len", 2.0), None, 0, 6),         # the voice view
             (voiced_from + 0.8, m["voiced"] + 1.2, ("len", 1.4), None, 0, None),     # the lines spoken, one by one
-            (m["play-voice"] + 0.3, m["play-voice"] + 3.6, 1.0, STAGE, 0, None),     # heard (from the export)
+            (m["play-voice"] + 0.3, m["play-voice"] + 4.7, 1.0, STAGE, 0, None),     # its first line heard whole (from the export)
         ]
     s += [
         (m["export-open"] - 0.2, m["export-start"] + 0.6, ("len", 2.0), DIALOG, 0, 7),
