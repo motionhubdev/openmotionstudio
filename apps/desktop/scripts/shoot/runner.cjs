@@ -17,7 +17,7 @@ const EXPORTED = path.join(TEMP, 'export.mp4');
 const W = 1920, H = 1080, ZOOM = 1.1;
 // What the take asks for. The layout is spelled out so the bars stand where the region is drawn (REGION).
 const BRIEF = process.env.SHOOT_BRIEF ||
-  'A 10-second data film on warm paper: four grey bars rise on the upper left with a count up to 84% beside them, ' +
+  'A 10-second data film: four bars rise on the upper left with a count up to 84% beside them, ' +
   'then the headline “Small steps. Big change.” below. One short line of narration per scene.';
 const LOOK = process.env.SHOOT_LOOK || 'riso';               // typed in the motions' search
 const LOOK_NAME = process.env.SHOOT_LOOK_NAME || 'Riso Pop';  // the one opened among what it finds
