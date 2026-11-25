@@ -25,6 +25,8 @@ const NOTE = 'Make the tallest bar vermilion, and let the bars rise one after an
 const REGION = [0.04, 0.12, 0.5, 0.5]; // the bars, as fractions of the film: left, top, right, bottom
 
 app.setPath('userData', USER_DATA);
+// Xvfb has no keyring: without a store named, safeStorage cannot seal the voice's key at all.
+app.commandLine.appendSwitch('password-store', 'basic');
 app.setAppPath(DESKTOP);
 
 const marks = [];
