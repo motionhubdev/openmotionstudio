@@ -279,8 +279,8 @@ describe('an export drawn by several stages', () => {
   it('is cancelled while a stage never gives back its frame, and closes every stage', async () => {
     const cancel = new AbortController();
     const drawn = stages();
-    const open = vi.fn(async (version: number) => {
-      const stage = await drawn.open(version);
+    const open = vi.fn(async () => {
+      const stage = await drawn.open();
       // From frame 20 on, this stage's Chrome no longer answers: its frame never comes.
       const draw = stage.png;
       stage.png = (t: number) => (Math.round(t * small.fps) >= 20 ? new Promise<Buffer>(() => {}) : draw(t));
