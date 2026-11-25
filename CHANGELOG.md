@@ -3,6 +3,14 @@
 Every key change to OpenMotionStudio, newest first, by date. What counts as key and the entry format are in
 `CLAUDE.md`, "The changelog".
 
+## 2026-11-25 — Applying a motion new to the project restyles the film
+
+- **What:** Apply to the video, for a motion from motionhub the project does not hold yet, takes it into the project and then asks the agent to restyle the film with it, as it does for one already held. The website's hero film is shot again from one take through the whole Studio (describe, look, mark, voice, export) and cut into eight captioned chapters, in English and in Chinese (`apps/desktop/scripts/shoot`).
+- **Why:** The library asked the agent while the workspace still held the assistant disabled for the import, so the request was dropped: the motion was added and the film never changed. The shoot of the website's film found it.
+- **Breaking:** None.
+- **Upgrade:** Nothing.
+- **Refs:** `apps/desktop/src/renderer/src/project-view.tsx`, `apps/desktop/scripts/shoot/runner.cjs`, `apps/desktop/scripts/shoot/cut.py`.
+
 ## 2026-11-24 — oms 0.2.0
 
 - **What:** `@motionhub/oms` 0.2.0 on npm, with everything since 0.1.0: films play recorded clips (`<Video>`); `oms render` draws on the GPU where it can be and says which path it drew on (`OMS_RENDER_GPU=0` or `1` to choose); a frame's limit counts only the time the computer is awake, and a Chrome that does not answer when it is closed is killed; `oms pack` leaves out the project's dot-folders and names them; `oms font` cuts in the words a film imports from outside its folder.
