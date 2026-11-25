@@ -575,9 +575,10 @@ export interface StudioApi {
   openProject(): Promise<Project | null>;
   /**
    * Creates a fresh film folder in the configured workspace and opens it. With a brief (what the person wants to make,
-   * in their words), the folder is named from it and the brief waits for the new editor (`takeBrief`).
+   * in their words), the folder is named from it and the brief waits for the new editor (`takeBrief`); with an agent
+   * (the one picked under Home's prompt), the project talks to it from its first message.
    */
-  createProject(brief?: string): Promise<Project | null>;
+  createProject(brief?: string, agent?: AgentKind): Promise<Project | null>;
   /** The brief this editor's project was created with, once: a second call answers null. */
   takeBrief(): Promise<string | null>;
   /** Opens a folder from the library; any other path is refused. */
@@ -681,8 +682,11 @@ export interface StudioApi {
   cancelExport(): Promise<void>;
   /** Asks for an empty (or new) folder, then writes the film there as a Remotion project; the folder, or null when the person cancels. */
   exportRemotion(): Promise<string | null>;
-  /** Asks where to save, then writes the project as one film file (.oms, ADR 0019); the path, or null when the person cancels. */
-  exportFilmFile(): Promise<string | null>;
+  /**
+   * Asks where to save, then writes the project as one film file (.oms, ADR 0019): its path and the folders left out of it
+   * that the person may not expect to be (a dot-folder, with its bytes), or null when the person cancels.
+   */
+  exportFilmFile(): Promise<{ file: string; leftOut: { path: string; bytes: number }[] } | null>;
   /** Shows the last exported file or folder in the system's file manager. */
   showExported(): Promise<void>;
 }

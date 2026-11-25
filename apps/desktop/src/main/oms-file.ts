@@ -1,7 +1,8 @@
 // A project as one file, `.oms` (ADR 0019): its folder's own files in a gzipped ustar tar, as a motion's package is on
 // motionhub, with fixed owner, mode and time so the same files always give the same bytes. `oms pack` writes one, and
 // the Studio's Import takes one into a new folder in the workspace. Left out: the Studio's state, git's, installed
-// packages, and what a project ignores at its top (a render, its subtitles, stills).
+// packages, every other folder whose name starts with a dot (a tool's cache: no part of a film is kept in one), and what
+// a project ignores at its top (a render, its subtitles, stills).
 
 import { lstat, mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
 import { basename, dirname, join, resolve } from 'node:path';
@@ -19,15 +20,37 @@ const SKIPPED = new Set(['.git', 'node_modules', STATE_DIR, '.DS_Store', 'Thumbs
 /** What `oms init`'s .gitignore leaves out at the top (renders, their subtitles and stills), and film files packed there. */
 const EXPORTS = /^[^/]+\.(mp4|srt|png|oms)$/i;
 
-/** The project's files, by path relative to it with `/`, A to Z; a link is refused, since what it points at is not the project's. */
-export async function packedFiles(dir: string, prefix = ''): Promise<string[]> {
+/** A folder left out of a packed film that the person may not expect to be: its path with a closing `/`, and its bytes. */
+export interface LeftOut {
+  path: string;
+  bytes: number;
+}
+
+/** The bytes of the files under `folder`, links not followed. */
+async function bytesUnder(folder: string): Promise<number> {
+  let total = 0;
+  for (const entry of await readdir(folder, { withFileTypes: true })) {
+    const path = join(folder, entry.name);
+    if (entry.isDirectory()) total += await bytesUnder(path);
+    else if (entry.isFile()) total += (await lstat(path)).size;
+  }
+  return total;
+}
+
+/**
+ * The project's files, by path relative to it with `/`, A to Z; a link is refused, since what it points at is not the
+ * project's. A folder whose name starts with a dot is left out wherever it is, and one other than the Studio's state
+ * or git's goes into `leftOut`, so whoever packs it can be told.
+ */
+export async function packedFiles(dir: string, prefix = '', leftOut: LeftOut[] = []): Promise<string[]> {
   const found: string[] = [];
   const entries = (await readdir(join(dir, prefix), { withFileTypes: true })).sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
   for (const entry of entries) {
     const path = `${prefix}${entry.name}`;
     if (SKIPPED.has(entry.name) || EXPORTS.test(path)) continue;
     if (entry.isSymbolicLink()) throw new Error(`${path} is a link: a packed film holds the project's own files, so copy it in instead.`);
-    if (entry.isDirectory()) found.push(...(await packedFiles(dir, `${path}/`)));
+    if (entry.isDirectory() && entry.name.startsWith('.')) leftOut.push({ path: `${path}/`, bytes: await bytesUnder(join(dir, path)) });
+    else if (entry.isDirectory()) found.push(...(await packedFiles(dir, `${path}/`, leftOut)));
     else if (entry.isFile()) found.push(path);
   }
   return found;
@@ -38,9 +61,10 @@ function field(header: Buffer, at: number, width: number, value: string | number
   header.write(typeof value === 'number' ? value.toString(8).padStart(width - 1, '0') : value, at, width, 'utf8');
 }
 
-/** The project in `dir` as an .oms file's bytes, and how many files it holds. */
-export async function packProject(dir: string): Promise<{ bytes: Buffer; files: number }> {
-  const paths = await packedFiles(dir);
+/** The project in `dir` as an .oms file's bytes, how many files it holds, and the dot-folders left out (packedFiles). */
+export async function packProject(dir: string): Promise<{ bytes: Buffer; files: number; leftOut: LeftOut[] }> {
+  const leftOut: LeftOut[] = [];
+  const paths = await packedFiles(dir, '', leftOut);
   if (!paths.includes('film.tsx')) throw new Error(`${dir} holds no film.tsx: name the project folder.`);
   if (paths.length > MOST_FILES) throw new Error(`The project holds ${paths.length} files, more than ${MOST_FILES}.`);
   const blocks: Buffer[] = [];
@@ -72,7 +96,7 @@ export async function packProject(dir: string): Promise<{ bytes: Buffer; files: 
     blocks.push(header, data, Buffer.alloc((512 - (data.length % 512)) % 512));
   }
   blocks.push(Buffer.alloc(1024));
-  return { bytes: gzipSync(Buffer.concat(blocks), { level: 9 }), files: paths.length };
+  return { bytes: gzipSync(Buffer.concat(blocks), { level: 9 }), files: paths.length, leftOut };
 }
 
 /** A path an .oms file may hold: relative, in plain parts, nowhere the Studio keeps its state. */

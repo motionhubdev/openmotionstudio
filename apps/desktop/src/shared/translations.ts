@@ -101,6 +101,7 @@ export const zh: Record<string, string> = {
   "Film file (.oms)…": "影片文件（.oms）…",
   "The project as one file, to share or keep: Import project opens it": "把项目存成一个文件，便于分享或保存：用“导入项目”即可打开",
   "Saved {0}": "已保存 {0}",
+  "Saved {0}. Left out {1}: a film keeps nothing in a folder whose name starts with a dot.": "已保存 {0}。未打包 {1}：影片不会在以点开头的文件夹里存放任何内容。",
   "Save the film file": "保存影片文件",
   "Film file": "影片文件",
   "sound: checking…": "声音：检查中…",

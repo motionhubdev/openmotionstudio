@@ -6102,7 +6102,7 @@ input.switch:disabled {
   border-top: 1px solid var(--line);
 }
 
-/* The assistants ready to take a film, at the prompt's foot on the left. */
+/* The assistants ready to take a film, at the prompt's foot on the left: the one picked takes the new film's brief. */
 .home-assistants {
   display: flex;
   align-items: center;
@@ -6112,10 +6112,26 @@ input.switch:disabled {
 .home-assistant {
   display: grid;
   place-items: center;
-  width: 22px;
-  height: 22px;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid transparent;
   border-radius: var(--r-control);
+  background: transparent;
   color: var(--text);
+  opacity: 0.55;
+  cursor: pointer;
+}
+
+.home-assistant:hover {
+  background: var(--s2);
+  opacity: 1;
+}
+
+.home-assistant.chosen {
+  border-color: var(--line);
+  background: var(--s2);
+  opacity: 1;
 }
 
 .home-assistant .agent-logo {
