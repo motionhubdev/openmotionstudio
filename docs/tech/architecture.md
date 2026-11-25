@@ -99,7 +99,8 @@ apps/cli/
 One main BrowserWindow hosts Home and switches between retained project WebContentsViews. A project's view can move
 to its own BaseWindow with Open in editor window or Ctrl/Cmd+Shift+N, preserving the same renderer and pending turn.
 Closing a dedicated window or returning Home detaches the view; the project session continues. Closing the main
-window hides it to the tray. Another app launch restores it. Home lists project tasks and real progress, with Open
+window hides it to the tray. Another app launch restores it, then quits saying so on its stderr (which a `pnpm dev` terminal
+shows: the Studio running may be an older build). Home lists project tasks and real progress, with Open
 here and Open in editor window. The first close of the main window explains this once (`backgroundNoticeSeen`). Each task change also rebuilds the
 tray (`showTasksInTray`): its tooltip, a menu item per project waiting on the person, and the badge count where the
 system has one (`app.setBadgeCount`; the tray's title on a Mac). Views pause playback when hidden; task events and approvals remain live.
