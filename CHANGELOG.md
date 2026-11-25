@@ -3,6 +3,14 @@
 Every key change to OpenMotionStudio, newest first, by date. What counts as key and the entry format are in
 `CLAUDE.md`, "The changelog".
 
+## 2026-11-24 — OpenMotionStudio v0.2.0
+
+- **What:** A release with everything since v0.1.3: the Studio exports in headless Chrome, several stages at once, drawn on the GPU where it can be; an export keeps running with the window hidden and can be cancelled while a frame hangs; a film travels as one `.oms` file, opened from the system or with Import project, without the project's dot-folders; films play recorded clips (`<Video>`) and keep a recorded narration; the assistant picked on Home is the new project's; updates are downloaded in the app and installed on restart. Installers for macOS (Apple silicon and Intel), Windows (x64) and Linux (x64 and ARM64 AppImages) are on GitHub Releases.
+- **Why:** These changes reached `main` after v0.1.3, and the people using a release had none of them; a minor version because they add features, not only fixes.
+- **Breaking:** An export's pixels now depend on the machine's GPU and driver (`OMS_RENDER_GPU=0` gives the software frames, the same everywhere); a film with mono sounds or a synthesized narration exports 3 dB louder in those parts; an MP4 from a film with `<Film captions>` has no subtitle track, its `.srt` beside it as before.
+- **Upgrade:** Install v0.2.0 by hand over v0.1.3 from GitHub Releases or openmotion.studio; later releases arrive in the app. The Windows installer stays unsigned until SignPath is set up.
+- **Refs:** `apps/desktop/package.json`, the entries below from 2026-11-20 to 2026-11-24.
+
 ## 2026-11-24 — Cancel stops an export whose frame never comes
 
 - **What:** Cancel on "Exporting n%" stops the export at once, and frees the Studio, even while a stage is waiting for a frame its Chrome never gives back; a headless Chrome that does not answer when it is closed is killed 5 s on, in the Studio and in `oms`.
