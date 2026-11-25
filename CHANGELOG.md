@@ -3,6 +3,14 @@
 Every key change to OpenMotionStudio, newest first, by date. What counts as key and the entry format are in
 `CLAUDE.md`, "The changelog".
 
+## 2026-11-24 — A film file leaves out the project's dot-folders, and says so
+
+- **What:** Film file (.oms) in the Studio and `oms pack` leave out every folder whose name starts with a dot, wherever it is in the project, as they already left out `.git/` and `.motion-studio/`; the Studio's notice and `oms pack` name each one left out with its size. Dot-files such as `.gitignore` are still packed.
+- **Why:** A tool's cache in the project went into the film: the UTMB example's `.data-cache/`, 182 MB written by the agent's fetch script, made a 170 MB film file of a 1.8 MB film.
+- **Breaking:** None. A film file packed from a project that kept a film's own files in a dot-folder no longer holds them; no part of the film format lives in one.
+- **Upgrade:** Nothing.
+- **Refs:** `apps/desktop/src/main/oms-file.ts`, `apps/cli/oms.mjs`, ADR 0019.
+
 ## 2026-11-24 — A `.oms` film file opens in the Studio from the system
 
 - **What:** The installers register `.oms` (`application/vnd.openmotionstudio.film`) with a document icon, and the Studio takes a film file the system hands it (a double-click, Open with, a drop on the Dock) into a new project as Home's Import does, starting or bringing forward the running Studio. Windows's NSIS installer registers the type and its uninstaller removes it; macOS declares the type `dev.motionhub.studio.film`. On Linux the desktop file names the type, and `resources/openmotionstudio-film.xml` beside the program says what `*.oms` is, for `xdg-mime install`.

@@ -119,13 +119,13 @@ async function filmOf(open: () => Promise<{ film: import('../desktop/src/shared/
 
 /** The film as a web player in the new folder `out` (web.ts): plays in a browser without a render. */
 /** The project in `dir` packed into the film file `out` (ADR 0019), written whole, then moved into place. */
-export async function pack(dir: string, out: string): Promise<{ files: number; bytes: number }> {
+export async function pack(dir: string, out: string): Promise<{ files: number; bytes: number; leftOut: { path: string; bytes: number }[] }> {
   if (!out.toLowerCase().endsWith(OMS_EXTENSION)) throw new Error(`Name a film file ending in ${OMS_EXTENSION}.`);
-  const { bytes, files } = await packProject(dir);
+  const { bytes, files, leftOut } = await packProject(dir);
   const partial = `${out}.partial`;
   await writeFile(partial, bytes);
   await rename(partial, out);
-  return { files, bytes: bytes.length };
+  return { files, bytes: bytes.length, leftOut };
 }
 
 export async function player(dir: string, scratch: string, out: string): Promise<{ soundtrack: boolean }> {

@@ -681,8 +681,11 @@ export interface StudioApi {
   cancelExport(): Promise<void>;
   /** Asks for an empty (or new) folder, then writes the film there as a Remotion project; the folder, or null when the person cancels. */
   exportRemotion(): Promise<string | null>;
-  /** Asks where to save, then writes the project as one film file (.oms, ADR 0019); the path, or null when the person cancels. */
-  exportFilmFile(): Promise<string | null>;
+  /**
+   * Asks where to save, then writes the project as one film file (.oms, ADR 0019): its path and the folders left out of it
+   * that the person may not expect to be (a dot-folder, with its bytes), or null when the person cancels.
+   */
+  exportFilmFile(): Promise<{ file: string; leftOut: { path: string; bytes: number }[] } | null>;
   /** Shows the last exported file or folder in the system's file manager. */
   showExported(): Promise<void>;
 }

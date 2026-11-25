@@ -1100,12 +1100,12 @@ export function createWorkspace(host: WorkspaceHost, changed: () => void = () =>
       };
       const result = window ? await dialog.showSaveDialog(window, options) : await dialog.showSaveDialog(options);
       if (result.canceled || !result.filePath) return null;
-      const { bytes } = await packProject(state.project.path);
+      const { bytes, leftOut } = await packProject(state.project.path);
       const partial = `${result.filePath}.partial`;
       await writeFile(partial, bytes);
       await rename(partial, result.filePath);
       exported = result.filePath;
-      return result.filePath;
+      return { file: result.filePath, leftOut };
     });
     handle(CHANNELS.exportRemotion, async (event) => {
       const state = requireOpen();

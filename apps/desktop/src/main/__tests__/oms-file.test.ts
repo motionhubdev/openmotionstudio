@@ -58,6 +58,22 @@ describe('packing a project', () => {
     expect(back.get('media/fonts/a.ttf')!.toString()).toBe('font');
   });
 
+  it('leaves out every folder whose name starts with a dot, and says which a person may not expect, with its bytes', async () => {
+    const root = await project(join(dir, 'p'), {
+      ...FILM,
+      '.data-cache/tiles/a.tif': 'x'.repeat(3000),
+      '.data-cache/b.json': 'x'.repeat(100),
+      'parts/.vscode/settings.json': '{}',
+      '.git/HEAD': 'ref',
+      '.motion-studio/session.json': 'conversation',
+      'media/.keep': '',
+    });
+    const { files, leftOut } = await packProject(root);
+    expect(await packedFiles(root)).toEqual(['.gitignore', 'film.tsx', 'media/.keep', 'media/fonts/a.ttf', 'media/poster.png', 'parts/kit.tsx', 'voice/lines.json']);
+    expect(files).toBe(7);
+    expect(leftOut).toEqual([{ path: '.data-cache/', bytes: 3100 }, { path: 'parts/.vscode/', bytes: 2 }]);
+  });
+
   it('gives the same bytes for the same files, whenever they were written', async () => {
     const one = await project(join(dir, 'one'), FILM);
     const two = await project(join(dir, 'two'), FILM);
