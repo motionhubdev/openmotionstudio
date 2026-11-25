@@ -49,7 +49,7 @@ import { testProvider } from './agent/test-connection';
 import { TOOLS, type ToolContext, projectPath } from './agent/tools';
 import type { BuildContext } from 'esbuild';
 import { exportFrames, renderStages, sceneStills, type Stage } from './film/capture';
-import { openChromeStage, studioChrome } from './film/chrome';
+import { drawPath, openChromeStage, studioChrome } from './film/chrome';
 import { studioStage } from './film/stage';
 import { studioScripts } from './film/preview';
 import ffmpegStatic from 'ffmpeg-static';
@@ -1079,7 +1079,10 @@ export function createWorkspace(host: WorkspaceHost, changed: () => void = () =>
         // Several stages at once, each a window drawing every n-th frame, as `oms render` draws with several browsers.
         await exportFrames(state.project.path, build.version, result.filePath, (done) => send(EVENTS.exportProgress, done), controller.signal, openStage, ffmpegPath(), { stages: renderStages() });
         exported = result.filePath;
-        return result.filePath;
+        // Every stage drew on the one path found for this Chrome (ADR 0022), said with the export.
+        const path = await drawPath(await studioChrome(join(app.getAppPath(), 'resources')));
+        log('film.exported', { projectPath: state.project.path, gpu: path.gpu, renderer: path.renderer });
+        return { file: result.filePath, gpu: path.gpu, renderer: path.renderer };
       } finally {
         if (exporting === controller) exporting = null;
       }

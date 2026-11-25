@@ -1,6 +1,6 @@
 # 21. The Studio draws stills and exports in the headless Chrome oms uses
 
-> **Status:** Accepted, amends [0004](0004-a-films-code-runs-in-a-sandboxed-frame-on-its-own-scheme.md) and [0014](0014-project-sessions-outlive-editor-windows.md) · **Date:** 2026-11-23
+> **Status:** Accepted, amends [0004](0004-a-films-code-runs-in-a-sandboxed-frame-on-its-own-scheme.md) and [0014](0014-project-sessions-outlive-editor-windows.md), amended by [0022](0022-a-film-is-drawn-on-the-gpu-where-it-can-be.md) (on the GPU where it can be; the same frames per path) · **Date:** 2026-11-23
 
 Where the Studio draws a film still: for the agent's `check` and `still`, the timeline's scene frames, marks' stills and
 the MP4 export.

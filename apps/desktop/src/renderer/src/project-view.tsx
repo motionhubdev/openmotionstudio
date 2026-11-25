@@ -620,8 +620,15 @@ export function ProjectView({ onGlobalSettings, settingsOpen, project, providers
     setToast(null);
     setProgress(0);
     try {
-      const file = await window.studio.exportFilm();
-      if (file) setToast({ text: translate("Exported {0}", false, {0: file.split(/[/\\]/).pop()}), error: false, file });
+      const exported = await window.studio.exportFilm();
+      if (exported) {
+        const words = { 0: exported.file.split(/[/\\]/).pop(), 1: exported.renderer };
+        setToast({
+          text: exported.gpu ? translate("Exported {0}, drawn on the GPU ({1})", false, words) : translate("Exported {0}, drawn on the CPU ({1})", false, words),
+          error: false,
+          file: exported.file,
+        });
+      }
     } catch (e) {
       setToast({ text: reason(e), error: true });
     } finally {
