@@ -2,7 +2,8 @@
 // Chrome (chrome.ts, ADR 0021), moved to each frame's time and photographed. Export pipes the frames
 // to ffmpeg as H.264 (High, level 4.1, BT.709, a key frame every two seconds, the index
 // ahead of the frames), which any phone plays, with the film's sounds mixed beside them
-// as AAC (mix.ts). Nothing in the film runs on a clock, so a time always draws the same frame.
+// as AAC (mix.ts). Nothing in the film runs on a clock, so a time always draws the same frame on the same draw path (the
+// GPU or SwiftShader, chrome.ts drawPath, ADR 0022): one export draws on one.
 
 import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
@@ -203,7 +204,7 @@ const run = (ffmpeg: string, args: string[]) =>
  * a key frame of its own, then joined as they are; the sound is mixed once for the whole film (mix.ts) and added with
  * the subtitles, the picture copied. With several `stages`, each segment's frames are drawn at once and written to its
  * encoder in turn, a stage holding at most the one frame it waits to write: a frame is a function of its time alone,
- * so the video is the same however many draw it.
+ * so the video is the same however many draw it, every stage drawing on the process's one path (chrome.ts drawPath).
  */
 /**
  * How many stages draw an export at once: one a core, as memory allows (about 1.5 GB each, a browser drawing the
@@ -305,7 +306,8 @@ export async function exportFrames(
 
 /**
  * Draws frames [s, e) of the film with `stages` into an H.264 file at `file`: stage c draws frames s + c, s + c + n…,
- * and frame i goes to the encoder when frame i - 1 has. The first failure, or a cancel, stops every stage.
+ * and frame i goes to the encoder when frame i - 1 has. The first failure, or a cancel, stops every stage: a cancel at
+ * once, without waiting for a frame being drawn, which a stage that stopped answering would never give back.
  */
 async function drawSegment(
   drawing: PhotoStage[],
@@ -332,6 +334,16 @@ async function drawSegment(
     encoder.on('close', (code) => (code === 0 ? done() : fail(new Error(`ffmpeg exited ${code}: ${stderr.trim().split('\n').slice(-3).join(' / ')}`))));
   });
   finished.catch(() => {});
+  let unlisten = () => {};
+  const cancelled = new Promise<never>((_, stop) => {
+    const cancel = () => stop(new Error('The export was cancelled.'));
+    if (signal.aborted) return cancel();
+    signal.addEventListener('abort', cancel, { once: true });
+    unlisten = () => signal.removeEventListener('abort', cancel);
+  });
+  cancelled.catch(() => {});
+  /** What a stage waits for, given up on as the export is cancelled. */
+  const unlessCancelled = <T>(promise: Promise<T>): Promise<T> => Promise.race([promise, cancelled]);
   try {
     let next = s;
     let broken: unknown = null;
@@ -342,10 +354,10 @@ async function drawSegment(
       for (let i = first; i < e; i += drawing.length) {
         if (broken) throw broken;
         if (signal.aborted) throw new Error('The export was cancelled.');
-        const png = await photographer.png(i / film.fps);
-        await turn(i);
+        const png = await unlessCancelled(photographer.png(i / film.fps));
+        await unlessCancelled(turn(i));
         if (broken) throw broken;
-        await write(encoder.stdin, png);
+        await unlessCancelled(write(encoder.stdin, png));
         onDrawn(i + 1 - s);
         next = i + 1;
         waiting.get(next)?.go();
@@ -370,6 +382,8 @@ async function drawSegment(
     await finished.catch(() => {});
     await rm(file, { force: true });
     throw error;
+  } finally {
+    unlisten();
   }
   await finished;
 }

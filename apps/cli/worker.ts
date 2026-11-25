@@ -11,7 +11,7 @@ import { soundFile } from '../desktop/src/main/film/mix';
 import { reviewBuild } from '../desktop/src/main/film/review';
 import { exportFrames, renderStages } from '../desktop/src/main/film/capture';
 import { findFfmpeg } from './ffmpeg';
-import { findChrome, openChromeStage } from '../desktop/src/main/film/chrome';
+import { describePath, drawPath, findChrome, openChromeStage } from '../desktop/src/main/film/chrome';
 import { voiceFilm } from '../desktop/src/main/narration';
 import { TRANSCRIBERS, voiceRecording, type RecordedFilm } from '../desktop/src/main/recording';
 import { VOICE_NAMES, voicesOf, type VoiceSetup } from '../desktop/src/main/voice';
@@ -90,18 +90,21 @@ const KEPT_MS = 7 * 24 * 3600_000;
  * as SubRip), reporting the share done (0 to 1); stopped, it keeps its finished segments, and the same render started
  * again draws only the rest. Nothing is drawn before ffmpeg is known to have what the render needs.
  */
-export async function render(dir: string, scratch: string, file: string, onProgress: (done: number) => void, signal: AbortSignal): Promise<void> {
+export async function render(dir: string, scratch: string, file: string, onProgress: (done: number) => void, signal: AbortSignal): Promise<{ drawnOn: string }> {
   const { build, output, open } = await opener(dir, scratch);
   if (!build.ok) throw new Error(build.errors.join('\n'));
   const ffmpeg = await findFfmpeg();
-  // Kept by the Chrome that drew them: another one may draw other pixels.
-  const resume = join(RENDERS, createHash('sha256').update(await findChrome()).digest('hex').slice(0, 12));
+  const binary = await findChrome();
+  const path = await drawPath(binary);
+  // Kept by the Chrome and the path that drew them (ADR 0022): another one may draw other pixels.
+  const resume = join(RENDERS, createHash('sha256').update(`${binary}\0${path.gpu ? `gpu\0${path.renderer}` : 'cpu'}`).digest('hex').slice(0, 12));
   for (const chrome of await readdir(RENDERS).catch(() => [] as string[]))
     for (const kept of await readdir(join(RENDERS, chrome)).catch(() => [] as string[])) {
       const at = join(RENDERS, chrome, kept);
       if (Date.now() - (await stat(at)).mtimeMs > KEPT_MS) await rm(at, { recursive: true, force: true });
     }
   await exportFrames(dir, build.version, file, onProgress, signal, open, ffmpeg, { output, stages: renderStages(), resume });
+  return { drawnOn: describePath(path) };
 }
 
 /** The preview core and the web player's page script, beside this worker. */
@@ -119,13 +122,13 @@ async function filmOf(open: () => Promise<{ film: import('../desktop/src/shared/
 
 /** The film as a web player in the new folder `out` (web.ts): plays in a browser without a render. */
 /** The project in `dir` packed into the film file `out` (ADR 0019), written whole, then moved into place. */
-export async function pack(dir: string, out: string): Promise<{ files: number; bytes: number }> {
+export async function pack(dir: string, out: string): Promise<{ files: number; bytes: number; leftOut: { path: string; bytes: number }[] }> {
   if (!out.toLowerCase().endsWith(OMS_EXTENSION)) throw new Error(`Name a film file ending in ${OMS_EXTENSION}.`);
-  const { bytes, files } = await packProject(dir);
+  const { bytes, files, leftOut } = await packProject(dir);
   const partial = `${out}.partial`;
   await writeFile(partial, bytes);
   await rename(partial, out);
-  return { files, bytes: bytes.length };
+  return { files, bytes: bytes.length, leftOut };
 }
 
 export async function player(dir: string, scratch: string, out: string): Promise<{ soundtrack: boolean }> {

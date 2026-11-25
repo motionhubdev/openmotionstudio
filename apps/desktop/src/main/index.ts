@@ -514,8 +514,13 @@ async function startControl(): Promise<void> {
 registerPreviewScheme();
 allowSoftwareWebGL();
 const primary = app.requestSingleInstanceLock();
-if (!primary) app.quit();
-else {
+if (!primary) {
+  // The Studio is already running, perhaps with no window: closing its window leaves it in the tray (ADR 0014). This
+  // launch hands over to it, which brings its window forward; said where a launch from a terminal (`pnpm dev`) shows it,
+  // since the one running may be an older build.
+  console.error('OpenMotionStudio is already running (closing its window leaves it in the tray), so this launch brought its window forward and quit. To start this one instead, quit it first: Quit OpenMotionStudio in its tray menu.');
+  app.quit();
+} else {
   // A film file opened while the Studio runs comes as a second launch's argument (Windows, Linux) or as open-file
   // (macOS, which also sends a cold start's that way, before ready); one from a cold start is in this launch's own.
   filmFiles.add(filmFilesIn(process.argv.slice(1), process.cwd()));

@@ -620,8 +620,15 @@ export function ProjectView({ onGlobalSettings, settingsOpen, project, providers
     setToast(null);
     setProgress(0);
     try {
-      const file = await window.studio.exportFilm();
-      if (file) setToast({ text: translate("Exported {0}", false, {0: file.split(/[/\\]/).pop()}), error: false, file });
+      const exported = await window.studio.exportFilm();
+      if (exported) {
+        const words = { 0: exported.file.split(/[/\\]/).pop(), 1: exported.renderer };
+        setToast({
+          text: exported.gpu ? translate("Exported {0}, drawn on the GPU ({1})", false, words) : translate("Exported {0}, drawn on the CPU ({1})", false, words),
+          error: false,
+          file: exported.file,
+        });
+      }
     } catch (e) {
       setToast({ text: reason(e), error: true });
     } finally {
@@ -649,8 +656,17 @@ export function ProjectView({ onGlobalSettings, settingsOpen, project, providers
     setMenu(false);
     setToast(null);
     try {
-      const file = await window.studio.exportFilmFile();
-      if (file) setToast({ text: translate("Saved {0}", false, {0: file.split(/[/\\]/).pop()}), error: false, file });
+      const saved = await window.studio.exportFilmFile();
+      if (!saved) return;
+      const name = saved.file.split(/[/\\]/).pop();
+      const leftOut = saved.leftOut.map((folder) => `${folder.path} (${(folder.bytes / 1024 / 1024).toFixed(1)} MB)`).join(', ');
+      setToast({
+        text: leftOut
+          ? translate("Saved {0}. Left out {1}: a film keeps nothing in a folder whose name starts with a dot.", false, { 0: name, 1: leftOut })
+          : translate("Saved {0}", false, { 0: name }),
+        error: false,
+        file: saved.file,
+      });
     } catch (e) {
       setToast({ text: reason(e), error: true });
     }

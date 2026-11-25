@@ -1,7 +1,7 @@
 // A project-owned session: its editor view, agent, previews and tasks survive moving between native windows.
 
 import { studioTranslator } from './providers';
-import { BrowserWindow, Notification, app, dialog, shell, type BaseWindow, type IpcMainInvokeEvent, type OpenDialogOptions, type WebContents } from 'electron';
+import { BrowserWindow, Notification, app, dialog, powerSaveBlocker, shell, type BaseWindow, type IpcMainInvokeEvent, type OpenDialogOptions, type WebContents } from 'electron';
 import { mkdir, mkdtemp, readFile, realpath, rename, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, sep } from 'node:path';
@@ -49,7 +49,7 @@ import { testProvider } from './agent/test-connection';
 import { TOOLS, type ToolContext, projectPath } from './agent/tools';
 import type { BuildContext } from 'esbuild';
 import { exportFrames, renderStages, sceneStills, type Stage } from './film/capture';
-import { openChromeStage, studioChrome } from './film/chrome';
+import { drawPath, openChromeStage, studioChrome } from './film/chrome';
 import { studioStage } from './film/stage';
 import { studioScripts } from './film/preview';
 import ffmpegStatic from 'ffmpeg-static';
@@ -1084,6 +1084,9 @@ export function createWorkspace(host: WorkspaceHost, changed: () => void = () =>
       const controller = new AbortController();
       exporting = controller;
       exportShare = 0;
+      // Held while the export runs, so the computer does not sleep under it and the system does not throttle or suspend
+      // a Studio whose window is hidden (App Nap on macOS): an export is meant to end with the person away.
+      const awake = powerSaveBlocker.start('prevent-app-suspension');
       try {
         const review = await reviewBuild(build, openStage, controller.signal, { bundle: join(buildDir(state.project.path), `film-${build.version}.js`), dir: state.project.path });
         const errors = review.issues.filter((issue) => issue.severity === 'error');
@@ -1102,8 +1105,12 @@ export function createWorkspace(host: WorkspaceHost, changed: () => void = () =>
         // Several stages at once, each a window drawing every n-th frame, as `oms render` draws with several browsers.
         await exportFrames(state.project.path, build.version, result.filePath, (done) => send(EVENTS.exportProgress, (exportShare = done)), controller.signal, openStage, ffmpegPath(), { stages: renderStages() });
         exported = result.filePath;
-        return result.filePath;
+        // Every stage drew on the one path found for this Chrome (ADR 0022), said with the export.
+        const path = await drawPath(await studioChrome(join(app.getAppPath(), 'resources')));
+        log('film.exported', { projectPath: state.project.path, gpu: path.gpu, renderer: path.renderer });
+        return { file: result.filePath, gpu: path.gpu, renderer: path.renderer };
       } finally {
+        powerSaveBlocker.stop(awake);
         if (exporting === controller) exporting = null;
       }
     });
@@ -1123,12 +1130,12 @@ export function createWorkspace(host: WorkspaceHost, changed: () => void = () =>
       };
       const result = await askWhereToSave(window, options);
       if (result.canceled || !result.filePath) return null;
-      const { bytes } = await packProject(state.project.path);
+      const { bytes, leftOut } = await packProject(state.project.path);
       const partial = `${result.filePath}.partial`;
       await writeFile(partial, bytes);
       await rename(partial, result.filePath);
       exported = result.filePath;
-      return result.filePath;
+      return { file: result.filePath, leftOut };
     });
     handle(CHANNELS.exportRemotion, async (event) => {
       const state = requireOpen();

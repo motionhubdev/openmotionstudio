@@ -3,6 +3,14 @@
 Every key change to OpenMotionStudio, newest first, by date. What counts as key and the entry format are in
 `CLAUDE.md`, "The changelog".
 
+## 2026-11-24 — Cancel stops an export whose frame never comes
+
+- **What:** Cancel on "Exporting n%" stops the export at once, and frees the Studio, even while a stage is waiting for a frame its Chrome never gives back; a headless Chrome that does not answer when it is closed is killed 5 s on, in the Studio and in `oms`.
+- **Why:** An export of the UTMB example hung on a frame; its cancel was seen only between frames, and closing a Chrome that no longer answered waited for it forever, so "× Exporting 38%" did nothing.
+- **Breaking:** None.
+- **Upgrade:** Nothing.
+- **Refs:** `apps/desktop/src/main/film/capture.ts`, `apps/desktop/src/main/film/chrome.ts`.
+
 ## 2026-11-24 — The assistant picked on Home is the new project's
 
 - **What:** The marks of the assistants ready under Home's prompt are a choice, the first picked unless the person clicks another; Start creating opens the new project with that agent, and its brief goes to it as soon as the film is ready.
@@ -10,6 +18,30 @@ Every key change to OpenMotionStudio, newest first, by date. What counts as key 
 - **Breaking:** None.
 - **Upgrade:** Nothing.
 - **Refs:** `apps/desktop/src/renderer/src/home.tsx`, `apps/desktop/src/main/index.ts`, [design](docs/design.md).
+
+## 2026-11-24 — An export runs to its end with the Studio's window hidden and the computer left alone
+
+- **What:** While an export runs, the Studio holds a power request (`prevent-app-suspension`): the computer does not sleep under it, and macOS does not put a Studio with its window hidden into App Nap. A frame's 60 s limit counts only the time the computer is awake, so an export that was asleep with the computer (a lid closed) carries on when it wakes, in the Studio and in `oms`.
+- **Why:** The UTMB example's export ran from the evening with its window behind other apps, reached 38 % and failed the moment the laptop woke from standby: the frame on its way when it slept had "taken longer than 60 s".
+- **Breaking:** None.
+- **Upgrade:** Nothing.
+- **Refs:** `apps/desktop/src/main/workspace.ts`, `apps/desktop/src/main/film/chrome.ts`.
+
+## 2026-11-24 — A film file leaves out the project's dot-folders, and says so
+
+- **What:** Film file (.oms) in the Studio and `oms pack` leave out every folder whose name starts with a dot, wherever it is in the project, as they already left out `.git/` and `.motion-studio/`; the Studio's notice and `oms pack` name each one left out with its size. Dot-files such as `.gitignore` are still packed.
+- **Why:** A tool's cache in the project went into the film: the UTMB example's `.data-cache/`, 182 MB written by the agent's fetch script, made a 170 MB film file of a 1.8 MB film.
+- **Breaking:** None. A film file packed from a project that kept a film's own files in a dot-folder no longer holds them; no part of the film format lives in one.
+- **Upgrade:** Nothing.
+- **Refs:** `apps/desktop/src/main/oms-file.ts`, `apps/cli/oms.mjs`, ADR 0019.
+
+## 2026-11-24 — A film is drawn on the GPU where it can be
+
+- **What:** The Studio's stills and exports, and `oms render` and `oms still`, draw a film's WebGL on the machine's GPU (ANGLE on Direct3D 11, Metal or Vulkan) when the headless Chrome can draw it there, and in SwiftShader on the CPU when it cannot (no GPU, a blocklisted one, a software driver). It is found once a process, and every stage of an export draws on the same path. `OMS_RENDER_GPU=0` asks for the CPU, `=1` for the GPU even where Chrome blocklists it. The export's notice ("drawn on the GPU (…)") and `oms render` say which drew it.
+- **Why:** The UTMB example exported in about 25 minutes on SwiftShader and in under 3 minutes on the laptop's Intel Arc GPU, with frames the same to the eye (46.9 dB PSNR against SwiftShader's).
+- **Breaking:** An export's pixels now depend on the machine's GPU and driver: the same film on two machines can give slightly different files. `OMS_RENDER_GPU=0` gives the software frames, the same everywhere.
+- **Upgrade:** Nothing. Set `OMS_RENDER_GPU=0` where frames must match across machines.
+- **Refs:** ADR 0022, `apps/desktop/src/main/film/chrome.ts`, `apps/cli/worker.ts`.
 
 ## 2026-11-24 — A `.oms` film file opens in the Studio from the system
 
