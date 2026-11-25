@@ -111,13 +111,16 @@ require(path.join(DESKTOP, 'out/main/index.js'));
 (async () => {
   try {
     await app.whenReady();
-    const voiced = sealVoice();
     const win = await until(() => BrowserWindow.getAllWindows()[0], 'main window');
     win.setBounds({ x: 0, y: 0, width: W, height: H });
     const home = win.webContents;
     home.setZoomFactor(ZOOM);
     await until(async () => !home.isLoading() && (await exists(home, `() => document.querySelector('.home-prompt textarea')`)), 'home', 30000);
     await sleep(1500);
+    // On Linux the store opens a little after the app is ready, with its first window.
+    const voiced = !!process.env.MINIMAX_API_KEY &&
+      !!(await until(() => safeStorage.isEncryptionAvailable(), 'safe storage', 15000).catch(() => false)) && sealVoice();
+    console.log('voice', voiced ? 'sealed' : 'left out', safeStorage.getSelectedStorageBackend?.());
     mark('home');
 
     // 1. Describe it: the sentence at Home, to Claude Code.

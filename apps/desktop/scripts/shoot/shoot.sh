@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # Record the website's hero film: the built Studio (pnpm build) on an Xvfb display at 1920x1080, recorded by ffmpeg at
 # 30 fps, driven by runner.cjs with the real pointer (pointer.py) and a real coding agent (Claude Code).
-# Usage: shoot.sh OUT_DIR [dry]   (dry stops before the message is sent, so no agent turn is spent)
+# Usage: shoot.sh OUT_DIR [dry]   (dry stops before the brief is sent, so no agent turn is spent)
+# The voice chapter needs MINIMAX_API_KEY (MINIMAX_REGION, china by default) exported; without it, it is left out.
+# Then: cut.py RUN_DIR MUSIC [OUT_DIR] makes studio-loop.en.mp4 and studio-loop.zh.mp4 (see cut.py for the music).
 set -euo pipefail
 here=$(cd "$(dirname "$0")" && pwd)
 out=$(realpath -m "$1")
