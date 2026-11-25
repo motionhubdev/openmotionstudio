@@ -101,7 +101,7 @@ export function ChapterNumber({n, t}: {n: number; t: number}) {
   return (
     <div style={{font: `500 34px ${MONO}`, letterSpacing: '0.12em', color: MUTED, opacity: clamp01(t / 0.15),
       transform: `translateY(${(1 - p) * 24}px)`, marginBottom: 36, textAlign: 'center'}}>
-      <span style={{color: VERMILION}}>{String(n).padStart(2, '0')}</span> / 08
+      <span style={{color: VERMILION}}>{String(n).padStart(2, '0')}</span> / 06
     </div>
   );
 }

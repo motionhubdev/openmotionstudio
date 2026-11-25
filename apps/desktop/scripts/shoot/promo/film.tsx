@@ -1,4 +1,4 @@
-// The website's hero film: OpenMotionStudio's eight steps, each a title card that gives way to the Studio doing it.
+// The website's hero film: OpenMotionStudio in six steps, each a title card that gives way to the Studio doing it.
 // make.mjs cuts the take into media/ and writes parts/timeline.json (lengths, camera, lifts, clicks) and parts/lang.json.
 import {Film, Layer, Line, Scene, Sound, Video, useTime} from '@motionhub/runtime';
 import timeline from './parts/timeline.json';
@@ -15,12 +15,10 @@ import ui3 from './media/ui-ch3.mp4';
 import ui4 from './media/ui-ch4.mp4';
 import ui5 from './media/ui-ch5.mp4';
 import ui6 from './media/ui-ch6.mp4';
-import ui7 from './media/ui-ch7.mp4';
-import ui8 from './media/ui-ch8.mp4';
 
 export const film = {width: 1920, height: 1080, fps: 30};
 
-const clips: Record<string, string> = {intro: uiIntro, ch1: ui1, ch2: ui2, ch3: ui3, ch4: ui4, ch5: ui5, ch6: ui6, ch7: ui7, ch8: ui8};
+const clips: Record<string, string> = {intro: uiIntro, ch1: ui1, ch2: ui2, ch3: ui3, ch4: ui4, ch5: ui5, ch6: ui6};
 const EXIT = 0.4;
 
 type SceneInfo = Shot & {id: string; kind: 'card' | 'chapter'; dur: number; card: number; exit: Exit};
@@ -31,7 +29,7 @@ function Chapter({info}: {info: SceneInfo}) {
   return (
     <>
       <Studio clip={clips[info.id]!} shot={info} t={t} />
-      <Card n={n} t={t} card={info.card} exitLen={EXIT} exit={info.exit} drop={timeline.dropInCard} />
+      <Card n={n} t={t} card={info.card} exitLen={EXIT} exit={info.exit} />
     </>
   );
 }

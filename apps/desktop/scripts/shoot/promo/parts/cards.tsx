@@ -2,16 +2,18 @@
 // shape that gives way to the Studio beneath.
 import type {ReactNode} from 'react';
 import {Easing, seededRandom} from '@motionhub/runtime';
-import {AIS, CHAPTERS, INTRO} from './words';
+import {AIS, CHAPTERS, INTRO, MOTIONS} from './words';
+import claudeIcon from '../media/claude-code.png';
+import codexIcon from '../media/codex.png';
 import {ChapterNumber, COBALT, Headline, INK, LANG, MONO, MUTED, PAPER, PINK, SANS, VERMILION, clamp01, ease, pieces, spring} from './kit';
 
 export type Exit = 'box' | 'blinds' | 'iris' | 'wipe' | 'flash';
 
 /** The card for chapter `n` (0 the intro) at `t` seconds into its scene; it is gone by `card`. */
-export function Card({n, t, card, exitLen, exit, drop}: {n: number; t: number; card: number; exitLen: number; exit: Exit; drop: number}) {
+export function Card({n, t, card, exitLen, exit}: {n: number; t: number; card: number; exitLen: number; exit: Exit}) {
   if (t >= card) return null;
   const p = ease(t, card - exitLen, card, 0, 1, Easing.inOutCubic);
-  const face = <Face n={n} t={t} drop={drop} />;
+  const face = <Face n={n} t={t} />;
   const sheet = (clip?: string, shift = '') => (
     <div style={{position: 'absolute', inset: 0, background: PAPER, clipPath: clip, transform: shift}}>{face}</div>
   );
@@ -67,7 +69,7 @@ function Column({children}: {children: ReactNode}) {
   return <div style={{position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '0 140px'}}>{children}</div>;
 }
 
-function Face({n, t, drop}: {n: number; t: number; drop: number}) {
+function Face({n, t}: {n: number; t: number}) {
   const head = (n === 0 ? INTRO : CHAPTERS[n - 1]!).head[LANG];
   if (n === 0)
     return (
@@ -84,22 +86,18 @@ function Face({n, t, drop}: {n: number; t: number; drop: number}) {
       return (
         <Column>
           {number}
-          <Headline text={head} t={t} at={0.08} keyStyle={(pr) => {
+          <Headline text={head} t={t} at={0.08} size={LANG === 'zh' ? 120 : 112} keyStyle={(pr) => {
             const o = 4 + 16 * (1 - pr);
             return {color: COBALT, textShadow: `${o}px ${o * 0.5}px 0 ${PINK}`};
           }} />
-          <Swatches t={t} />
+          <Mosaic t={t} />
         </Column>
       );
     case 3:
       return <Column>{number}<Headline text={head} t={t} at={0.06} render={(s, key) => (key ? <Circled s={s} t={t} /> : s)} /></Column>;
     case 4:
-      return <Column>{number}<Bubble t={t}><Headline text={head} t={t} at={0.16} size={LANG === 'zh' ? 120 : 108} /></Bubble></Column>;
+      return <Column>{number}<Headline text={head} t={t} at={0.06} /><Logos t={t} /></Column>;
     case 5:
-      return <Column>{number}<Headline text={head} t={t} at={0.06} /><Chips t={t} /></Column>;
-    case 6:
-      return <Column><Bars t={t} drop={drop} /><Slam text={head} t={t} drop={drop} /></Column>;
-    case 7:
       return <Column>{number}<Headline text={head} t={t} at={0.06} /><Wave t={t} /></Column>;
     default:
       return <Column>{number}<Headline text={head} t={t} at={0.06} /><Progress t={t} /></Column>;
@@ -126,16 +124,51 @@ function Typed({text, t}: {text: string; t: number}) {
   );
 }
 
-/** Chapter 2: a look's colours, dropped in under the headline. */
-function Swatches({t}: {t: number}) {
-  const colours = [COBALT, PINK, VERMILION, INK, '#f2c14e'];
+/** Chapter 2: some of motionhub's motions, as tiles in their own colours, flipping in one after another. */
+function Mosaic({t}: {t: number}) {
   return (
-    <div style={{display: 'flex', gap: 28, marginTop: 56}}>
-      {colours.map((c, i) => {
-        const p = spring(t, 0.35 + i * 0.06, 0.5);
-        return <div key={c} style={{width: 74, height: 74, borderRadius: 37, background: c, transform: `translateY(${(1 - p) * -60}px) scale(${p})`}} />;
+    <div style={{display: 'grid', gridTemplateColumns: 'repeat(4, 300px)', gap: 18, marginTop: 56}}>
+      {MOTIONS.map(([name, ground, ink], i) => {
+        const p = spring(t, 0.3 + i * 0.05, 0.5, 0.45);
+        return (
+          <div key={name} style={{height: 92, borderRadius: 14, background: ground, color: ink, display: 'flex', alignItems: 'center', justifyContent: 'center',
+            font: `700 34px ${SANS}`, letterSpacing: '-0.01em', boxShadow: '0 10px 30px rgba(42,38,34,0.12)',
+            transform: `perspective(600px) rotateX(${(1 - p) * 90}deg)`, opacity: clamp01((t - 0.3 - i * 0.05) / 0.08)}}>{name}</div>
+        );
       })}
     </div>
+  );
+}
+
+/** Chapter 4: the AIs it works with, their own marks beside their names, and any model by its API key. */
+function Logos({t}: {t: number}) {
+  const icons = [claudeIcon, codexIcon, null];
+  return (
+    <div style={{display: 'flex', gap: 30, marginTop: 70}}>
+      {AIS[LANG].map((name, i) => {
+        const p = spring(t, 0.45 + i * 0.16, 0.55, 0.45);
+        const icon = icons[i];
+        return (
+          <div key={name} style={{display: 'flex', alignItems: 'center', gap: 20, font: `700 46px ${SANS}`, color: INK, background: '#fff',
+            borderRadius: 999, padding: '18px 40px 18px 20px', boxShadow: '0 16px 40px rgba(42,38,34,0.14)',
+            transform: `translateY(${(1 - p) * 60}px) scale(${0.6 + 0.4 * p})`, opacity: clamp01((t - 0.45 - i * 0.16) / 0.1)}}>
+            {icon ? <span style={{width: 72, height: 72, borderRadius: 18, background: INK, display: 'grid', placeItems: 'center'}}><img src={icon} style={{width: 50, height: 50}} /></span> : <Key />}
+            {name}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/** A key, drawn: any model reached by its API key. */
+function Key() {
+  return (
+    <svg width={72} height={72} viewBox="0 0 72 72">
+      <rect width={72} height={72} rx={18} fill={INK} />
+      <circle cx={27} cy={36} r={11} fill="none" stroke={PAPER} strokeWidth={6} />
+      <path d="M38 36 H58 M50 36 V45 M57 36 V43" stroke={PAPER} strokeWidth={6} strokeLinecap="round" />
+    </svg>
   );
 }
 
@@ -160,61 +193,7 @@ function Circled({s, t}: {s: string; t: number}) {
   );
 }
 
-/** Chapter 4: a speech bubble that pops open round the headline. */
-function Bubble({t, children}: {t: number; children: ReactNode}) {
-  const p = spring(t, 0.02, 0.55, 0.5);
-  return (
-    <div style={{position: 'relative', padding: '56px 84px', borderRadius: 64, background: '#fff', boxShadow: '0 30px 80px rgba(42,38,34,0.14)',
-      transform: `scale(${0.3 + 0.7 * p})`, opacity: clamp01(t / 0.12)}}>
-      {children}
-      <div style={{position: 'absolute', left: 120, bottom: -34, width: 70, height: 70, background: '#fff', transform: 'rotate(45deg) skew(12deg, 12deg)', borderRadius: 8}} />
-    </div>
-  );
-}
-
-/** Chapter 5: the AIs it works with, as chips. */
-function Chips({t}: {t: number}) {
-  return (
-    <div style={{display: 'flex', gap: 26, marginTop: 64}}>
-      {AIS[LANG].map((name, i) => {
-        const p = spring(t, 0.4 + i * 0.09, 0.5);
-        return (
-          <div key={name} style={{font: `500 44px ${MONO}`, color: PAPER, background: INK, borderRadius: 999, padding: '18px 38px',
-            transform: `translateY(${(1 - p) * 50}px) scale(${0.6 + 0.4 * p})`, opacity: clamp01((t - 0.4 - i * 0.09) / 0.1)}}>{name}</div>
-        );
-      })}
-    </div>
-  );
-}
-
-/** Chapter 6: four bars rise; on the drop the tallest turns vermilion. */
-function Bars({t, drop}: {t: number; drop: number}) {
-  const heights = [0.38, 0.58, 0.78, 1];
-  const hit = spring(t, drop, 0.45, 0.6);
-  return (
-    <div style={{display: 'flex', alignItems: 'flex-end', gap: 26, height: 260, marginBottom: 60}}>
-      {heights.map((h, i) => {
-        const p = spring(t, 0.02 + i * 0.07, 0.5);
-        const last = i === heights.length - 1;
-        const on = last && t >= drop;
-        return <div key={i} style={{width: 86, height: 260 * h * p * (on ? 1 + 0.12 * (1 - hit) : 1), background: on ? VERMILION : COBALT, borderRadius: 6}} />;
-      })}
-    </div>
-  );
-}
-
-/** Chapter 6's headline: it slams down on the drop and shakes the frame. */
-function Slam({text, t, drop}: {text: string; t: number; drop: number}) {
-  const p = spring(t, drop - 0.1, 0.4, 0.2);
-  const shake = t > drop ? Math.sin((t - drop) * 70) * 14 * Math.exp(-(t - drop) * 9) : 0;
-  return (
-    <div style={{opacity: clamp01((t - drop + 0.12) / 0.08), transform: `translateX(${shake}px) scale(${1 + 1.4 * (1 - p)})`}}>
-      <Headline text={text} t={t} at={drop - 0.12} stagger={0} size={LANG === 'zh' ? 150 : 136} />
-    </div>
-  );
-}
-
-/** Chapter 7: a voice, as bars that move. */
+/** Chapter 5: a voice, as bars that move. */
 function Wave({t}: {t: number}) {
   const random = seededRandom(3);
   const bars = Array.from({length: 36}, (_, i) => ({i, a: 0.4 + random() * 0.6, f: 6 + random() * 7}));
@@ -229,7 +208,7 @@ function Wave({t}: {t: number}) {
   );
 }
 
-/** Chapter 8: an export that fills to the end, then the file. */
+/** Chapter 6: an export that fills to the end, then the file. */
 function Progress({t}: {t: number}) {
   const p = ease(t, 0.3, 1.0, 0, 1, Easing.inOutCubic);
   const done = spring(t, 1.0, 0.4, 0.6);

@@ -13,16 +13,26 @@ export const TAGS = {en: ['Your AI', 'The picture', 'The timeline'], zh: ['和 A
 
 export const CHAPTERS: Card[] = [
   {head: {en: 'Describe it in *one sentence*.', zh: '说*一句话*，|就有一部片子'}},
-  {head: {en: 'Pick a *look*. No design skills.', zh: '挑个*风格*，|不会设计也好看'}},
-  {head: {en: 'Something off? *Circle it.*', zh: '哪里不对，|*圈出来*'}},
-  {head: {en: 'Then *say* what to change.', zh: '再*说一句*|要怎么改'}},
+  {head: {en: 'Pick a *look* from motionhub.', zh: '从 motionhub|挑一个*风格*'}},
+  {head: {en: '*Circle it*, say what to change.', zh: '*圈出来*，|说一句怎么改'}},
   {head: {en: 'Works with *your own AI*.', zh: '用*你自己的 AI*'}},
-  {head: {en: 'Only *that part* changes.', zh: '只改*那一处*'}},
   {head: {en: 'Give it a *voice*.', zh: '配上*旁白*'}},
   {head: {en: 'Export an *MP4*.', zh: '导出 *MP4*'}},
 ];
 
-/** The AIs the Studio works with, shown in chapter 5. */
+/** Some of motionhub's motions, each in a colour of its own, for chapter 2's card. */
+export const MOTIONS: [string, string, string][] = [
+  ['Night Diagram', '#0e1a3a', '#7fd6ff'],
+  ['Clay World', '#f0c9a8', '#7a3e1d'],
+  ['Stage Light', '#111111', '#f5e6b8'],
+  ['Plumb Line', '#dfe8f2', '#1d3f6e'],
+  ['Lab Notebook', '#f7f6ef', '#c0392b'],
+  ['Riso Pop', '#f4efe6', '#e8488a'],
+  ['Idea Map', '#e8eef4', '#2b59c3'],
+  ['Iso Works', '#eceae3', '#3a7d5c'],
+];
+
+/** The AIs the Studio works with, shown in chapter 4. */
 export const AIS = {en: ['Claude Code', 'Codex', 'Any API key'], zh: ['Claude Code', 'Codex', '任意模型 API Key']};
 
 export const CLOSING = {en: 'Free · Open source · No account', zh: '免费 · 开源 · 不用注册'};

@@ -10,20 +10,35 @@ type Rect = [number, number, number, number];
 export interface Shot {
   uiStart: number;
   uiLen: number;
-  cams: {t: number; rect: Rect}[];
-  lifts: {a: number; b: number; rect: Rect}[];
+  /** Where the camera is from `t`: a cut to `rect` (punched in), or, with `move`, a glide there from the last one over
+   * that many seconds. */
+  cams: {t: number; rect: Rect; move?: number}[];
+  /** A panel raised off the screen from `a` to `b`, grown by up to `grow` (0.09 when not given). */
+  lifts: {a: number; b: number; rect: Rect; grow?: number}[];
   clicks: {t: number; x: number; y: number}[];
   tags: boolean;
 }
 
-/** The camera at `u` seconds into the clip: scale and offset that frame its rectangle, punched in just after a cut. */
+/** The camera at `u` seconds into the clip: scale and offset that frame its rectangle, punched in just after a cut, or
+ * gliding from the last rectangle to this one. */
 function camera(shot: Shot, u: number) {
   const i = Math.max(0, shot.cams.findLastIndex((c) => c.t <= u + 1e-6));
-  const {t, rect} = shot.cams[i]!;
-  const [x, y, w, h] = rect;
-  const punch = i === 0 ? 1 + 0.07 * (1 - ease(u, 0, 1.4, 0, 1, Easing.outCubic)) : 1 + 0.05 * (1 - ease(u, t, t + 0.4, 0, 1, Easing.outCubic));
-  const k = (1920 / Math.max(w, (h * 16) / 9)) * punch;
-  const cx = x + w / 2, cy = y + h / 2;
+  const {t, rect, move} = shot.cams[i]!;
+  const fit = ([x, y, w, h]: Rect) => {
+    const k = 1920 / Math.max(w, (h * 16) / 9);
+    return {k, cx: x + w / 2, cy: y + h / 2};
+  };
+  let {k, cx, cy} = fit(rect);
+  if (move && i > 0) {
+    const a = fit(shot.cams[i - 1]!.rect);
+    const p = ease(u, t, t + move, 0, 1, Easing.inOutCubic);
+    // The scale moves evenly in its logarithm, so the push in feels steady.
+    k = a.k * Math.pow(k / a.k, p);
+    cx = a.cx + (cx - a.cx) * p;
+    cy = a.cy + (cy - a.cy) * p;
+  } else {
+    k *= i === 0 ? 1 + 0.07 * (1 - ease(u, 0, 1.4, 0, 1, Easing.outCubic)) : 1 + 0.05 * (1 - ease(u, t, t + 0.4, 0, 1, Easing.outCubic));
+  }
   return {k, tx: 960 - cx * k, ty: 540 - cy * k};
 }
 
@@ -55,7 +70,7 @@ export function Studio({clip, shot, t}: {clip: string; shot: Shot; t: number}) {
       {lift && (
         <>
           <div style={{position: 'absolute', inset: 0, background: `rgba(15,13,11,${0.6 * lift.p})`}} />
-          <Lifted clip={clip} shot={shot} cam={cam} rect={lift.rect} p={lift.p} />
+          <Lifted clip={clip} shot={shot} cam={cam} rect={lift.rect} grow={lift.grow ?? 0.09} p={lift.p} />
         </>
       )}
     </div>
@@ -64,13 +79,17 @@ export function Studio({clip, shot, t}: {clip: string; shot: Shot; t: number}) {
 }
 
 /** A panel copied out of the picture, raised and enlarged a little over the dimmed rest, edged in vermilion. */
-function Lifted({clip, shot, cam, rect, p}: {clip: string; shot: Shot; cam: ReturnType<typeof camera>; rect: Rect; p: number}) {
+function Lifted({clip, shot, cam, rect, grow, p}: {clip: string; shot: Shot; cam: ReturnType<typeof camera>; rect: Rect; grow: number; p: number}) {
   const [x, y, w, h] = rect;
   const sx = cam.tx + (x + w / 2) * cam.k, sy = cam.ty + (y + h / 2) * cam.k;
-  const s = 1 + Math.min(0.09, Math.max(0, 1840 / (w * cam.k) - 1)) * p;
+  const s = 1 + Math.min(grow, Math.max(0, Math.min(1840 / (w * cam.k), 1000 / (h * cam.k)) - 1)) * p;
+  // Kept inside the frame: a panel at its edge moves in as it grows.
+  const hw = (w * cam.k * s) / 2, hh = (h * cam.k * s) / 2;
+  const dx = Math.max(40 - (sx - hw), Math.min(0, 1880 - (sx + hw)));
+  const dy = Math.max(40 - (sy - hh), Math.min(0, 1040 - (sy + hh)));
   const pad = 10;
   return (
-    <div style={{position: 'absolute', inset: 0, transformOrigin: `${sx}px ${sy}px`, transform: `scale(${s}) translateY(${-14 * p}px)`,
+    <div style={{position: 'absolute', inset: 0, transformOrigin: `${sx}px ${sy}px`, transform: `translate(${dx}px, ${dy - 14 * p}px) scale(${s})`,
       filter: `drop-shadow(0 ${30 * p}px ${50 * p}px rgba(0,0,0,${0.55 * p}))`}}>
       <Frame {...cam}>
         <div style={{position: 'absolute', inset: 0, clipPath: `inset(${y - pad}px ${1920 - x - w - pad}px ${1080 - y - h - pad}px ${x - pad}px round ${14 / cam.k}px)`}}>
