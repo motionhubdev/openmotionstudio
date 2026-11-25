@@ -351,6 +351,9 @@ async function start(binary: string, profile: string, sandbox: boolean, driven: 
   let printed = '';
   child.stderr!.on('data', (data: Buffer) => { printed = (printed + data.toString()).slice(-4000); });
   const pipe = new Pipe(child.stdio[3] as Writable, child.stdio[4] as Readable);
+  // A Chrome that is not there, or has gone, breaks its pipe: the calls on it fail, nothing is thrown past them.
+  (child.stdio[3] as Writable).on('error', (error) => pipe.close(error));
+  (child.stdio[4] as Readable).on('error', (error) => pipe.close(error));
   const exited = new Promise<never>((_, fail) =>
     child.once('exit', (code, signal) => {
       const error = new Error(`Chrome exited (${signal ?? code}) before it answered.\n${printed.trim()}`);
