@@ -10,6 +10,7 @@ Every key change to OpenMotionStudio, newest first, by date. What counts as key 
 - **Breaking:** None.
 - **Upgrade:** Nothing.
 - **Refs:** `apps/desktop/src/main/film/capture.ts`, `apps/desktop/src/main/film/chrome.ts`.
+
 ## 2026-11-24 — The assistant picked on Home is the new project's
 
 - **What:** The marks of the assistants ready under Home's prompt are a choice, the first picked unless the person clicks another; Start creating opens the new project with that agent, and its brief goes to it as soon as the film is ready.
