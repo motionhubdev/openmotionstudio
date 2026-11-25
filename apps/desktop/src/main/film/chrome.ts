@@ -359,12 +359,28 @@ async function start(binary: string, profile: string, sandbox: boolean, driven: 
 }
 
 const FRAME_MS = 60_000;
-function timeout<T>(promise: Promise<T>, what: string): Promise<T> {
+/** The longest gap between two of a timeout's ticks still counted: a longer one is the computer asleep, not Chrome slow. */
+const ASLEEP_MS = 5_000;
+
+/**
+ * `promise`, or a failure saying `what` took longer than FRAME_MS of the time the computer was awake: a sleep (a lid
+ * closed, standby) stops Chrome as it stops the Studio, and must not fail on waking a frame that was on its way.
+ */
+export function timeout<T>(promise: Promise<T>, what: string): Promise<T> {
   let timer: NodeJS.Timeout;
   return Promise.race([
     promise,
-    new Promise<never>((_, fail) => { timer = setTimeout(() => fail(new Error(`${what} took longer than ${FRAME_MS / 1000} s.`)), FRAME_MS); }),
-  ]).finally(() => clearTimeout(timer));
+    new Promise<never>((_, fail) => {
+      let spent = 0;
+      let last = Date.now();
+      timer = setInterval(() => {
+        const now = Date.now();
+        if (now - last <= ASLEEP_MS) spent += now - last;
+        last = now;
+        if (spent >= FRAME_MS) fail(new Error(`${what} took longer than ${FRAME_MS / 1000} s.`));
+      }, 1000);
+    }),
+  ]).finally(() => clearInterval(timer));
 }
 
 /** The film's origin: `.invalid` never resolves, so the page exists only as Chrome is answered from the film's files. */
