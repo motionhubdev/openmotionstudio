@@ -212,8 +212,8 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         en, zh, en2, zh2 = CHAPTERS[ch]
         text = ass_text(en if lang == "en" else zh)
         second = en2 if lang == "en" else zh2
-        body = (r"{\fad(180,160)\move(64,758,64,748,0,240)\an1}" + r"{\c&H4D6AFF&\fs30}" + f"{ch + 1:02d}" +
-                r"{\c&HF0F4F7&\fs40}  " + text)
+        body = (r"{\fad(180,160)\move(64,758,64,748,0,240)\an1}" + r"{\c&H4D6AFF&}" + f"{ch + 1:02d}" +
+                r"{\c&HF0F4F7&}  " + text)  # one size on the line, so its band is one height
         if second:
             body += r"\N{\fs24\c&HB8BEC4&\b0}" + ass_text(second)
         lines.append(f"Dialogue: 0,{ass_time(a + 0.12)},{ass_time(b - 0.12)},Cap,,0,0,0,,{body}")
