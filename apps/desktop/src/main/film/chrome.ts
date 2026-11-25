@@ -413,13 +413,14 @@ async function openIn(binary: string, dir: string, output: string, studio: strin
   }
   if (!sandbox) warnUnsandboxed();
   const { child, pipe } = started;
+  // Closed even when it no longer answers (a stage stuck on a frame, an export cancelled): asked, then killed 5 s on.
   const close = async () => {
-    await pipe.send('Browser.close').catch(() => {});
-    if (child.exitCode === null && child.signalCode === null) {
-      const gone = new Promise((done) => child.once('exit', done));
-      setTimeout(() => child.kill('SIGKILL'), 5000).unref();
-      await gone;
-    }
+    if (child.exitCode !== null || child.signalCode !== null) return;
+    const gone = new Promise((done) => child.once('exit', done));
+    const kill = setTimeout(() => child.kill('SIGKILL'), 5000);
+    void pipe.send('Browser.close').catch(() => {});
+    await gone;
+    clearTimeout(kill);
   };
   try {
     const { targetId } = await pipe.send<{ targetId: string }>('Target.createTarget', { url: 'about:blank', ...(driven ? { enableBeginFrameControl: true } : {}) });
