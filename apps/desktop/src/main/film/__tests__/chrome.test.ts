@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { PassThrough } from 'node:stream';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { chromeBuild, drivable, headlessShellDigest, inCache, Pipe, sandboxWanted, systemChromium, timeout, type Host } from '../chrome';
+import { chromeBuild, describePath, drawPath, drivable, headlessShellDigest, inCache, onGpu, Pipe, sandboxWanted, systemChromium, timeout, type Host } from '../chrome';
 
 let scratch: string;
 beforeEach(async () => {
@@ -21,6 +21,44 @@ async function folder(at: string, files: Record<string, string>): Promise<string
   }
   return at;
 }
+
+describe('onGpu', () => {
+  it('draws on a hardware GPU, and on SwiftShader where Chrome made no context or a software one', () => {
+    expect(onGpu(undefined, 'ANGLE (Intel, Intel(R) Arc(TM) Graphics (0x00007D55) Direct3D11 vs_5_0 ps_5_0, D3D11)')).toBe(true);
+    expect(onGpu(undefined, 'ANGLE (Apple, ANGLE Metal Renderer: Apple M2, Unspecified Version)')).toBe(true);
+    // No GPU, or one Chrome blocklists: it falls back to a software renderer itself.
+    expect(onGpu(undefined, 'ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)')).toBe(false);
+    expect(onGpu(undefined, 'llvmpipe (LLVM 15.0.7, 256 bits)')).toBe(false);
+    expect(onGpu(undefined, 'ANGLE (Microsoft, Microsoft Basic Render Driver Direct3D11 vs_5_0 ps_5_0, D3D11)')).toBe(false);
+    expect(onGpu(undefined, null)).toBe(false);
+  });
+
+  it('follows OMS_RENDER_GPU over what Chrome found: 0 the CPU, 1 the GPU', () => {
+    expect(onGpu('0', 'ANGLE (Intel, Intel(R) Arc(TM) Graphics Direct3D11, D3D11)')).toBe(false);
+    expect(onGpu('1', 'SwiftShader')).toBe(true);
+    expect(onGpu('1', null)).toBe(true);
+  });
+});
+
+describe('drawPath', () => {
+  const env = process.env.OMS_RENDER_GPU;
+  afterEach(() => (env === undefined ? delete process.env.OMS_RENDER_GPU : (process.env.OMS_RENDER_GPU = env)));
+
+  it('falls back to SwiftShader when Chrome cannot be asked, and keeps the answer for every stage after', async () => {
+    delete process.env.OMS_RENDER_GPU;
+    const missing = join(scratch, 'no-such-chrome');
+    const first = await drawPath(missing);
+    expect(first).toEqual({ gpu: false, renderer: 'SwiftShader' });
+    process.env.OMS_RENDER_GPU = '1';
+    expect(await drawPath(missing)).toBe(first);
+    expect(describePath(first)).toBe('the CPU (SwiftShader)');
+  });
+
+  it('never starts Chrome to ask when OMS_RENDER_GPU=0', async () => {
+    process.env.OMS_RENDER_GPU = '0';
+    expect(await drawPath(join(scratch, 'forced-cpu'))).toEqual({ gpu: false, renderer: 'SwiftShader' });
+  });
+});
 
 describe('timeout', () => {
   afterEach(() => vi.useRealTimers());

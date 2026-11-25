@@ -196,11 +196,12 @@ async function run() {
       // Ctrl-C stops the render cleanly: its Chromes closed, its finished segments kept for the next run.
       const stop = new AbortController();
       process.once('SIGINT', () => stop.abort());
-      await worker.render(dir, scratch, resolve(values.out), (done) => {
+      const { drawnOn } = await worker.render(dir, scratch, resolve(values.out), (done) => {
         const percent = Math.floor(done * 100);
         if (percent !== shown && process.stderr.isTTY) process.stderr.write(`\rRendering ${(shown = percent)}%`);
       }, stop.signal);
       if (process.stderr.isTTY) process.stderr.write('\n');
+      console.error(`Drawn on ${drawnOn}. OMS_RENDER_GPU=0 draws on the CPU, =1 on the GPU.`);
       return console.log(resolve(values.out));
     }
     if (command === 'player') {

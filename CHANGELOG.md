@@ -35,6 +35,14 @@ Every key change to OpenMotionStudio, newest first, by date. What counts as key 
 - **Upgrade:** Nothing.
 - **Refs:** `apps/desktop/src/main/oms-file.ts`, `apps/cli/oms.mjs`, ADR 0019.
 
+## 2026-11-24 — A film is drawn on the GPU where it can be
+
+- **What:** The Studio's stills and exports, and `oms render` and `oms still`, draw a film's WebGL on the machine's GPU (ANGLE on Direct3D 11, Metal or Vulkan) when the headless Chrome can draw it there, and in SwiftShader on the CPU when it cannot (no GPU, a blocklisted one, a software driver). It is found once a process, and every stage of an export draws on the same path. `OMS_RENDER_GPU=0` asks for the CPU, `=1` for the GPU even where Chrome blocklists it. The export's notice ("drawn on the GPU (…)") and `oms render` say which drew it.
+- **Why:** The UTMB example exported in about 25 minutes on SwiftShader and in under 3 minutes on the laptop's Intel Arc GPU, with frames the same to the eye (46.9 dB PSNR against SwiftShader's).
+- **Breaking:** An export's pixels now depend on the machine's GPU and driver: the same film on two machines can give slightly different files. `OMS_RENDER_GPU=0` gives the software frames, the same everywhere.
+- **Upgrade:** Nothing. Set `OMS_RENDER_GPU=0` where frames must match across machines.
+- **Refs:** ADR 0022, `apps/desktop/src/main/film/chrome.ts`, `apps/cli/worker.ts`.
+
 ## 2026-11-24 — A `.oms` film file opens in the Studio from the system
 
 - **What:** The installers register `.oms` (`application/vnd.openmotionstudio.film`) with a document icon, and the Studio takes a film file the system hands it (a double-click, Open with, a drop on the Dock) into a new project as Home's Import does, starting or bringing forward the running Studio. Windows's NSIS installer registers the type and its uninstaller removes it; macOS declares the type `dev.motionhub.studio.film`. On Linux the desktop file names the type, and `resources/openmotionstudio-film.xml` beside the program says what `*.oms` is, for `xdg-mime install`.

@@ -7,8 +7,8 @@ import { install, Browser, detectBrowserPlatform } from '@puppeteer/browsers';
 import { spawn, type ChildProcess } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync, lstatSync, readdirSync, readFileSync, realpathSync, statSync } from 'node:fs';
-import { mkdir, rename, rm, stat } from 'node:fs/promises';
-import { homedir, release as osRelease } from 'node:os';
+import { mkdir, mkdtemp, rename, rm, stat } from 'node:fs/promises';
+import { homedir, release as osRelease, tmpdir } from 'node:os';
 import { basename, dirname, join, resolve } from 'node:path';
 import type { Readable, Writable } from 'node:stream';
 import { filmFile, filmPolicy } from './serve';
@@ -311,8 +311,8 @@ export class Pipe {
   }
 }
 
-/** Starts Chrome on a pipe; rejects with what it printed when it exits before it answers. */
-async function start(binary: string, profile: string, sandbox: boolean, driven: boolean): Promise<{ child: ChildProcess; pipe: Pipe }> {
+/** Starts Chrome on a pipe, its WebGL on the GPU or not; rejects with what it printed when it exits before it answers. */
+async function start(binary: string, profile: string, sandbox: boolean, driven: boolean, gpu: boolean): Promise<{ child: ChildProcess; pipe: Pipe }> {
   const args = [
     // Driven: a page's compositor draws a frame only when HeadlessExperimental.beginFrame asks for one.
     ...(driven ? ['--deterministic-mode'] : []),
@@ -327,13 +327,18 @@ async function start(binary: string, profile: string, sandbox: boolean, driven: 
     '--force-color-profile=srgb',
     '--force-device-scale-factor=1',
     // Each frame rastered whole: rastering only what changed leaves a frame's pixels depending on the frame drawn before
-    // it, so frames drawn by several Chromes, or in another order, would differ.
+    // it, so frames drawn by several Chromes of one path, or in another order, would differ.
     '--disable-partial-raster',
     // WebGL in software where there is no GPU, as the Studio does (stage.ts allowSoftwareWebGL).
     '--enable-unsafe-swiftshader',
-    // OMS_RENDER_GPU=1 (a trial): WebGL on the machine's GPU, through ANGLE on the platform's own graphics API.
-    ...(process.env.OMS_RENDER_GPU === '1'
-      ? ['--enable-gpu', '--ignore-gpu-blocklist', `--use-angle=${process.platform === 'win32' ? 'd3d11' : process.platform === 'darwin' ? 'metal' : 'vulkan'}`]
+    // On the GPU (drawPath, ADR 0022): WebGL on the machine's GPU, through ANGLE on the platform's own graphics API. A
+    // GPU that Chrome blocklists is used only when OMS_RENDER_GPU=1 asks for it.
+    ...(gpu
+      ? [
+          '--enable-gpu',
+          `--use-angle=${process.platform === 'win32' ? 'd3d11' : process.platform === 'darwin' ? 'metal' : 'vulkan'}`,
+          ...(process.env.OMS_RENDER_GPU === '1' ? ['--ignore-gpu-blocklist'] : []),
+        ]
       : []),
     // Nothing leaves the machine: every name fails to resolve and every request not answered from the film goes to a
     // proxy that is not there.
@@ -346,6 +351,9 @@ async function start(binary: string, profile: string, sandbox: boolean, driven: 
   let printed = '';
   child.stderr!.on('data', (data: Buffer) => { printed = (printed + data.toString()).slice(-4000); });
   const pipe = new Pipe(child.stdio[3] as Writable, child.stdio[4] as Readable);
+  // A Chrome that is not there, or has gone, breaks its pipe: the calls on it fail, nothing is thrown past them.
+  (child.stdio[3] as Writable).on('error', (error) => pipe.close(error));
+  (child.stdio[4] as Readable).on('error', (error) => pipe.close(error));
   const exited = new Promise<never>((_, fail) =>
     child.once('exit', (code, signal) => {
       const error = new Error(`Chrome exited (${signal ?? code}) before it answered.\n${printed.trim()}`);
@@ -413,19 +421,103 @@ export async function openChromeStage(binary: string, dir: string, output: strin
   }
 }
 
+/** Where a film's WebGL is drawn: on the machine's GPU, or in SwiftShader on the CPU; `renderer` is WebGL's name for it. */
+export interface DrawPath {
+  gpu: boolean;
+  renderer: string;
+}
+
+/** WebGL renderers that are software, not a GPU: Chrome's SwiftShader, Mesa's llvmpipe, Windows' Basic Render Driver. */
+const SOFTWARE = /swiftshader|llvmpipe|softpipe|basic render|software/i;
+
+/**
+ * Whether to draw on the GPU: OMS_RENDER_GPU=0 never, =1 always; otherwise when a Chrome started for the GPU made a WebGL
+ * context on hardware (`renderer`, null when it made no context) rather than on a software renderer.
+ */
+export function onGpu(env: string | undefined, renderer: string | null): boolean {
+  if (env === '0') return false;
+  if (env === '1') return true;
+  return !!renderer && !SOFTWARE.test(renderer);
+}
+
+/** A blank page's WebGL renderer, unmasked where Chrome says it; null without a context. */
+const RENDERER_SCRIPT = `(() => {
+  const canvas = document.createElement('canvas');
+  const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
+  if (!gl) return null;
+  const info = gl.getExtension('WEBGL_debug_renderer_info');
+  return String(gl.getParameter(info ? info.UNMASKED_RENDERER_WEBGL : gl.RENDERER));
+})()`;
+
+/** The WebGL renderer of the Chrome at `binary` started for the GPU, then closed; null when it made no context or failed. */
+async function gpuRenderer(binary: string): Promise<string | null> {
+  const profile = await mkdtemp(join(tmpdir(), 'oms-gpu-'));
+  let started: { child: ChildProcess; pipe: Pipe } | null = null;
+  try {
+    const sandbox = sandboxWanted();
+    const launched = await start(binary, profile, sandbox, false, true).catch((error) => (sandbox ? start(binary, profile, false, false, true) : Promise.reject(error)));
+    started = launched;
+    const { pipe } = launched;
+    const { targetId } = await pipe.send<{ targetId: string }>('Target.createTarget', { url: 'about:blank' });
+    const { sessionId } = await pipe.send<{ sessionId: string }>('Target.attachToTarget', { targetId, flatten: true });
+    const reply = await timeout<{ result: { value?: string | null } }>(
+      pipe.send<{ result: { value?: string | null } }>('Runtime.evaluate', { expression: RENDERER_SCRIPT, returnByValue: true }, sessionId),
+      'Asking Chrome for its GPU',
+    );
+    return reply.result.value ?? null;
+  } catch {
+    return null;
+  } finally {
+    if (started) {
+      const { child, pipe } = started;
+      const gone = new Promise((done) => (child.exitCode === null && child.signalCode === null ? child.once('exit', done) : done(null)));
+      const kill = setTimeout(() => child.kill('SIGKILL'), 5000);
+      void pipe.send('Browser.close').catch(() => {});
+      await gone;
+      clearTimeout(kill);
+    }
+    await rm(profile, { recursive: true, force: true, maxRetries: 5 }).catch(() => {});
+  }
+}
+
+const paths = new Map<string, Promise<DrawPath>>();
+
+/**
+ * The one path every stage this process opens with the Chrome at `binary` draws on (ADR 0022), found once: the GPU where
+ * that Chrome draws WebGL on one, else SwiftShader. Frames drawn on one path are the same however many stages draw
+ * them; the two paths' pixels differ slightly, so they never meet in one export.
+ */
+export function drawPath(binary: string): Promise<DrawPath> {
+  let found = paths.get(binary);
+  if (!found) {
+    const env = process.env.OMS_RENDER_GPU;
+    found = (async () => {
+      if (env === '0') return { gpu: false, renderer: 'SwiftShader' };
+      const renderer = await gpuRenderer(binary);
+      return onGpu(env, renderer) ? { gpu: true, renderer: renderer ?? 'unknown' } : { gpu: false, renderer: 'SwiftShader' };
+    })();
+    paths.set(binary, found);
+  }
+  return found;
+}
+
+/** A draw path as a report says it: "the GPU (…)" or "the CPU (SwiftShader)". */
+export const describePath = (path: DrawPath): string => `${path.gpu ? 'the GPU' : 'the CPU'} (${path.renderer})`;
+
 /** A stage in Chrome: a frame as a PNG, with a box outlined in red where the person marked it (preview/pick.ts). */
 export type ChromeStage = PhotoStage & { png(t: number, box?: Box): Promise<Buffer> };
 
 async function openIn(binary: string, dir: string, output: string, studio: string, profile: string, driven: boolean, version: number): Promise<ChromeStage> {
+  const path = await drawPath(binary);
   let sandbox = sandboxWanted();
   let started: { child: ChildProcess; pipe: Pipe };
   try {
-    started = await start(binary, profile, sandbox, driven);
+    started = await start(binary, profile, sandbox, driven, path.gpu);
   } catch (error) {
     // The sandbox needs kernel features a host may not have; HyperFrames retries without it the same way.
     if (!sandbox || process.env.OMS_CHROME_SANDBOX === '1' || !/sandbox|namespace/i.test(String(error))) throw error;
     sandbox = false;
-    started = await start(binary, profile, sandbox, driven);
+    started = await start(binary, profile, sandbox, driven, path.gpu);
   }
   if (!sandbox) warnUnsandboxed();
   const { child, pipe } = started;

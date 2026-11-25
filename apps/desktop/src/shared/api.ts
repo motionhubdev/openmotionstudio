@@ -660,8 +660,11 @@ export interface StudioApi {
   /** Calls `listener` with what the agent does; returns the unsubscribe. */
   onAgentEvent(listener: (event: AgentEvent) => void): () => void;
 
-  /** Asks where to save, then exports the film as an MP4; the path, or null when the person cancels. */
-  exportFilm(): Promise<string | null>;
+  /**
+   * Asks where to save, then exports the film as an MP4: its path and where its frames were drawn (on the GPU or not,
+   * and WebGL's name for the renderer, ADR 0022), or null when the person cancels.
+   */
+  exportFilm(): Promise<{ file: string; gpu: boolean; renderer: string } | null>;
   /** Calls `listener` with the running export's progress (0 to 1); returns the unsubscribe. */
   onExportProgress(listener: (done: number) => void): () => void;
 
