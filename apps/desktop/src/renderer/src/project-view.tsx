@@ -420,6 +420,14 @@ export function ProjectView({ onGlobalSettings, settingsOpen, project, providers
     setLayout({ assistant: true });
     assistant.current?.send(text);
   }
+  // A request that follows an import (a motion taken into the project, then applied) waits for the import to end:
+  // until the workspace has drawn again the assistant still holds itself disabled, and would drop it.
+  const [afterImport, setAfterImport] = useState<string | null>(null);
+  useEffect(() => {
+    if (afterImport === null || importing) return;
+    setAfterImport(null);
+    ask(afterImport);
+  }, [afterImport, importing]);
   function generateNarration(voice?: string) {
     setLayout({ assistant: true });
     assistant.current?.send(
@@ -996,7 +1004,7 @@ export function ProjectView({ onGlobalSettings, settingsOpen, project, providers
               onAsk={(text) => {
                 // The restyle is seen on the picture, so the library makes way for it.
                 setCentre(null);
-                ask(text);
+                setAfterImport(text);
               }}
               onClose={closeCentre}
             />
