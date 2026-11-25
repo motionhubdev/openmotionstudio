@@ -3,6 +3,14 @@
 Every key change to OpenMotionStudio, newest first, by date. What counts as key and the entry format are in
 `CLAUDE.md`, "The changelog".
 
+## 2026-11-24 — oms 0.2.0
+
+- **What:** `@motionhub/oms` 0.2.0 on npm, with everything since 0.1.0: films play recorded clips (`<Video>`); `oms render` draws on the GPU where it can be and says which path it drew on (`OMS_RENDER_GPU=0` or `1` to choose); a frame's limit counts only the time the computer is awake, and a Chrome that does not answer when it is closed is killed; `oms pack` leaves out the project's dot-folders and names them; `oms font` cuts in the words a film imports from outside its folder.
+- **Why:** These changes reached `main` after 0.1.0, and people who installed `oms` from npm had none of them; a minor version because they add features, not only fixes.
+- **Breaking:** An export's pixels now depend on the machine's GPU and driver; `OMS_RENDER_GPU=0` gives the software frames, the same everywhere.
+- **Upgrade:** `npm install -g @motionhub/oms@latest`, and update the skill (`npx skills update oms -g`, or `oms install` again).
+- **Refs:** `apps/cli/package.json`, [publishing oms](docs/ops/publishing-oms.md), the entries below from 2026-11-23 to 2026-11-24.
+
 ## 2026-11-24 — OpenMotionStudio v0.2.0
 
 - **What:** A release with everything since v0.1.3: the Studio exports in headless Chrome, several stages at once, drawn on the GPU where it can be; an export keeps running with the window hidden and can be cancelled while a frame hangs; a film travels as one `.oms` file, opened from the system or with Import project, without the project's dot-folders; films play recorded clips (`<Video>`) and keep a recorded narration; the assistant picked on Home is the new project's; updates are downloaded in the app and installed on restart. Installers for macOS (Apple silicon and Intel), Windows (x64) and Linux (x64 and ARM64 AppImages) are on GitHub Releases.
