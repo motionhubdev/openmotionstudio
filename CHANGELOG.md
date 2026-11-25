@@ -19,6 +19,14 @@ Every key change to OpenMotionStudio, newest first, by date. What counts as key 
 - **Upgrade:** Nothing.
 - **Refs:** `apps/desktop/src/renderer/src/home.tsx`, `apps/desktop/src/main/index.ts`, [design](docs/design.md).
 
+## 2026-11-24 — An export runs to its end with the Studio's window hidden and the computer left alone
+
+- **What:** While an export runs, the Studio holds a power request (`prevent-app-suspension`): the computer does not sleep under it, and macOS does not put a Studio with its window hidden into App Nap. A frame's 60 s limit counts only the time the computer is awake, so an export that was asleep with the computer (a lid closed) carries on when it wakes, in the Studio and in `oms`.
+- **Why:** The UTMB example's export ran from the evening with its window behind other apps, reached 38 % and failed the moment the laptop woke from standby: the frame on its way when it slept had "taken longer than 60 s".
+- **Breaking:** None.
+- **Upgrade:** Nothing.
+- **Refs:** `apps/desktop/src/main/workspace.ts`, `apps/desktop/src/main/film/chrome.ts`.
+
 ## 2026-11-24 — A `.oms` film file opens in the Studio from the system
 
 - **What:** The installers register `.oms` (`application/vnd.openmotionstudio.film`) with a document icon, and the Studio takes a film file the system hands it (a double-click, Open with, a drop on the Dock) into a new project as Home's Import does, starting or bringing forward the running Studio. Windows's NSIS installer registers the type and its uninstaller removes it; macOS declares the type `dev.motionhub.studio.film`. On Linux the desktop file names the type, and `resources/openmotionstudio-film.xml` beside the program says what `*.oms` is, for `xdg-mime install`.

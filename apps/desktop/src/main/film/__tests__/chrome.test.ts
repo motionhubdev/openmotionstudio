@@ -2,8 +2,8 @@ import { mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { PassThrough } from 'node:stream';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { chromeBuild, drivable, headlessShellDigest, inCache, Pipe, sandboxWanted, systemChromium, type Host } from '../chrome';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { chromeBuild, drivable, headlessShellDigest, inCache, Pipe, sandboxWanted, systemChromium, timeout, type Host } from '../chrome';
 
 let scratch: string;
 beforeEach(async () => {
@@ -21,6 +21,30 @@ async function folder(at: string, files: Record<string, string>): Promise<string
   }
   return at;
 }
+
+describe('timeout', () => {
+  afterEach(() => vi.useRealTimers());
+
+  it('fails a frame after 60 s awake, and does not count the time the computer slept', async () => {
+    vi.useFakeTimers();
+    const never = new Promise<never>(() => {});
+    let failed: unknown = null;
+    void timeout(never, 'The frame at 1.00 s').catch((error) => (failed = error));
+    await vi.advanceTimersByTimeAsync(30_000);
+    // Eight hours asleep, in a jump the timer's ticks see as one long gap: none of it counts.
+    vi.setSystemTime(Date.now() + 8 * 3600_000);
+    await vi.advanceTimersByTimeAsync(1_000);
+    expect(failed).toBeNull();
+    await vi.advanceTimersByTimeAsync(28_000);
+    expect(failed).toBeNull();
+    await vi.advanceTimersByTimeAsync(2_000);
+    expect(String(failed)).toMatch('The frame at 1.00 s took longer than 60 s.');
+  });
+
+  it('gives back what it waited for', async () => {
+    await expect(timeout(Promise.resolve(7), 'x')).resolves.toBe(7);
+  });
+});
 
 describe('chromeBuild', () => {
   it('pins the build HyperFrames pins, and its older one on macOS 12 and before', () => {

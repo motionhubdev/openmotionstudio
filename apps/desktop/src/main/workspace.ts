@@ -1,7 +1,7 @@
 // A project-owned session: its editor view, agent, previews and tasks survive moving between native windows.
 
 import { studioTranslator } from './providers';
-import { BrowserWindow, Notification, app, dialog, shell, type BaseWindow, type IpcMainInvokeEvent, type OpenDialogOptions, type WebContents } from 'electron';
+import { BrowserWindow, Notification, app, dialog, powerSaveBlocker, shell, type BaseWindow, type IpcMainInvokeEvent, type OpenDialogOptions, type WebContents } from 'electron';
 import { mkdir, mkdtemp, readFile, realpath, rename, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, sep } from 'node:path';
@@ -1063,6 +1063,9 @@ export function createWorkspace(host: WorkspaceHost, changed: () => void = () =>
       if (!state.project.film || !build?.ok) throw new Error('The film does not build: fix its errors before exporting.');
       const controller = new AbortController();
       exporting = controller;
+      // Held while the export runs, so the computer does not sleep under it and the system does not throttle or suspend
+      // a Studio whose window is hidden (App Nap on macOS): an export is meant to end with the person away.
+      const awake = powerSaveBlocker.start('prevent-app-suspension');
       try {
         const review = await reviewBuild(build, openStage, controller.signal, { bundle: join(buildDir(state.project.path), `film-${build.version}.js`), dir: state.project.path });
         const errors = review.issues.filter((issue) => issue.severity === 'error');
@@ -1083,6 +1086,7 @@ export function createWorkspace(host: WorkspaceHost, changed: () => void = () =>
         exported = result.filePath;
         return result.filePath;
       } finally {
+        powerSaveBlocker.stop(awake);
         if (exporting === controller) exporting = null;
       }
     });
