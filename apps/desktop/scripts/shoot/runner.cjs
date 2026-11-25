@@ -21,7 +21,8 @@ const BRIEF = process.env.SHOOT_BRIEF ||
   'then the headline “Small steps. Big change.” below. One short line of narration per scene.';
 const LOOK = process.env.SHOOT_LOOK || 'riso';               // typed in the motions' search
 const LOOK_NAME = process.env.SHOOT_LOOK_NAME || 'Riso Pop';  // the one opened among what it finds
-const NOTE = 'Make the tallest bar vermilion, and let the bars rise one after another.';
+const VOICE = process.env.SHOOT_VOICE || 'English_Trustworthy_Man';  // MiniMax's, for the narration
+const NOTE ='Make the tallest bar vermilion, and let the bars rise one after another.';
 const REGION = [0.04, 0.12, 0.5, 0.5]; // the bars, as fractions of the film: left, top, right, bottom
 
 app.setPath('userData', USER_DATA);
@@ -95,7 +96,8 @@ function sealVoice() {
   keys['voice:minimax'] = safeStorage.encryptString(secret).toString('base64');
   fs.writeFileSync(keysFile, JSON.stringify(keys));
   const settings = JSON.parse(fs.readFileSync(settingsFile, 'utf8'));
-  settings.voices = { ...settings.voices, minimax: { region: process.env.MINIMAX_REGION || 'china' } };
+  // The voice is chosen here, as Settings would, so the agent applies it rather than picking one of its own.
+  settings.voices = { ...settings.voices, minimax: { region: process.env.MINIMAX_REGION || 'china', voiceId: VOICE } };
   fs.writeFileSync(settingsFile, JSON.stringify(settings));
   return true;
 }
