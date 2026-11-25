@@ -46,14 +46,15 @@ DROP_AT = 29.5     # where in the film the music's drop falls: the new version
 TRACK_DROP = 88.5  # the drop in the track (its second; the first is at 29.5 s)
 END_HOLD = 4.2     # the closing card, held
 
-# Each chapter: its caption in English and in Chinese, and an optional second line.
+# Each chapter: its caption in English and in Chinese, and an optional second line. Straight apostrophes: the CJK
+# face sets a curly one full width.
 CHAPTERS = [
     ("Describe it in a sentence.", "说一句话，就有一部片子", None, None),
     ("Pick a look. No design skills needed.", "挑个风格，不会设计也好看", None, None),
-    ("Circle what’s wrong.", "哪里不对，圈出来", None, None),
+    ("Circle what's wrong.", "哪里不对，圈出来", None, None),
     ("Say what to change.", "说一句要怎么改", None, None),
     ("Works with the AI you already have.", "用你自己的 AI 来改",
-     "Claude Code · Codex · any model’s API key", "Claude Code · Codex · 或任意模型的 API Key"),
+     "Claude Code · Codex · any model's API key", "Claude Code · Codex · 或任意模型的 API Key"),
     ("Only that part changes.", "只改那一处，其余不动", None, None),
     ("Give it a voice.", "配上旁白", None, None),
     ("Export an MP4. It stays on your computer.", "导出 MP4，文件只在你电脑上", None, None),
