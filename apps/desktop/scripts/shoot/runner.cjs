@@ -86,7 +86,8 @@ async function playFromStart(wc, frame, name, pause) {
   mark(name);
   if (pause) {
     await sleep(pause);
-    await press(wc, byLabel('Pause'), 'pause', 300);
+    // A film shorter than the wait has stopped by itself.
+    if (await exists(wc, byLabel('Pause'))) await press(wc, byLabel('Pause'), 'pause', 300);
   }
 }
 
