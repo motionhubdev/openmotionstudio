@@ -575,9 +575,10 @@ export interface StudioApi {
   openProject(): Promise<Project | null>;
   /**
    * Creates a fresh film folder in the configured workspace and opens it. With a brief (what the person wants to make,
-   * in their words), the folder is named from it and the brief waits for the new editor (`takeBrief`).
+   * in their words), the folder is named from it and the brief waits for the new editor (`takeBrief`); with an agent
+   * (the one picked under Home's prompt), the project talks to it from its first message.
    */
-  createProject(brief?: string): Promise<Project | null>;
+  createProject(brief?: string, agent?: AgentKind): Promise<Project | null>;
   /** The brief this editor's project was created with, once: a second call answers null. */
   takeBrief(): Promise<string | null>;
   /** Opens a folder from the library; any other path is refused. */

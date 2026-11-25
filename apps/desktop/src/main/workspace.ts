@@ -93,6 +93,24 @@ const projectOwners = new Map<string, WorkspaceHost>();
 
 type Handler = (event: IpcMainInvokeEvent, ...args: unknown[]) => unknown;
 
+/**
+ * Which agent a project talks to and, for an outside agent (ADR 0008), its thread and the conversation as the panel
+ * showed it, since the agent keeps its own record in its own form.
+ */
+interface AgentState {
+  kind: AgentKind;
+  thread?: string;
+  items: ChatItem[];
+}
+
+const agentFile = (dir: string): string => join(dir, STATE_DIR, 'agent.json');
+
+/** Keeps a project's agent in `.motion-studio/agent.json`: the one it talks to from then on, the next time it opens too. */
+export async function saveAgent(dir: string, agent: AgentState): Promise<void> {
+  await mkdir(join(dir, STATE_DIR), { recursive: true });
+  await writeFile(agentFile(dir), JSON.stringify(agent));
+}
+
 export function createWorkspace(host: WorkspaceHost, changed: () => void = () => {}) {
   const handlers = new Map<string, Handler>();
   const tasks = new Set<Promise<unknown>>();
@@ -210,15 +228,6 @@ export function createWorkspace(host: WorkspaceHost, changed: () => void = () =>
     published?: FileNote;
   } | null = null;
 
-  /**
-   * Which agent a project talks to and, for an outside agent (ADR 0008), its thread and the conversation as the panel
-   * showed it, since the agent keeps its own record in its own form.
-   */
-  interface AgentState {
-    kind: AgentKind;
-    thread?: string;
-    items: ChatItem[];
-  }
   let exporting: AbortController | null = null;
   /** The file the last export wrote: the one path the renderer may ask to be shown, without naming it. */
   let exported: string | null = null;
@@ -243,8 +252,6 @@ export function createWorkspace(host: WorkspaceHost, changed: () => void = () =>
     await writeFile(sessionFile(dir), JSON.stringify(messages));
   }
 
-  const agentFile = (dir: string): string => join(dir, STATE_DIR, 'agent.json');
-
   /** The open project's agent: the built-in one unless the project chose another. */
   async function agentOf(state: NonNullable<typeof open>): Promise<AgentState> {
     if (state.agent) return state.agent;
@@ -260,11 +267,6 @@ export function createWorkspace(host: WorkspaceHost, changed: () => void = () =>
       state.agent = { kind: 'built-in', items: [] };
     }
     return state.agent;
-  }
-
-  async function saveAgent(dir: string, agent: AgentState): Promise<void> {
-    await mkdir(join(dir, STATE_DIR), { recursive: true });
-    await writeFile(agentFile(dir), JSON.stringify(agent));
   }
 
   /** Whether Codex is signed in, as its app-server last said, so Models need not start it on every look. */

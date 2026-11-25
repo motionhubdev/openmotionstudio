@@ -7,7 +7,7 @@ import { BaseWindow, BrowserWindow, Menu, Tray, app, dialog, ipcMain, nativeImag
 import { randomUUID } from 'node:crypto';
 import { mkdir, realpath, open as openFile, rm } from 'node:fs/promises';
 import { basename, join } from 'node:path';
-import { CHANNELS, EVENTS, MAX_BRIEF, type Project, type ProjectTask } from '../shared/api';
+import { CHANNELS, EVENTS, MAX_BRIEF, type AgentKind, type Project, type ProjectTask } from '../shared/api';
 import { keepFilmsInPlace, registerPreviewScheme, SCHEME, servePreview } from './film/preview';
 import { allowSoftwareWebGL } from './film/stage';
 import { startFilm } from './film/film';
@@ -15,7 +15,7 @@ import { openExample } from './examples';
 import { OMS_EXTENSION, filmFileQueue, filmFilesIn, takeProject } from './oms-file';
 import { createInWorkspace, duplicateProject, filmName, forgetProject, inLibrary, openProject, projectAt, projectLibrary, rememberProject, renameProject } from './project';
 import { providers, studioTranslator } from './providers';
-import { createWorkspace, type WorkspaceHost } from './workspace';
+import { createWorkspace, saveAgent, type WorkspaceHost } from './workspace';
 import { WebContentsView } from 'electron';
 import { log, logFailure } from './log';
 
@@ -564,8 +564,12 @@ else {
               if (typeof args[0] !== 'string' || !args[0].trim() || args[0].length > MAX_BRIEF) throw new Error('Describe the film in a few words.');
               brief = args[0].trim();
             }
+            const agent = args[1] as AgentKind | undefined;
+            if (agent !== undefined && !(['built-in', 'codex', 'claude'] as const).includes(agent)) throw new Error('Choose an agent.');
             project = await createInWorkspace((await workspaceSettings()).path, brief ? filmName(brief) : undefined);
             await startFilm(project.path);
+            // The agent picked under Home's prompt is the project's from its first message, the brief's.
+            if (agent) await saveAgent(project.path, { kind: agent, items: [] });
             project = projectAt(project.path);
           } else {
             // A folder or a film file. Only macOS's dialog picks either, so elsewhere a folder is picked by its film.tsx.

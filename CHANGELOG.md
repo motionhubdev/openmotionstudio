@@ -3,6 +3,22 @@
 Every key change to OpenMotionStudio, newest first, by date. What counts as key and the entry format are in
 `CLAUDE.md`, "The changelog".
 
+## 2026-11-24 — Cancel stops an export whose frame never comes
+
+- **What:** Cancel on "Exporting n%" stops the export at once, and frees the Studio, even while a stage is waiting for a frame its Chrome never gives back; a headless Chrome that does not answer when it is closed is killed 5 s on, in the Studio and in `oms`.
+- **Why:** An export of the UTMB example hung on a frame; its cancel was seen only between frames, and closing a Chrome that no longer answered waited for it forever, so "× Exporting 38%" did nothing.
+- **Breaking:** None.
+- **Upgrade:** Nothing.
+- **Refs:** `apps/desktop/src/main/film/capture.ts`, `apps/desktop/src/main/film/chrome.ts`.
+
+## 2026-11-24 — The assistant picked on Home is the new project's
+
+- **What:** The marks of the assistants ready under Home's prompt are a choice, the first picked unless the person clicks another; Start creating opens the new project with that agent, and its brief goes to it as soon as the film is ready.
+- **Why:** Choosing Claude Code under the prompt opened the project with "Set up a model" selected (the built-in agent, with no model), and the brief waited until the agent was picked again in the project.
+- **Breaking:** None.
+- **Upgrade:** Nothing.
+- **Refs:** `apps/desktop/src/renderer/src/home.tsx`, `apps/desktop/src/main/index.ts`, [design](docs/design.md).
+
 ## 2026-11-24 — An export runs to its end with the Studio's window hidden and the computer left alone
 
 - **What:** While an export runs, the Studio holds a power request (`prevent-app-suspension`): the computer does not sleep under it, and macOS does not put a Studio with its window hidden into App Nap. A frame's 60 s limit counts only the time the computer is awake, so an export that was asleep with the computer (a lid closed) carries on when it wakes, in the Studio and in `oms`.
