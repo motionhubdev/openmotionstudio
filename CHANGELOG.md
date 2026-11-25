@@ -3,6 +3,14 @@
 Every key change to OpenMotionStudio, newest first, by date. What counts as key and the entry format are in
 `CLAUDE.md`, "The changelog".
 
+## 2026-11-24 — The assistant picked on Home is the new project's
+
+- **What:** The marks of the assistants ready under Home's prompt are a choice, the first picked unless the person clicks another; Start creating opens the new project with that agent, and its brief goes to it as soon as the film is ready.
+- **Why:** Choosing Claude Code under the prompt opened the project with "Set up a model" selected (the built-in agent, with no model), and the brief waited until the agent was picked again in the project.
+- **Breaking:** None.
+- **Upgrade:** Nothing.
+- **Refs:** `apps/desktop/src/renderer/src/home.tsx`, `apps/desktop/src/main/index.ts`, [design](docs/design.md).
+
 ## 2026-11-24 — A `.oms` film file opens in the Studio from the system
 
 - **What:** The installers register `.oms` (`application/vnd.openmotionstudio.film`) with a document icon, and the Studio takes a film file the system hands it (a double-click, Open with, a drop on the Dock) into a new project as Home's Import does, starting or bringing forward the running Studio. Windows's NSIS installer registers the type and its uninstaller removes it; macOS declares the type `dev.motionhub.studio.film`. On Linux the desktop file names the type, and `resources/openmotionstudio-film.xml` beside the program says what `*.oms` is, for `xdg-mime install`.

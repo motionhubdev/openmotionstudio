@@ -151,6 +151,15 @@ require(${JSON.stringify(join(desktop, 'out/main/index.js'))});
   assert.equal(await js(briefed,'window.studio.takeBrief()'),null,'a brief is taken once');
   await js(briefed,'window.studio.closeProject()'); await sleep(250);
   pass('home prompt creates a named project and hands its brief to the assistant once');
+  // The assistant picked under the prompt is the new project's own from its first message.
+  const pickedKnown=new Set(webContents.getAllWebContents().map(w=>w.id));
+  await js(home,'window.studio.createProject("A film for Claude Code", "claude")');
+  const picked=await until(()=>webContents.getAllWebContents().find(w=>!pickedKnown.has(w.id)&&w.getURL()===home.getURL()),'picked editor');
+  const pickedProject=await until(()=>js(picked,'window.studio.currentProject()'),'picked project');
+  assert.equal(JSON.parse(await fs.readFile(path.join(pickedProject.path,'.motion-studio','agent.json'),'utf8')).kind,'claude');
+  await js(picked,'window.studio.closeProject()'); await sleep(250);
+  assert.match(await js(home,'window.studio.createProject("Another", "someone").then(()=>"made",e=>String(e))'),/Choose an agent/);
+  pass('home prompt carries the assistant picked into the new project');
   await button(home,'通用','.home-nav ');
   const settingsPages = ['通用','本地 Agent','模型服务','语音服务'];
   for(const [index,label] of settingsPages.entries()) {
