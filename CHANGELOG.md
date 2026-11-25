@@ -3,6 +3,14 @@
 Every key change to OpenMotionStudio, newest first, by date. What counts as key and the entry format are in
 `CLAUDE.md`, "The changelog".
 
+## 2026-11-24 — Cancel stops an export whose frame never comes
+
+- **What:** Cancel on "Exporting n%" stops the export at once, and frees the Studio, even while a stage is waiting for a frame its Chrome never gives back; a headless Chrome that does not answer when it is closed is killed 5 s on, in the Studio and in `oms`.
+- **Why:** An export of the UTMB example hung on a frame; its cancel was seen only between frames, and closing a Chrome that no longer answered waited for it forever, so "× Exporting 38%" did nothing.
+- **Breaking:** None.
+- **Upgrade:** Nothing.
+- **Refs:** `apps/desktop/src/main/film/capture.ts`, `apps/desktop/src/main/film/chrome.ts`.
+
 ## 2026-11-24 — A `.oms` film file opens in the Studio from the system
 
 - **What:** The installers register `.oms` (`application/vnd.openmotionstudio.film`) with a document icon, and the Studio takes a film file the system hands it (a double-click, Open with, a drop on the Dock) into a new project as Home's Import does, starting or bringing forward the running Studio. Windows's NSIS installer registers the type and its uninstaller removes it; macOS declares the type `dev.motionhub.studio.film`. On Linux the desktop file names the type, and `resources/openmotionstudio-film.xml` beside the program says what `*.oms` is, for `xdg-mime install`.

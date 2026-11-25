@@ -275,4 +275,25 @@ describe('an export drawn by several stages', () => {
     expect(drawn.opened.every((stage) => stage.close.mock.calls.length === 1)).toBe(true);
     expect((await readdir(dir)).filter((name) => name.startsWith('cancelled'))).toEqual([]);
   }, 30_000);
+
+  it('is cancelled while a stage never gives back its frame, and closes every stage', async () => {
+    const cancel = new AbortController();
+    const drawn = stages();
+    const open = vi.fn(async (version: number) => {
+      const stage = await drawn.open(version);
+      // From frame 20 on, this stage's Chrome no longer answers: its frame never comes.
+      const draw = stage.png;
+      stage.png = (t: number) => (Math.round(t * small.fps) >= 20 ? new Promise<Buffer>(() => {}) : draw(t));
+      return stage;
+    });
+    const file = join(dir, 'stuck.mp4');
+    let shown = 0;
+    const done = exportFrames(dir, 1, file, (share) => (shown = share), cancel.signal, open, ffmpeg, { output: dir, stages: 2 });
+    while (shown < 19 / (small.seconds * small.fps)) await new Promise((wait) => setTimeout(wait, 20));
+    await new Promise((wait) => setTimeout(wait, 100));
+    cancel.abort();
+    await expect(done).rejects.toThrow('cancelled');
+    expect(drawn.opened.every((stage) => stage.close.mock.calls.length === 1)).toBe(true);
+    expect((await readdir(dir)).filter((name) => name.startsWith('stuck'))).toEqual([]);
+  }, 30_000);
 });
