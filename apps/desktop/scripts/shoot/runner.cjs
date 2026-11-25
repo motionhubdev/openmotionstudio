@@ -21,9 +21,9 @@ const BRIEF = process.env.SHOOT_BRIEF ||
   'A 15-second explainer: why the sky is blue. A sun on the left sends a white beam that splits into a rainbow of rays; ' +
   'air molecules scatter the short blue waves far more than the red; so blue reaches our eyes from every direction. ' +
   'Three scenes, one short line of narration each.';
-const LOOK = process.env.SHOOT_LOOK || 'explainer';                // typed in the motions' search
-const BROWSE = (process.env.SHOOT_BROWSE || 'Clay World,Stage Light,Plumb Line,Lab Notebook').split(',');  // opened in turn
-const LOOK_NAME = process.env.SHOOT_LOOK_NAME || 'Night Diagram';  // the one applied
+const LOOK = process.env.SHOOT_LOOK || '';                         // typed in the motions' search, if any
+const BROWSE = (process.env.SHOOT_BROWSE || 'Origami,Depth Stage,Earth Block,Stage Light').split(',');  // opened in turn
+const LOOK_NAME = process.env.SHOOT_LOOK_NAME || 'Lab Notebook';  // the one applied
 const VOICE_WORDS = process.env.SHOOT_VOICE_WORDS || 'Trustworthy';  // typed in the voices' search
 const VOICE = process.env.SHOOT_VOICE || 'English_Trustworthy_Man';  // MiniMax's, chosen from what it finds
 const NOTE = 'Make the sun glow warmer, and let the rays fan out one by one.';
@@ -162,9 +162,12 @@ require(path.join(DESKTOP, 'out/main/index.js'));
     // 2. A look from motionhub, applied by the agent.
     await press(wc, byText('button', 'Motions'), 'motions', 800);
     mark('motions');
-    await press(wc, byLabel('Search motions'), 'search motions', 600);
-    await type(wc, LOOK, 70);
-    await sleep(1800);
+    if (LOOK) {
+      await press(wc, byLabel('Search motions'), 'search motions', 600);
+      await type(wc, LOOK, 70);
+    }
+    // The posters load from motionhub.
+    await sleep(3000);
     const card = (name) => `() => { const b = [...document.querySelectorAll('.library-grid li button')].find(e => e.textContent.includes(${JSON.stringify(name)})); if (b) b.scrollIntoView({ block: 'nearest' }); return b; }`;
     for (const [i, name] of BROWSE.entries()) {
       if (!(await exists(wc, card(name)))) continue;
