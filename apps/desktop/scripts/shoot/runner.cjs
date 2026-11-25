@@ -19,7 +19,8 @@ const W = 1920, H = 1080, ZOOM = 1.1;
 const BRIEF = process.env.SHOOT_BRIEF ||
   'A 10-second data film on warm paper: four grey bars rise on the upper left with a count up to 84% beside them, ' +
   'then the headline “Small steps. Big change.” below. One short line of narration per scene.';
-const LOOK = process.env.SHOOT_LOOK || 'riso';
+const LOOK = process.env.SHOOT_LOOK || 'riso';               // typed in the motions' search
+const LOOK_NAME = process.env.SHOOT_LOOK_NAME || 'Riso Pop';  // the one opened among what it finds
 const NOTE = 'Make the tallest bar vermilion, and let the bars rise one after another.';
 const REGION = [0.04, 0.12, 0.5, 0.5]; // the bars, as fractions of the film: left, top, right, bottom
 
@@ -149,12 +150,13 @@ require(path.join(DESKTOP, 'out/main/index.js'));
     await press(wc, byLabel('Search motions'), 'search motions', 600);
     await type(wc, LOOK, 70);
     await sleep(1800);
-    await press(wc, `() => document.querySelector('.library-grid li button, .library-grid button')`, 'a look', 800);
+    await press(wc, `() => [...document.querySelectorAll('.library-grid li button')].find(e => e.textContent.includes(${JSON.stringify(LOOK_NAME)}))`, 'a look', 800);
     mark('look-open');
     await sleep(2200);
     await press(wc, `() => document.querySelector('.library-detail .button.primary')`, 'apply', 700);
     await sleep(500);
-    await press(wc, `() => [...document.querySelectorAll('[role=dialog] .button.primary, .dialog-actions .button.primary')].find(e => /Apply/.test(e.textContent))`, 'apply confirmed', 600);
+    // The confirmation is a dialog over the drawer, its own Apply button beside Cancel.
+    await press(wc, `() => document.querySelector('.modal-shell .dialog-actions .button.primary')`, 'apply confirmed', 600);
     mark('look-sent');
     await turn(wc, 'the look');
     mark('look-done');
