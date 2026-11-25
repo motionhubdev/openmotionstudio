@@ -5,9 +5,9 @@ import { StudioUpdates, downloads } from './updates';
 import { createUpdateDownloader } from './installer-update';
 import { BaseWindow, BrowserWindow, Menu, Tray, app, dialog, ipcMain, nativeImage, webContents, session, shell, type WebContents } from 'electron';
 import { randomUUID } from 'node:crypto';
-import { mkdir, realpath, open as openFile, rm } from 'node:fs/promises';
-import { basename, join } from 'node:path';
-import { CHANNELS, EVENTS, MAX_BRIEF, type AgentKind, type Project, type ProjectTask } from '../shared/api';
+import { mkdir, readFile, realpath, open as openFile, rm } from 'node:fs/promises';
+import { basename, isAbsolute, join } from 'node:path';
+import { CHANNELS, EVENTS, MAX_BRIEF, type AgentKind, type ChatItem, type Project, type ProjectTask } from '../shared/api';
 import { keepFilmsInPlace, registerPreviewScheme, SCHEME, servePreview } from './film/preview';
 import { allowSoftwareWebGL } from './film/stage';
 import { startFilm } from './film/film';
@@ -15,7 +15,8 @@ import { openExample } from './examples';
 import { OMS_EXTENSION, filmFileQueue, filmFilesIn, takeProject } from './oms-file';
 import { createInWorkspace, duplicateProject, filmName, forgetProject, inLibrary, openProject, projectAt, projectLibrary, rememberProject, renameProject } from './project';
 import { providers, studioTranslator } from './providers';
-import { createWorkspace, saveAgent, type WorkspaceHost } from './workspace';
+import { answerNextSave, createWorkspace, saveAgent, type WorkspaceHost } from './workspace';
+import { usageFile } from './usage';
 import { WebContentsView } from 'electron';
 import { log, logFailure } from './log';
 
@@ -402,6 +403,114 @@ async function shutdown(exit: () => void): Promise<void> {
   }
 }
 
+/**
+ * A dev build's control server (dev-control.ts, ADR 0023). Every call runs `window.studio` in Home or in the project's
+ * editor view, as a click there does, through the same bridge, router and handlers; only an export's save dialog is
+ * answered for it. Logged by name, never by its words.
+ */
+async function startControl(): Promise<void> {
+  const { startDevControl } = await import('./dev-control');
+  const inView = <T>(contents: WebContents, name: string, ...args: unknown[]): Promise<T> =>
+    contents.executeJavaScript(`window.studio.${name}(${args.map((arg) => JSON.stringify(arg)).join(', ')})`, true) as Promise<T>;
+  const sleep = (ms: number) => new Promise((done) => setTimeout(done, ms));
+  /** The editor of the project at `path`: the one open, else the library's project opened as the UI's Open does. */
+  const editorOf = async (path: unknown): Promise<Editor> => {
+    if (typeof path !== 'string' || !path) throw new Error('Name a project folder (project).');
+    const key = async () => {
+      const resolved = await realpath(path).catch(() => path);
+      return process.platform === 'win32' ? resolved.toLowerCase() : resolved;
+    };
+    // Opening it again would move its view, and a brief its editor holds could go unsent.
+    if (!editors.has(await key())) await openKnown(path, false);
+    const entry = editors.get(await key());
+    if (!entry) throw new Error('That project is not in your library.');
+    await entry.ready;
+    return entry;
+  };
+  /** Until a task begun at or after `since` has started; the turn's own promise, if it ends or fails first, decides. */
+  const started = async (entry: Editor, since: number, sent: Promise<unknown>): Promise<void> => {
+    let settled = false;
+    const ended = sent.finally(() => (settled = true));
+    while (!settled && !((entry.workspace.task()?.startedAt ?? 0) >= since)) await sleep(100);
+    if (settled) await ended;
+  };
+  const turnLog = async (entry: Editor) => {
+    const lines = (await readFile(usageFile(entry.project.path), 'utf8').catch(() => '')).trim().split('\n').filter(Boolean);
+    return lines.length ? (JSON.parse(lines[lines.length - 1]!) as unknown) : null;
+  };
+  const saveTo = (file: unknown, extension: string): string => {
+    if (typeof file !== 'string' || !isAbsolute(file) || !file.toLowerCase().endsWith(extension)) throw new Error(`Name an absolute path ending in ${extension} (file).`);
+    return file;
+  };
+  const calls: Record<string, (input: Record<string, unknown>) => Promise<unknown>> = {
+    async status() {
+      return {
+        projects: await projectLibrary(libraryFile()),
+        tasks: taskList(),
+        open: [...editors.values()].map((entry) => ({ project: entry.project.path, ...entry.workspace.state() })),
+      };
+    },
+    async new({ brief, agent }) {
+      const since = Date.now();
+      await inView(mainWindow.webContents, 'createProject', brief, agent);
+      const entry = [...editors.values()].sort((a, b) => b.openedAt - a.openedAt)[0];
+      if (!entry || entry.openedAt < since) throw new Error('No project was created.');
+      return { project: entry.project.path, since };
+    },
+    async say({ project, text }) {
+      const entry = await editorOf(project);
+      const since = Date.now();
+      const sent = inView(entry.view.webContents, 'sendMessage', text, [], [], 0);
+      sent.catch((error) => logFailure('dev-control.say', error));
+      await started(entry, since, sent);
+      return { project: entry.project.path, since };
+    },
+    async wait({ project, since, timeout = 3600 }) {
+      const entry = await editorOf(project);
+      const from = typeof since === 'number' ? since : 0;
+      const until = Date.now() + Number(timeout) * 1000;
+      for (;;) {
+        const task = entry.workspace.task();
+        if (task && task.startedAt >= from && task.status !== 'running') break;
+        if (Date.now() > until) throw new Error(`No turn begun since then ended in ${timeout} s.`);
+        await sleep(500);
+      }
+      const task = entry.workspace.task()!;
+      const items = await inView<ChatItem[]>(entry.view.webContents, 'conversation');
+      const reply = [...items].reverse().find((item) => item.kind === 'assistant') as { text: string } | undefined;
+      return { status: task.status, activity: task.activity, seconds: (task.updatedAt - task.startedAt) / 1000, reply: reply?.text ?? null, usage: await turnLog(entry) };
+    },
+    async voice({ project }) {
+      return inView((await editorOf(project)).view.webContents, 'voiceFilm');
+    },
+    async export({ project, file }) {
+      const entry = await editorOf(project);
+      answerNextSave(saveTo(file, '.mp4'));
+      return inView(entry.view.webContents, 'exportFilm');
+    },
+    async pack({ project, file }) {
+      const entry = await editorOf(project);
+      answerNextSave(saveTo(file, OMS_EXTENSION));
+      return inView(entry.view.webContents, 'exportFilmFile');
+    },
+  };
+  const control = await startDevControl(join(app.getPath('userData'), 'dev-control.json'), async (name, input) => {
+    const run = Object.hasOwn(calls, name) ? calls[name] : undefined;
+    if (!run) throw new Error(`There is no call ${name}: ${Object.keys(calls).join(', ')}.`);
+    const begun = Date.now();
+    try {
+      const result = await run(input);
+      log('dev-control.call', { call: name, project: typeof input.project === 'string' ? input.project : undefined, elapsedMs: Date.now() - begun });
+      return result;
+    } catch (error) {
+      logFailure('dev-control.failed', error, { call: name, elapsedMs: Date.now() - begun });
+      throw error;
+    }
+  });
+  app.once('will-quit', () => control.close());
+  console.error(`OpenMotionStudio dev control: ${join(app.getPath('userData'), 'dev-control.json')} (OMS_STUDIO_CONTROL=0 turns it off).`);
+}
+
 registerPreviewScheme();
 allowSoftwareWebGL();
 const primary = app.requestSingleInstanceLock();
@@ -603,6 +712,8 @@ else {
     ]) : null);
     await createMain();
     filmFiles.start();
+    // A dev build's control (ADR 0023): absent from the bundle a released Studio ships (electron.vite.config.mts).
+    if (import.meta.env.OMS_DEV_CONTROL && !app.isPackaged && process.env.OMS_STUDIO_CONTROL !== '0') await startControl();
     if (app.isPackaged) {
       const check = async () => {
         if (quitting || installingUpdate) return;

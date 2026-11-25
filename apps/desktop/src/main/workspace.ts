@@ -111,6 +111,24 @@ export async function saveAgent(dir: string, agent: AgentState): Promise<void> {
   await writeFile(agentFile(dir), JSON.stringify(agent));
 }
 
+/** Where the next export's save dialog is answered without asking: set only by a dev build's control (ADR 0023). */
+let answeredSave: string | null = null;
+
+/** Answers the next export's save dialog with `file` (dev-control.ts); the renderer cannot name a path. */
+export function answerNextSave(file: string): void {
+  answeredSave = file;
+}
+
+/** The person's answer to a save dialog, or the one the dev build's control gave for it. */
+async function askWhereToSave(window: BaseWindow | null | undefined, options: Electron.SaveDialogOptions): Promise<Electron.SaveDialogReturnValue> {
+  if (answeredSave) {
+    const filePath = answeredSave;
+    answeredSave = null;
+    return { canceled: false, filePath };
+  }
+  return window ? dialog.showSaveDialog(window, options) : dialog.showSaveDialog(options);
+}
+
 export function createWorkspace(host: WorkspaceHost, changed: () => void = () => {}) {
   const handlers = new Map<string, Handler>();
   const tasks = new Set<Promise<unknown>>();
@@ -229,6 +247,8 @@ export function createWorkspace(host: WorkspaceHost, changed: () => void = () =>
   } | null = null;
 
   let exporting: AbortController | null = null;
+  /** The share of the running export drawn, 0 to 1. */
+  let exportShare = 0;
   /** The file the last export wrote: the one path the renderer may ask to be shown, without naming it. */
   let exported: string | null = null;
   let working: AbortController | null = null;
@@ -1063,6 +1083,7 @@ export function createWorkspace(host: WorkspaceHost, changed: () => void = () =>
       if (!state.project.film || !build?.ok) throw new Error('The film does not build: fix its errors before exporting.');
       const controller = new AbortController();
       exporting = controller;
+      exportShare = 0;
       try {
         const review = await reviewBuild(build, openStage, controller.signal, { bundle: join(buildDir(state.project.path), `film-${build.version}.js`), dir: state.project.path });
         const errors = review.issues.filter((issue) => issue.severity === 'error');
@@ -1073,13 +1094,13 @@ export function createWorkspace(host: WorkspaceHost, changed: () => void = () =>
           defaultPath: join(state.project.path, `${state.project.name}.mp4`),
           filters: [{ name: 'MP4 video', extensions: ['mp4'] }],
         };
-        const result = window ? await dialog.showSaveDialog(window, options) : await dialog.showSaveDialog(options);
+        const result = await askWhereToSave(window, options);
         if (result.canceled || !result.filePath) return null;
         controller.signal.throwIfAborted();
         if (open !== state || state.build?.version !== build.version)
           throw new Error('The film changed before export. Review the latest preview and export again.');
         // Several stages at once, each a window drawing every n-th frame, as `oms render` draws with several browsers.
-        await exportFrames(state.project.path, build.version, result.filePath, (done) => send(EVENTS.exportProgress, done), controller.signal, openStage, ffmpegPath(), { stages: renderStages() });
+        await exportFrames(state.project.path, build.version, result.filePath, (done) => send(EVENTS.exportProgress, (exportShare = done)), controller.signal, openStage, ffmpegPath(), { stages: renderStages() });
         exported = result.filePath;
         return result.filePath;
       } finally {
@@ -1100,7 +1121,7 @@ export function createWorkspace(host: WorkspaceHost, changed: () => void = () =>
         defaultPath: join(state.project.path, `${state.project.name}.oms`),
         filters: [{ name: tr('Film file'), extensions: ['oms'] }],
       };
-      const result = window ? await dialog.showSaveDialog(window, options) : await dialog.showSaveDialog(options);
+      const result = await askWhereToSave(window, options);
       if (result.canceled || !result.filePath) return null;
       const { bytes } = await packProject(state.project.path);
       const partial = `${result.filePath}.partial`;
@@ -1160,6 +1181,8 @@ export function createWorkspace(host: WorkspaceHost, changed: () => void = () =>
     previewSource,
     project: () => open?.project ?? null,
     busy: () => tasks.size > 0 || !!working || !!exporting,
+    /** The open project's build, and the share of a running export drawn (null while none runs): for a dev build's control. */
+    state: () => ({ build: open?.build ? { ok: open.build.ok, version: open.build.version, errors: open.build.errors } : null, exporting: exporting ? exportShare : null }),
     task: (): Omit<ProjectTask, 'separate'> | null => task ? { ...task, background: host.isDestroyed() || !host.isVisible() } : null,
     async dispose() {
       await closeOpen(false);
