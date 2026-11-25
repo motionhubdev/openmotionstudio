@@ -7,7 +7,7 @@ import { BaseWindow, BrowserWindow, Menu, Tray, app, dialog, ipcMain, nativeImag
 import { randomUUID } from 'node:crypto';
 import { mkdir, realpath, open as openFile, rm } from 'node:fs/promises';
 import { basename, join } from 'node:path';
-import { CHANNELS, EVENTS, MAX_BRIEF, type Project, type ProjectTask } from '../shared/api';
+import { CHANNELS, EVENTS, MAX_BRIEF, type AgentKind, type Project, type ProjectTask } from '../shared/api';
 import { keepFilmsInPlace, registerPreviewScheme, SCHEME, servePreview } from './film/preview';
 import { allowSoftwareWebGL } from './film/stage';
 import { startFilm } from './film/film';
@@ -15,7 +15,7 @@ import { openExample } from './examples';
 import { OMS_EXTENSION, filmFileQueue, filmFilesIn, takeProject } from './oms-file';
 import { createInWorkspace, duplicateProject, filmName, forgetProject, inLibrary, openProject, projectAt, projectLibrary, rememberProject, renameProject } from './project';
 import { providers, studioTranslator } from './providers';
-import { createWorkspace, type WorkspaceHost } from './workspace';
+import { createWorkspace, saveAgent, type WorkspaceHost } from './workspace';
 import { WebContentsView } from 'electron';
 import { log, logFailure } from './log';
 
@@ -405,8 +405,13 @@ async function shutdown(exit: () => void): Promise<void> {
 registerPreviewScheme();
 allowSoftwareWebGL();
 const primary = app.requestSingleInstanceLock();
-if (!primary) app.quit();
-else {
+if (!primary) {
+  // The Studio is already running, perhaps with no window: closing its window leaves it in the tray (ADR 0014). This
+  // launch hands over to it, which brings its window forward; said where a launch from a terminal (`pnpm dev`) shows it,
+  // since the one running may be an older build.
+  console.error('OpenMotionStudio is already running (closing its window leaves it in the tray), so this launch brought its window forward and quit. To start this one instead, quit it first: Quit OpenMotionStudio in its tray menu.');
+  app.quit();
+} else {
   // A film file opened while the Studio runs comes as a second launch's argument (Windows, Linux) or as open-file
   // (macOS, which also sends a cold start's that way, before ready); one from a cold start is in this launch's own.
   filmFiles.add(filmFilesIn(process.argv.slice(1), process.cwd()));
@@ -564,8 +569,12 @@ else {
               if (typeof args[0] !== 'string' || !args[0].trim() || args[0].length > MAX_BRIEF) throw new Error('Describe the film in a few words.');
               brief = args[0].trim();
             }
+            const agent = args[1] as AgentKind | undefined;
+            if (agent !== undefined && !(['built-in', 'codex', 'claude'] as const).includes(agent)) throw new Error('Choose an agent.');
             project = await createInWorkspace((await workspaceSettings()).path, brief ? filmName(brief) : undefined);
             await startFilm(project.path);
+            // The agent picked under Home's prompt is the project's from its first message, the brief's.
+            if (agent) await saveAgent(project.path, { kind: agent, items: [] });
             project = projectAt(project.path);
           } else {
             // A folder or a film file. Only macOS's dialog picks either, so elsewhere a folder is picked by its film.tsx.

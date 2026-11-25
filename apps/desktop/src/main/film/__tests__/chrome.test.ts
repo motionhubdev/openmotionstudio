@@ -2,8 +2,8 @@ import { mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { PassThrough } from 'node:stream';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { chromeBuild, describePath, drawPath, drivable, headlessShellDigest, inCache, onGpu, Pipe, sandboxWanted, systemChromium, type Host } from '../chrome';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { chromeBuild, describePath, drawPath, drivable, headlessShellDigest, inCache, onGpu, Pipe, sandboxWanted, systemChromium, timeout, type Host } from '../chrome';
 
 let scratch: string;
 beforeEach(async () => {
@@ -57,6 +57,30 @@ describe('drawPath', () => {
   it('never starts Chrome to ask when OMS_RENDER_GPU=0', async () => {
     process.env.OMS_RENDER_GPU = '0';
     expect(await drawPath(join(scratch, 'forced-cpu'))).toEqual({ gpu: false, renderer: 'SwiftShader' });
+  });
+});
+
+describe('timeout', () => {
+  afterEach(() => vi.useRealTimers());
+
+  it('fails a frame after 60 s awake, and does not count the time the computer slept', async () => {
+    vi.useFakeTimers();
+    const never = new Promise<never>(() => {});
+    let failed: unknown = null;
+    void timeout(never, 'The frame at 1.00 s').catch((error) => (failed = error));
+    await vi.advanceTimersByTimeAsync(30_000);
+    // Eight hours asleep, in a jump the timer's ticks see as one long gap: none of it counts.
+    vi.setSystemTime(Date.now() + 8 * 3600_000);
+    await vi.advanceTimersByTimeAsync(1_000);
+    expect(failed).toBeNull();
+    await vi.advanceTimersByTimeAsync(28_000);
+    expect(failed).toBeNull();
+    await vi.advanceTimersByTimeAsync(2_000);
+    expect(String(failed)).toMatch('The frame at 1.00 s took longer than 60 s.');
+  });
+
+  it('gives back what it waited for', async () => {
+    await expect(timeout(Promise.resolve(7), 'x')).resolves.toBe(7);
   });
 });
 

@@ -29,7 +29,7 @@ import {
   Sun,
 } from 'lucide-react';
 import { MAX_BRIEF } from '../../shared/api';
-import type { Agents, Example, LibraryProject, Project, ProjectTask, Providers, VoiceKind, WorkspaceSettings } from '../../shared/api';
+import type { AgentKind, Agents, Example, LibraryProject, Project, ProjectTask, Providers, VoiceKind, WorkspaceSettings } from '../../shared/api';
 import { Logo, Wordmark } from './logo';
 import { AgentLogo } from './agent-logo';
 import { InstalledVersion } from './updates';
@@ -433,26 +433,29 @@ function TaskBadge({ task }: { task: ProjectTask }) {
 const STARTERS = ['A 15-second launch teaser for ', 'A 30-second explainer on how ', 'Kinetic type for the line “'];
 
 /**
- * What the person wants to make, in their words: a new project named from it, opened, with the words as the agent's
- * first message. Without an assistant they wait in the project's composer.
+ * What the person wants to make, in their words: a new project named from it, opened, with the words as the first
+ * message to the assistant picked at the foot (the first ready one unless another is). Without an assistant they wait
+ * in the project's composer.
  */
 function Prompt({ field, available, assistants, disabled, onCreate, onImport, onSetUp }: {
   field: RefObject<HTMLTextAreaElement | null>;
   available: boolean;
-  /** The assistants ready to take a film, each its name and its mark: shown at the foot's left once any is. */
-  assistants: { id: string; name: string; mark: ReactNode }[];
+  /** The assistants ready to take a film, each its name and its mark: picked from at the foot's left once any is. */
+  assistants: { id: AgentKind; name: string; mark: ReactNode }[];
   disabled: boolean;
-  /** Creates the project; the words stay in the field until it has. */
-  onCreate(brief: string): Promise<boolean>;
+  /** Creates the project, talking to `agent`; the words stay in the field until it has. */
+  onCreate(brief: string, agent: AgentKind | undefined): Promise<boolean>;
   /** A film the person already has: a project folder, or a film file an agent packed (.oms). */
   onImport(): void;
   onSetUp(): void;
 }) {
   const { t } = usePreferences();
   const [brief, setBrief] = useState('');
+  const [picked, setPicked] = useState<AgentKind | null>(null);
+  const chosen = assistants.find((assistant) => assistant.id === picked)?.id ?? assistants[0]?.id;
   const submit = (event?: FormEvent) => {
     event?.preventDefault();
-    if (brief.trim() && !disabled) void onCreate(brief.trim()).then((created) => created && setBrief(''));
+    if (brief.trim() && !disabled) void onCreate(brief.trim(), chosen).then((created) => created && setBrief(''));
   };
   return (
     <form className="home-prompt" onSubmit={submit}>
@@ -496,9 +499,17 @@ function Prompt({ field, available, assistants, disabled, onCreate, onImport, on
         {available ? (
           <span className="home-assistants" aria-label={t('Connected assistants')}>
             {assistants.map((assistant) => (
-              <span key={assistant.id} className="home-assistant" role="img" aria-label={assistant.name} data-tip={assistant.name}>
+              <button
+                key={assistant.id}
+                type="button"
+                className={`home-assistant${assistant.id === chosen ? ' chosen' : ''}`}
+                aria-label={assistant.name}
+                aria-pressed={assistant.id === chosen}
+                data-tip={assistant.name}
+                onClick={() => setPicked(assistant.id)}
+              >
                 {assistant.mark}
-              </span>
+              </button>
             ))}
           </span>
         ) : (
@@ -616,7 +627,7 @@ export function Home({ providers, workspace, tasks, examples, busy, error, revis
   // The built-in agent on the model in use (or the first ready one), then each coding agent of the person's that is ready.
   const model = providers?.providers.find((p) => p.id === providers.active && p.ready) ?? providers?.providers.find((p) => p.ready);
   const assistants = [
-    ...(model ? [{ id: 'built-in', name: `${model.model} · ${model.name}`, mark: <Bot size={14} /> }] : []),
+    ...(model ? [{ id: 'built-in' as const, name: `${model.model} · ${model.name}`, mark: <Bot size={14} /> }] : []),
     ...(agents?.harnesses.filter((h) => h.state === 'ready').map((h) => ({ id: h.kind, name: h.name, mark: <AgentLogo kind={h.kind} /> })) ?? []),
   ];
   const active = tasks
@@ -781,7 +792,7 @@ export function Home({ providers, workspace, tasks, examples, busy, error, revis
               available={available}
               assistants={assistants}
               disabled={disabled}
-              onCreate={(brief) => onAction(() => window.studio.createProject(brief))}
+              onCreate={(brief, agent) => onAction(() => window.studio.createProject(brief, agent))}
               onImport={() => void onAction(window.studio.openProject)}
               onSetUp={() => onSettings({ models: true })}
             />

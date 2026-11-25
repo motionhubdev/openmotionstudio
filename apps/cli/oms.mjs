@@ -170,9 +170,11 @@ async function run() {
     // The film as one file for the Studio's Import (ADR 0019): beside the folder unless --out names another place.
     const out = resolve(values.out ?? `${dir}.oms`);
     const worker = createRequire(import.meta.url)(join(root, 'dist/worker.cjs'));
-    const { files, bytes } = await worker.pack(dir, out);
+    const { files, bytes, leftOut } = await worker.pack(dir, out);
     console.log(out);
-    return console.error(`Packed ${files} file${files === 1 ? '' : 's'} (${(bytes / 1024 / 1024).toFixed(1)} MB). In OpenMotionStudio, Import project opens it as a new project; renders, stills and the Studio's state are left out.`);
+    const mb = (n) => `${(n / 1024 / 1024).toFixed(1)} MB`;
+    if (leftOut.length) console.error(`Left out ${leftOut.map((folder) => `${folder.path} (${mb(folder.bytes)})`).join(', ')}: a film keeps nothing in a folder whose name starts with a dot.`);
+    return console.error(`Packed ${files} file${files === 1 ? '' : 's'} (${mb(bytes)}). In OpenMotionStudio, Import project opens it as a new project; renders, stills, dot-folders and the Studio's state are left out.`);
   }
   if (!['still', 'check', 'render', 'player', 'preview'].includes(command)) throw new Error(usage);
   if (command === 'player' && !values.out) throw new Error(usage);

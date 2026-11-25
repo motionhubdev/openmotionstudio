@@ -306,7 +306,8 @@ export async function exportFrames(
 
 /**
  * Draws frames [s, e) of the film with `stages` into an H.264 file at `file`: stage c draws frames s + c, s + c + n…,
- * and frame i goes to the encoder when frame i - 1 has. The first failure, or a cancel, stops every stage.
+ * and frame i goes to the encoder when frame i - 1 has. The first failure, or a cancel, stops every stage: a cancel at
+ * once, without waiting for a frame being drawn, which a stage that stopped answering would never give back.
  */
 async function drawSegment(
   drawing: PhotoStage[],
@@ -333,6 +334,16 @@ async function drawSegment(
     encoder.on('close', (code) => (code === 0 ? done() : fail(new Error(`ffmpeg exited ${code}: ${stderr.trim().split('\n').slice(-3).join(' / ')}`))));
   });
   finished.catch(() => {});
+  let unlisten = () => {};
+  const cancelled = new Promise<never>((_, stop) => {
+    const cancel = () => stop(new Error('The export was cancelled.'));
+    if (signal.aborted) return cancel();
+    signal.addEventListener('abort', cancel, { once: true });
+    unlisten = () => signal.removeEventListener('abort', cancel);
+  });
+  cancelled.catch(() => {});
+  /** What a stage waits for, given up on as the export is cancelled. */
+  const unlessCancelled = <T>(promise: Promise<T>): Promise<T> => Promise.race([promise, cancelled]);
   try {
     let next = s;
     let broken: unknown = null;
@@ -343,10 +354,10 @@ async function drawSegment(
       for (let i = first; i < e; i += drawing.length) {
         if (broken) throw broken;
         if (signal.aborted) throw new Error('The export was cancelled.');
-        const png = await photographer.png(i / film.fps);
-        await turn(i);
+        const png = await unlessCancelled(photographer.png(i / film.fps));
+        await unlessCancelled(turn(i));
         if (broken) throw broken;
-        await write(encoder.stdin, png);
+        await unlessCancelled(write(encoder.stdin, png));
         onDrawn(i + 1 - s);
         next = i + 1;
         waiting.get(next)?.go();
@@ -371,6 +382,8 @@ async function drawSegment(
     await finished.catch(() => {});
     await rm(file, { force: true });
     throw error;
+  } finally {
+    unlisten();
   }
   await finished;
 }
