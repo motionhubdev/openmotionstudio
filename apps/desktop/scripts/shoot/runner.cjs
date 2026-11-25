@@ -1,6 +1,7 @@
 // The website's hero shoot, as Electron's main script on the Xvfb display (shoot.sh). One take walks the whole Studio:
-// describe a film at Home and let Claude Code make it; apply a look from motionhub; mark the bars on the picture with a
-// note and send it; give the film a voice; export the MP4. marks.json keeps the time of each beat for the cut (cut.py).
+// describe an explainer at Home and let Claude Code make it; look through motionhub's motions and apply one; mark a
+// spot on the picture with a note and send it; open the agent menu and its models; choose a voice and have the lines
+// spoken; export the MP4. marks.json keeps the time of each beat for the cut (promo/make.mjs).
 //
 // The voice needs a MiniMax key: MINIMAX_API_KEY (and MINIMAX_REGION, china by default) from the environment, sealed
 // into the take's own settings for the length of the take and deleted after it. Without one the voice beat is skipped.
@@ -15,15 +16,18 @@ const TEMP = process.env.SHOOT_TEMP;
 const USER_DATA = path.join(TEMP, 'user-data');
 const EXPORTED = path.join(TEMP, 'export.mp4');
 const W = 1920, H = 1080, ZOOM = 1.1;
-// What the take asks for. The layout is spelled out so the bars stand where the region is drawn (REGION).
+// What the take asks for: a short science explainer, the sun drawn on the left so the region (REGION) finds it.
 const BRIEF = process.env.SHOOT_BRIEF ||
-  'A 10-second data film: four bars rise on the upper left with a count up to 84% beside them, ' +
-  'then the headline “Small steps. Big change.” below. One short line of narration per scene.';
-const LOOK = process.env.SHOOT_LOOK || 'riso';               // typed in the motions' search
-const LOOK_NAME = process.env.SHOOT_LOOK_NAME || 'Riso Pop';  // the one opened among what it finds
-const VOICE = process.env.SHOOT_VOICE || 'English_Trustworthy_Man';  // MiniMax's, for the narration
-const NOTE ='Make the tallest bar vermilion, and let the bars rise one after another.';
-const REGION = [0.04, 0.12, 0.5, 0.5]; // the bars, as fractions of the film: left, top, right, bottom
+  'A 15-second explainer: why the sky is blue. A sun on the left sends a white beam that splits into a rainbow of rays; ' +
+  'air molecules scatter the short blue waves far more than the red; so blue reaches our eyes from every direction. ' +
+  'Three scenes, one short line of narration each.';
+const LOOK = process.env.SHOOT_LOOK || 'explainer';                // typed in the motions' search
+const BROWSE = (process.env.SHOOT_BROWSE || 'Clay World,Stage Light,Plumb Line,Lab Notebook').split(',');  // opened in turn
+const LOOK_NAME = process.env.SHOOT_LOOK_NAME || 'Night Diagram';  // the one applied
+const VOICE_WORDS = process.env.SHOOT_VOICE_WORDS || 'Trustworthy';  // typed in the voices' search
+const VOICE = process.env.SHOOT_VOICE || 'English_Trustworthy_Man';  // MiniMax's, chosen from what it finds
+const NOTE = 'Make the sun glow warmer, and let the rays fan out one by one.';
+const REGION = [0.05, 0.12, 0.42, 0.62]; // the sun and its beam, as fractions of the film: left, top, right, bottom
 
 app.setPath('userData', USER_DATA);
 app.setAppPath(DESKTOP);
@@ -96,8 +100,13 @@ function sealVoice() {
   keys['voice:minimax'] = safeStorage.encryptString(secret).toString('base64');
   fs.writeFileSync(keysFile, JSON.stringify(keys));
   const settings = JSON.parse(fs.readFileSync(settingsFile, 'utf8'));
-  // The voice is chosen here, as Settings would, so the agent applies it rather than picking one of its own.
-  settings.voices = { ...settings.voices, minimax: { region: process.env.MINIMAX_REGION || 'china', voiceId: VOICE } };
+  // The provider is set up; the voice itself is chosen in the take, in the Voice view.
+  settings.voices = { ...settings.voices, minimax: { region: process.env.MINIMAX_REGION || 'china' } };
+  // MiniMax's chat model for the built-in agent too, so the agent menu shows it beside Claude Code and Codex.
+  keys.minimax = keys['voice:minimax'];
+  fs.writeFileSync(keysFile, JSON.stringify(keys));
+  settings.providers = [{ id: 'minimax', name: 'MiniMax', protocol: 'openai', baseUrl: 'https://api.minimaxi.com/v1', model: 'MiniMax-M3', images: false }];
+  settings.active = 'minimax';
   fs.writeFileSync(settingsFile, JSON.stringify(settings));
   return true;
 }
@@ -156,9 +165,16 @@ require(path.join(DESKTOP, 'out/main/index.js'));
     await press(wc, byLabel('Search motions'), 'search motions', 600);
     await type(wc, LOOK, 70);
     await sleep(1800);
-    await press(wc, `() => [...document.querySelectorAll('.library-grid li button')].find(e => e.textContent.includes(${JSON.stringify(LOOK_NAME)}))`, 'a look', 800);
+    const card = (name) => `() => { const b = [...document.querySelectorAll('.library-grid li button')].find(e => e.textContent.includes(${JSON.stringify(name)})); if (b) b.scrollIntoView({ block: 'nearest' }); return b; }`;
+    for (const [i, name] of BROWSE.entries()) {
+      if (!(await exists(wc, card(name)))) continue;
+      await press(wc, card(name), name, 600);
+      mark(`browse-${i + 1}`);
+      await sleep(2600);  // its reel plays
+    }
+    await press(wc, card(LOOK_NAME), 'a look', 700);
     mark('look-open');
-    await sleep(2200);
+    await sleep(2800);
     await press(wc, `() => document.querySelector('.library-detail .button.primary')`, 'apply', 700);
     await sleep(500);
     // The confirmation is a dialog over the drawer, its own Apply button beside Cancel.
@@ -170,8 +186,10 @@ require(path.join(DESKTOP, 'out/main/index.js'));
     if (await exists(wc, `() => document.querySelector('.library-detail, .library-grid')`)) { key(wc, 'Escape'); await sleep(400); key(wc, 'Escape'); }
     await sleep(1200);
     const framed = await until(() => rect(wc, `() => document.querySelector('iframe[title="Film preview"]')`), 'film frame');
-    // Paused about 3.1 s in: the bars are up.
-    await playFromStart(wc, framed, 'play-look', 3100);
+    // The film in its new look, from the start; then again, paused 4.5 s in, the sun and its rays drawn.
+    await playFromStart(wc, framed, 'play-look', 8000);
+    await sleep(600);
+    await playFromStart(wc, framed, 'play-look-2', 4500);
     mark('paused');
     await sleep(700);
 
@@ -187,7 +205,7 @@ require(path.join(DESKTOP, 'out/main/index.js'));
     await sleep(700);
     await press(wc, byLabel('What should change here'), 'note', 500);
     mark('note');
-    await type(wc, NOTE);
+    await type(wc, NOTE, 45);
     await sleep(600);
     await press(wc, byText('button', 'Add mark'), 'add mark', 600);
     await sleep(900);
@@ -203,17 +221,57 @@ require(path.join(DESKTOP, 'out/main/index.js'));
     await sleep(8500);
     mark('v2-end');
 
-    // 4. A voice: the agent gives the film one and the Studio speaks its lines.
+    // 4. Your own AI: the agent menu, its agents and the models of the one in use.
+    try {
+      await press(wc, "() => document.querySelector('.agent-chip')", 'agent chip', 800);
+      mark('agents-open');
+      await sleep(900);
+      const rows = await js(wc, "document.querySelectorAll('.agent-menu [role=menuitemradio]').length");
+      for (let row = 0; row < rows; row++) {
+        await go(wc, `() => document.querySelectorAll('.agent-menu [role=menuitemradio]')[${row}]`, 'agent row', 450);
+        await sleep(650);
+      }
+      mark('agents-rows');
+      const model = "() => document.querySelector('.agent-menu [aria-label=\"Model\"]')";
+      await until(() => exists(wc, model), 'models', 20000);
+      await press(wc, model, 'model', 600);
+      mark('agents-models');
+      await sleep(600);
+      for (const i of [1, 2, 3]) {
+        const option = `() => document.querySelectorAll('.select-popup [role=option]')[${i}]`;
+        if (!(await exists(wc, option))) break;
+        await go(wc, option, 'model option', 350);
+        await sleep(500);
+      }
+      await sleep(700);
+      key(wc, 'Escape');
+      await sleep(300);
+      key(wc, 'Escape');
+      mark('agents-close');
+    } catch (e) {
+      console.error('agent menu', e);
+      key(wc, 'Escape');
+    }
+    await sleep(1200);
+
+    // 5. A voice, chosen from the provider's own: the agent gives it to the film and the Studio speaks its lines.
     const voiceButton = `() => [...document.querySelectorAll('header .button')].find(e => e.textContent.trim() === 'Voice')`;
     if (voiced && (await exists(wc, voiceButton))) {
       await press(wc, voiceButton, 'voice', 800);
       mark('voice');
       await sleep(1500);
-      if (await exists(wc, byText('button', 'Generate with agent'))) {
-        await press(wc, byText('button', 'Generate with agent'), 'generate voice', 700);
-        mark('voice-sent');
-        await turn(wc, 'the voice');
-      }
+      await press(wc, byLabel('Search voices'), 'search voices', 700);
+      await type(wc, VOICE_WORDS, 80);
+      mark('voice-search');
+      const choice = `() => [...document.querySelectorAll('.voice-choices .voice-choice')].find(e => e.textContent.includes(${JSON.stringify(VOICE)})) || document.querySelector('.voice-choices .voice-choice')`;
+      await until(() => exists(wc, choice), 'voices listed', 30000);
+      await sleep(900);
+      await press(wc, choice, 'a voice', 700);
+      mark('voice-chosen');
+      await sleep(900);
+      await press(wc, byText('button', 'Use this voice'), 'use this voice', 700);
+      mark('voice-sent');
+      await turn(wc, 'the voice');
       await sleep(1500);
       if (await exists(wc, byPattern('button', '^Voice \\d+ lines?$'))) {
         await press(wc, byPattern('button', '^Voice \\d+ lines?$'), 'voice lines', 700);
@@ -224,10 +282,10 @@ require(path.join(DESKTOP, 'out/main/index.js'));
       await sleep(2500);
       key(wc, 'Escape');
       await sleep(1000);
-      await playFromStart(wc, framed, 'play-voice', 6000);
+      await playFromStart(wc, framed, 'play-voice', 15500);
     }
 
-    // 5. Export the MP4.
+    // 6. Export the MP4.
     await sleep(800);
     await press(wc, byText('button', 'Export MP4'), 'export', 800);
     mark('export-open');
