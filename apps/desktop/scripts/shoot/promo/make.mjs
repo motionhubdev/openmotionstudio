@@ -9,10 +9,11 @@
 // once a language with `oms render` and lays the music and the take's narration under it with ffmpeg.
 //
 // MUSIC is Cat Walk by Arulo (Mixkit free licence: https://mixkit.co/free-stock-music/ , track 371), not kept here. Its
-// drop (88.5 s into the track) falls as the film first plays in its new look; the track starts wherever that puts it.
+// first drop falls on the timeline's drop (the motions' samples), and the track is spliced to its second loud section so
+// it lasts the whole film.
 // OMS names the oms command (default: this checkout's apps/cli/oms.mjs, run by node); ffmpeg is the one on the PATH.
 import {execFileSync} from 'node:child_process';
-import {copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync} from 'node:fs';
+import {copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync} from 'node:fs';
 import {dirname, join, resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 
@@ -30,7 +31,11 @@ const m = Object.fromEntries(JSON.parse(readFileSync(join(run, 'marks.json'), 'u
 
 const CARD = 1.6;   // a title card, its exit included
 const EXIT = 0.4;   // the card's exit, over the Studio already playing beneath it
-const TRACK_DROP = 88.5;
+// The track: 130 bpm. Its first drop is on a beat at 29.63 s; the first loud section ends on a bar at 57.23 s, the second
+// runs from its downbeat at 88.68 s to a bar at 110.76 s. The bed plays from the film's start to the end of the first,
+// then the second, then the first again from its drop, as long as the film needs.
+const TRACK_DROP = 29.63;
+const PIECES = (start) => [[start, 57.23], [88.68, 110.76], [29.63, 57.23], [88.68, 118]];
 const END = 4.2;    // the closing card, held
 
 // Parts of the 1920x1080 take (x, y, w, h).
@@ -47,46 +52,66 @@ const VOICE = [400, 40, 1520, 855];        // the voice view: its lines and the 
 const PICKER = [1000, 100, 920, 518];      // the voices, searched and chosen
 const EXPORTING = [1380, 0, 540, 304];     // the export button, counting
 
-// Each chapter: its seconds of the take ([from, to, speed] or [from, to, {len}], with the camera's rectangle and
-// {move: seconds} to glide there rather than cut), more camera moves (take time, rectangle, seconds), what is lifted
-// off the screen and when (take time), where the pointer clicks (take time, x, y), and its title card's length.
-// Operations run at their own speed (or near it); only waiting is cut short.
+// Each chapter: its seconds of the take ([from, to, speed] or [from, to, {len}], with the camera's rectangle and how:
+// see the cut below), more camera moves (take time, rectangle, seconds), what is lifted off the screen and when (take
+// time), where the pointer clicks (take time, x, y), and its title card's length. Operations run at their own speed (or
+// near it); only waiting is cut short.
 const browse = [1, 2, 3, 4].filter((k) => m[`browse-${k}`] !== undefined).map((k) => m[`browse-${k}`]);
+// The first motion opened shows the catalogue (its reel is still loading); the next two play their reels; the last one's
+// reel loads too late, and its look is in the samples that follow.
+const reels = browse.slice(1, 3);
 const applied = m['look-sent'] !== undefined;  // whether a look was applied in the take
+const BEAT = 0.46;  // the music's beat: the samples change every two
+// Samples made in motionhub's motions (the website's own, beside the film) and the film's own look, on the beat.
+const SAMPLES = process.env.PROMO_SAMPLES ?? resolve(here, '../../../../../../openmotionstudio-web/site/media');
+const samples = [['clay-world', 'Clay World', 5], ['riso-pop', 'Riso Pop', 4], ['pixel-quest', 'Pixel Quest', 6], ['ink-scroll', 'Ink Scroll', 5],
+  ['stage-light', 'Stage Light', 4]].map(([file, name, from]) => [join(SAMPLES, `look-${file}.mp4`), name, from]).filter(([file]) => existsSync(file));
+// The film spoken in other languages (dub.mjs): each a render of the take's project with its lines translated.
+const DUBS = process.env.PROMO_DUBS ?? join(run, 'dubs');
+const dubs = ['zh', 'ja', 'es'].map((lang) => [lang, join(DUBS, `${lang}.mp4`)]).filter(([, file]) => existsSync(file));
+// How long each language is heard: its first line, said whole (it starts 0.4 s in; the scene changes at 5 s).
+const LINE = {en: 3.9, zh: 3.2, ja: 5.0, es: 4.9};
 const chapters = [
-  {id: 'intro', exit: 'box', segs: [[m['play-look'] + 3.8, m['play-look'] + 8.0, 1, FULL]], tags: true},
+  {id: 'intro', exit: 'box', segs: [[m['play-look'] + 3.6, m['play-look'] + 8.0, 1, FULL]], tags: true},
+  // After Start creating, the whole editor while the agent works, then the first cut.
   {id: 'ch1', exit: 'box',
-    segs: [[m.brief - 0.3, m.brief + 1.9, 1, HOME], [m['brief-sent'] - 1.1, m['brief-sent'] + 0.5, 1, HOME],
-      [m.editor + 1, m.made - 0.2, {len: 2.6}, AGENT], [m['play-v1'] + 0.3, m['play-v1'] + 4.3, 1, STAGE]],
+    segs: [[m.brief - 0.3, m.brief + 1.9, 1, HOME], [m['brief-sent'] - 1.1, m['brief-sent'] + 0.05, 1, HOME],
+      [m.editor + 1, m.made - 0.2, {len: 3.0}, FULL], [m['play-v1'] + 0.3, m['play-v1'] + 4.3, 1, STAGE]],
     lifts: [[m.brief + 0.5, m.brief + 1.9, [352, 225, 1406, 217]]],
     clicks: [[m['brief-sent'] - 0.05, 1667, 358]]},
-  // The catalogue, every poster loaded; then each motion opened, once its reel plays (about 1.3 s on); then, if one was
-  // applied, its dialog and the agent restyling; then the film plays.
+  // The catalogue, every poster loaded; each motion opened once its reel plays; then, on the drop, films in motionhub's
+  // motions two beats each, and this film in its own look.
   {id: 'ch2', exit: 'blinds',
-    segs: [[browse[0] - 1.8, browse[0] + 0.2, 1, LIBRARY],
-      ...browse.map((b) => [b + 1.3, b + 3.1, 1, LIBRARY]),
+    segs: [[browse[0] - 1.8, browse[0] - 0.2, 1, LIBRARY],
+      ...reels.map((b) => [b + 1.5, b + 3.2, 1, LIBRARY]),
       ...(applied ? [[m['look-open'] - 0.3, m['look-sent'] + 0.4, {len: 1.9}, DIALOG], [m['look-sent'] + 1, m['look-done'] - 0.2, {len: 0.6}, AGENT]] : []),
-      [m['play-look'] + 1.0, m['play-look'] + 4.5, 1, STAGE]],
-    lifts: [...browse.map((b) => [b + 1.5, b + 3.0, [1478, 215, 420, 262], 0.6]), ...(applied ? [[m['look-sent'] - 1.4, m['look-sent'] + 0.3, [655, 447, 615, 201]]] : [])],
+      ...samples.map(([file, name, from]) => [from, from + 2 * BEAT, 1, FULL, {src: file, label: {en: name, zh: name}}]),
+      [m['play-voice'] + 10.6, m['play-voice'] + 10.6 + 4 * BEAT, 1, FILM, {label: {en: 'Its own look', zh: '它自己的风格'}}]],
+    lifts: [...reels.map((b) => [b + 1.7, b + 3.1, [1478, 215, 420, 262], 0.6]), ...(applied ? [[m['look-sent'] - 1.4, m['look-sent'] + 0.3, [655, 447, 615, 201]]] : [])],
     clicks: applied ? [[m['look-sent'] - 1.75, 1560, 1029], [m['look-sent'] - 0.05, 1164, 600]] : [],
-    drop: m['play-look'] + 1.0},
+    drop: {seg: 1 + reels.length + (applied ? 2 : 0)}},
+  // Circled, the note, sent; then the picture before and after.
   {id: 'ch3', exit: 'iris',
     segs: [[m.drag - 1.0, m.drag + 2.2, 1, STAGE], [m.note - 0.2, m.note + 4.8, {len: 3.3}, MARKING],
       [m.sent - 0.7, m.sent + 0.4, 1, AGENT], [m.sent + 1.6, m['agent-done'] - 0.2, {len: 0.8}, AGENT],
-      [m['play-v2'] + 0.8, m['play-v2'] + 4.2, 1, FILM]],
+      [m['play-look'] + 2.8, m['play-look'] + 4.6, 1, FILM, {label: {en: 'Before', zh: '改前'}}],
+      [m['play-v2'] + 2.8, m['play-v2'] + 4.9, 1, FILM, {label: {en: 'After', zh: '改后'}}]],
     lifts: [[m.note + 0.3, m.note + 4.6, [1205, 165, 340, 150]]],
     clicks: [[m.drag - 0.05, 760, 170], [m.note + 4.4, 1360, 280], [m.sent - 0.05, 352, 1029]]},
+  // The agent menu: its rows, then the models of the agent in use.
   {id: 'ch4', exit: 'wipe', card: 2.6,
     segs: [[m['agents-open'] - 0.6, m['agents-close'] + 0.3, 1.25, AGENTS]],
-    lifts: [[m['agents-open'] + 0.4, m['agents-close'] - 0.1, [10, 540, 385, 485], 0.25]],
-    clicks: [[m['agents-open'] - 0.05, 270, 1029], [m['agents-models'] - 0.05, 90, 1010]]},
+    lifts: [[m['agents-open'] + 0.4, m['agents-models'] - 0.15, [18, 575, 380, 400], 0.3],
+      [m['agents-models'], m['agents-close'] - 0.1, [18, 540, 380, 435], 0.3]],
+    clicks: [[m['agents-open'] - 0.05, 270, 1029], [m['agents-models'] - 0.05, 118, 869]]},
+  // A voice searched and chosen, the lines spoken; then the film heard in English, and in other languages in turn.
   {id: 'ch5', exit: 'wipe',
-    segs: [[m.voice - 0.5, m['voice-sent'] + 0.6, 1.4, VOICE], [m['voice-sent'] + 0.6, m.voiced + 1.0, {len: 1.8}, AGENT],
-      [m['play-voice'] + 0.3, m['play-voice'] + 7.6, 1, FILM]],
+    segs: [[m.voice - 0.5, m['voice-sent'] - 0.1, 1.4, VOICE], [m['voice-sent'] + 0.6, m.voiced + 1.0, {len: 1.8}, AGENT],
+      [m['play-voice'] + 0.2, m['play-voice'] + 0.2 + LINE.en, 1, FILM, {lang: 'en', voice: {src: join(run, 'export.mp4'), from: 0.2}}],
+      ...dubs.map(([lang, file]) => [0.2, Math.min(4.95, 0.2 + LINE[lang]), 1, FULL, {src: file, lang, voice: {src: file, from: 0.2}}])],
     cams: [[m.voice + 1.6, PICKER, 0.8]],
-    lifts: [[m['voice-search'] - 0.4, m['voice-sent'] + 0.3, [1540, 130, 360, 560], 0.2]],
-    clicks: [[m.voice - 0.05, 1673, 32], [m['voice-chosen'] - 0.05, 1710, 414], [m['voice-sent'] - 0.05, 1650, 633]],
-    narration: 2},
+    lifts: [[m['voice-search'] - 0.4, m['voice-sent'] - 0.15, [1540, 130, 360, 560], 0.2]],
+    clicks: [[m.voice - 0.05, 1673, 32], [m['voice-chosen'] - 0.05, 1710, 414], [m['voice-sent'] - 0.05, 1650, 633]]},
   {id: 'ch6', exit: 'box',
     segs: [[m['export-open'] - 0.3, m['export-start'] + 0.6, {len: 3.2}, DIALOG], [m['export-start'] + 0.6, m['export-done'] + 1.5, {len: 4.2}, FULL]],
     cams: [[m['export-start'] + 0.8, EXPORTING, 1.2]],
@@ -99,24 +124,36 @@ mkdirSync(media, {recursive: true});
 for (const card of ['card-open.mp4', 'card-close.mp4']) copyFileSync(join(here, '..', card), join(media, card));
 // The agents' own marks, as the Studio shows them.
 for (const icon of ['claude-code.png', 'codex.png']) copyFileSync(join(here, '../../../src/renderer/src/agent-icons', icon), join(media, icon));
+for (const [icon, as] of [['googlegemini.svg', 'gemini.svg'], ['deepseek.svg', 'deepseek.svg']]) copyFileSync(join(here, '../../../src/renderer/src/provider-icons', icon), join(media, as));
 
-// Cut each chapter's seconds into one clip, and map take time to clip time.
+// Cut each chapter's seconds into one clip, and map take time to clip time. A segment is [from, to, speed or {len},
+// camera rectangle, how]: `how` may name another file to take it from (`src`, its picture cropped to `crop` and filled
+// to the frame), a label to show over it (`label`, {en, zh}), the language it speaks (`lang`), the narration under it
+// (`voice`: a file and the second of it the segment's start matches) and a camera glide (`move`).
 const scenes = [{id: 'open', kind: 'card', dur: round(probe(join(media, 'card-open.mp4')))}];
 for (const c of chapters) {
-  const segs = c.segs.map(([a, b, sp, rect, how]) => {
+  const segs = c.segs.map(([a, b, sp, rect, how = {}]) => {
     const speed = typeof sp === 'object' ? (b - a) / sp.len : sp;
-    return {a, b, speed, rect, move: how?.move, len: (b - a) / speed};
+    return {a, b, speed, rect, ...how, len: (b - a) / speed};
   });
   let at = 0;
   for (const s of segs) (s.at = at), (at += s.len);
   const clipTime = (x) => {
-    const s = segs.find((s) => x >= s.a - 1e-6 && x <= s.b + 1e-6);
+    const s = segs.find((s) => !s.src && x >= s.a - 1e-6 && x <= s.b + 1e-6);
     return s ? round(s.at + (x - s.a) / s.speed) : null;
   };
-  const seek = Math.max(0, segs[0].a - 1);
-  const graph = segs.map((s, i) => `[0:v]trim=start=${(s.a - seek).toFixed(3)}:end=${(s.b - seek).toFixed(3)},setpts=(PTS-STARTPTS)/${s.speed.toFixed(4)},fps=30[s${i}]`);
+  const own = segs.filter((s) => !s.src);
+  const seek = own.length ? Math.max(0, Math.min(...own.map((s) => s.a)) - 1) : 0;
+  const inputs = own.length ? ['-ss', seek.toFixed(3), '-i', join(run, 'raw.mp4')] : [];
+  const graph = segs.map((s, i) => {
+    if (!s.src) return `[0:v]trim=start=${(s.a - seek).toFixed(3)}:end=${(s.b - seek).toFixed(3)},setpts=(PTS-STARTPTS)/${s.speed.toFixed(4)},fps=30[s${i}]`;
+    const k = inputs.filter((x) => x === '-i').length;
+    inputs.push('-ss', s.a.toFixed(3), '-t', (s.b - s.a + 0.5).toFixed(3), '-i', s.src);
+    const crop = s.crop ? `crop=${s.crop[2]}:${s.crop[3]}:${s.crop[0]}:${s.crop[1]},` : '';
+    return `[${k}:v]trim=duration=${(s.b - s.a).toFixed(3)},${crop}scale=1920:1080:force_original_aspect_ratio=increase,crop=1920:1080,setsar=1,setpts=(PTS-STARTPTS)/${s.speed.toFixed(4)},fps=30[s${i}]`;
+  });
   graph.push(`${segs.map((_, i) => `[s${i}]`).join('')}concat=n=${segs.length}:v=1:a=0,format=yuv420p[v]`);
-  ff('-ss', seek.toFixed(3), '-i', join(run, 'raw.mp4'), '-filter_complex', graph.join(';'), '-map', '[v]', '-an',
+  ff(...inputs, '-filter_complex', graph.join(';'), '-map', '[v]', '-an',
     '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '18', '-g', '15', join(media, `ui-${c.id}.mp4`));
   const uiLen = round(at);
   const card = c.card ?? CARD;
@@ -125,21 +162,24 @@ for (const c of chapters) {
     ...(c.cams ?? []).map(([x, rect, move]) => ({t: clipTime(x), rect, move}))].filter((k) => k.t !== null).sort((p, q) => p.t - q.t);
   scenes.push({
     id: c.id, kind: 'chapter', exit: c.exit, tags: !!c.tags, card, uiStart, uiLen, dur: round(uiStart + uiLen), cams,
-    drop: c.drop !== undefined ? clipTime(c.drop) : undefined,
+    drop: c.drop !== undefined ? (typeof c.drop === 'object' ? round(segs[c.drop.seg].at) : clipTime(c.drop)) : undefined,
     lifts: (c.lifts ?? []).map(([a, b, rect, grow]) => ({a: clipTime(a), b: clipTime(b), rect, grow})).filter((l) => l.a !== null && l.b !== null),
     clicks: (c.clicks ?? []).map(([t, x, y]) => ({t: clipTime(t), x, y})).filter((k) => k.t !== null),
-    narration: c.narration !== undefined ? {at: round(segs[c.narration].at), len: round(segs[c.narration].len)} : undefined,
+    labels: segs.filter((s) => s.label || s.lang).map((s) => ({t: round(s.at), len: round(s.len), text: s.label, lang: s.lang})),
+    voices: segs.filter((s) => s.voice).map((s) => ({at: round(s.at), len: round(s.len), src: s.voice.src, from: s.voice.from})),
   });
 }
 scenes.push({id: 'close', kind: 'card', dur: END});
 let t = 0;
 for (const s of scenes) (s.from = round(t)), (t += s.dur);
 const total = round(t);
-const at = (id) => scenes.find((s) => s.id === id);
-// The music's drop: on the moment a chapter names (take time), else on the second chapter's Studio.
+// The music's drop: on the moment a chapter names, else on the second chapter's Studio.
 const dropScene = scenes.find((s) => s.drop !== undefined && s.drop !== null) ?? scenes[2];
 const drop = round(dropScene.from + dropScene.uiStart + (dropScene.drop ?? 0));
-writeFileSync(join(here, 'parts', 'timeline.json'), JSON.stringify({total, drop, scenes}, null, 1));
+// Written only when it changes, so the films rendered from it are known to be current (below).
+const timelineFile = join(here, 'parts', 'timeline.json');
+const timelineText = JSON.stringify({total, drop, scenes}, null, 1);
+if (!existsSync(timelineFile) || readFileSync(timelineFile, 'utf8') !== timelineText) writeFileSync(timelineFile, timelineText);
 
 // The effects: a cut as each card opens, a landing as its headline lands, a move as it gives way, a land on each click.
 const cues = [];
@@ -156,43 +196,63 @@ execFileSync(oms[0], [...oms.slice(1), 'sound', here, '--cues', cues.join(', '),
 for (const [family, weights] of [['Inter', '400,700,800'], ['JetBrains Mono', '500'], ['Noto Sans SC', '500,900']])
   execFileSync(oms[0], [...oms.slice(1), 'font', here, '--family', family, '--weights', weights], {stdio: 'ignore'});
 
-if (process.env.RENDER === "0") {
-  writeFileSync(join(here, "parts", "lang.json"), JSON.stringify({lang: (process.env.LANGS ?? "en").split(",")[0]}));
+if (process.env.RENDER === '0') {
+  writeFileSync(join(here, 'parts', 'lang.json'), JSON.stringify({lang: (process.env.LANGS ?? 'en').split(',')[0]}));
   process.exit(0);
 }
 
-// Render each language, then lay the music (its drop where the timeline says, sunk under the narration) and the
-// narration under it: the take's own export, from where the Studio played it.
+// The sound. The music: from its first drop (TRACK_DROP, on the timeline's drop) to the end of that section (SPLICE[0]),
+// then on from the start of its second (SPLICE[1]), so it runs the film's whole length and ends as the track does. The
+// narration: each voiced segment's own file, from where its picture starts; the music sinks under each line. Each is
+// made once, as a WAV the film's length, then laid with the effects under each language's picture.
 mkdirSync(out, {recursive: true});
-const voiced = scenes.find((s) => s.narration);
-const voiceAt = voiced ? voiced.from + voiced.uiStart + voiced.narration.at : null;
-const voiceLen = voiced ? voiced.narration.len - 0.2 : 0;
-const offset = TRACK_DROP - drop;
+const narration = scenes.flatMap((s) => (s.voices ?? []).map((v) => ({...v, at: s.from + s.uiStart + v.at})));
+const trackAt = TRACK_DROP - drop;  // where in the track the film's first second is (before 0: the film waits for it)
+const lead = Math.max(0, -trackAt);
+const under = narration.map((v) => `clip((t-${(v.at - 0.3).toFixed(3)})/0.3,0,1)*clip((${(v.at + v.len + 0.3).toFixed(3)}-t)/0.3,0,1)`);
+const duck = under.length ? `1-0.7*min(1,${under.join('+')})` : '1';
+const bed = join(media, 'music-bed.wav');
+const pieces = PIECES(Math.max(0, trackAt));
+ff(...pieces.flatMap(() => ['-i', music]), '-filter_complex',
+  pieces.map(([a, b], i) => `[${i}:a]atrim=start=${a.toFixed(3)}:end=${b},asetpts=PTS-STARTPTS[p${i}];`).join('') +
+  pieces.slice(1).reduce((acc, _, i) => acc + `${i ? `[x${i}]` : '[p0]'}[p${i + 1}]acrossfade=d=0.06:c1=tri:c2=tri[x${i + 1}];`, '') +
+  `[x${pieces.length - 1}]adelay=${Math.round(lead * 1000)}:all=1,apad,atrim=duration=${total},` +
+  `afade=t=in:d=0.2,afade=t=out:st=${(total - 2.4).toFixed(3)}:d=2.4,volume=0.85,volume='${duck}':eval=frame[a]`,
+  '-map', '[a]', '-t', String(total), '-ar', '48000', '-ac', '2', bed);
+const voice = join(media, 'narration.wav');
+if (narration.length) {
+  const inputs = narration.flatMap((v) => ['-i', v.src]);
+  const graph = narration.map((v, i) => {
+    const len = Math.max(0.3, v.len - 0.1);
+    return `[${i}:a]aresample=48000,aformat=channel_layouts=stereo,atrim=start=${v.from.toFixed(3)}:duration=${len.toFixed(3)},asetpts=PTS-STARTPTS,` +
+      `afade=t=out:st=${(len - 0.25).toFixed(3)}:d=0.25,adelay=${Math.round(v.at * 1000)}:all=1[v${i}]`;
+  });
+  graph.push(`${narration.map((_, i) => `[v${i}]`).join('')}amix=inputs=${narration.length}:normalize=0:duration=longest,apad[a]`);
+  // Padded to the film's length, and no further: -t ends it.
+  ff(...inputs, '-filter_complex', graph.join(';'), '-map', '[a]', '-t', String(total), '-ar', '48000', '-ac', '2', voice);
+} else {
+  ff('-f', 'lavfi', '-i', `anullsrc=r=48000:cl=stereo`, '-t', String(total), voice);
+}
+const timelineAt = statSync(join(here, 'parts', 'timeline.json')).mtimeMs;
 for (const lang of (process.env.LANGS ?? 'en,zh').split(',')) {
   writeFileSync(join(here, 'parts', 'lang.json'), JSON.stringify({lang}));
   const film = join(here, `film.${lang}.mp4`);
-  rmSync(film, {force: true});
-  rmSync(film.replace(/.mp4$/, '.srt'), {force: true});
-  execFileSync(oms[0], [...oms.slice(1), 'render', here, '--out', film], {stdio: 'inherit'});
-  const duck = voiceAt === null ? '1' : `1-0.7*clip((t-${(voiceAt - 0.35).toFixed(3)})/0.35,0,1)*clip((${(voiceAt + voiceLen + 0.35).toFixed(3)}-t)/0.35,0,1)`;
-  const graph = [
-    `[1:a]atrim=start=${offset.toFixed(3)}:duration=${total},asetpts=PTS-STARTPTS,afade=t=in:d=0.2,afade=t=out:st=${(total - 2.4).toFixed(3)}:d=2.4,volume=0.85,volume='${duck}':eval=frame[music]`,
-    '[0:a]volume=0.6[fx]',
-  ];
-  const inputs = ['-i', film, '-i', music];
-  let mix = '[music][fx]';
-  if (voiceAt !== null && existsSync(join(run, 'export.mp4'))) {
-    inputs.push('-i', join(run, 'export.mp4'));
-    graph.push(`[2:a]atrim=start=0.3:duration=${voiceLen},asetpts=PTS-STARTPTS,afade=t=out:st=${voiceLen - 0.3}:d=0.3,adelay=${Math.round(voiceAt * 1000)}:all=1[voice]`);
-    mix += '[voice]';
+  // A render made since this timeline was written is this film already.
+  if (!(existsSync(film) && statSync(film).mtimeMs > timelineAt)) {
+    rmSync(film, {force: true});
+    rmSync(film.replace(/\.mp4$/, '.srt'), {force: true});
+    execFileSync(oms[0], [...oms.slice(1), 'render', here, '--out', film], {stdio: 'inherit'});
   }
-  graph.push(`${mix}amix=inputs=${mix.split('][').length}:normalize=0:duration=first,alimiter=limit=0.7:level=disabled[a]`);
-  ff(...inputs, '-filter_complex', graph.join(';'), '-map', '0:v', '-map', '[a]', '-vf', 'scale=1440:810:flags=lanczos',
+  ff('-i', film, '-i', bed, '-i', voice, '-filter_complex',
+    // The effects and the narration are padded without end: the bed, the film's length, ends the mix (an input that ran
+    // out first would stall amix).
+    `[0:a]aresample=48000,aformat=channel_layouts=stereo,volume=0.6,apad[fx];[2:a]apad[vo];[1:a][fx][vo]amix=inputs=3:normalize=0:duration=first,alimiter=limit=0.7:level=disabled[a]`,
+    '-map', '0:v', '-map', '[a]', '-t', String(total), '-vf', 'scale=1440:810:flags=lanczos',
     '-c:v', 'libx264', '-preset', 'slow', '-crf', '23', '-profile:v', 'high', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-b:a', '128k',
     '-movflags', '+faststart', join(out, `studio-loop.${lang}.mp4`));
 }
 
 const steps = scenes.filter((s) => /^ch\d$/.test(s.id)).map((s) => ({n: Number(s.id.slice(2)), at: round(s.from)}));
-writeFileSync(join(out, 'chapters.json'), JSON.stringify({length: total, drop, music_from: round(offset), steps}, null, 1));
-console.log(`total ${total}s · drop at ${drop}s · music from ${round(offset)}s of the track`);
+writeFileSync(join(out, 'chapters.json'), JSON.stringify({length: total, drop, music_from: round(trackAt), steps}, null, 1));
+console.log(`total ${total}s · drop at ${drop}s · music from ${round(trackAt)}s of the track, in pieces ${PIECES(Math.max(0, trackAt)).map(([a, b]) => `${round(a)}–${b}`).join(', ')}`);
 for (const s of steps) console.log(`  ${String(s.n).padStart(2, '0')} at ${s.at.toFixed(2)}`);

@@ -13,7 +13,7 @@ export const TAGS = {en: ['Your AI', 'The picture', 'The timeline', 'The outline
 
 export const CHAPTERS: Card[] = [
   {head: {en: 'Describe it in *one sentence*.', zh: '说*一句话*，|就有一部片子'}},
-  {head: {en: 'Pick a *look* from motionhub.', zh: '从 motionhub|挑一个*风格*'}},
+  {head: {en: 'Or borrow a *look* from motionhub.', zh: '也可以套用|motionhub 的*风格*'}},
   {head: {en: '*Circle it*, say what to change.', zh: '*圈出来*，|说一句怎么改'}},
   {head: {en: 'Works with *your own AI*.', zh: '用*你自己的 AI*'}},
   {head: {en: 'Give it a *voice*.', zh: '配上*旁白*'}},
@@ -32,7 +32,7 @@ export const MOTIONS: [string, string, string][] = [
   ['Iso Works', '#eceae3', '#3a7d5c'],
 ];
 
-/** The AIs the Studio works with, shown in chapter 4. */
-export const AIS = {en: ['Claude Code', 'Codex', 'Any API key'], zh: ['Claude Code', 'Codex', '任意模型 API Key']};
+/** The AIs the Studio works with, shown in chapter 4, in the order its agent menu lists them. */
+export const AIS = ['Codex', 'Claude Code', 'Gemini', 'DeepSeek'];
 
 export const CLOSING = {en: 'Free · Open source · No account', zh: '免费 · 开源 · 不用注册'};

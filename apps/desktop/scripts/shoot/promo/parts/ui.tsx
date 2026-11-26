@@ -17,6 +17,8 @@ export interface Shot {
   lifts: {a: number; b: number; rect: Rect; grow?: number}[];
   clicks: {t: number; x: number; y: number}[];
   tags: boolean;
+  /** Words over a stretch of the clip: a name (`text`), or the language it speaks (`lang`), shown in a row of them. */
+  labels?: {t: number; len: number; text?: {en: string; zh: string}; lang?: string}[];
 }
 
 /** The camera at `u` seconds into the clip: scale and offset that frame its rectangle, punched in just after a cut, or
@@ -73,6 +75,7 @@ export function Studio({clip, shot, t}: {clip: string; shot: Shot; t: number}) {
           <Lifted clip={clip} shot={shot} cam={cam} rect={lift.rect} grow={lift.grow ?? 0.09} p={lift.p} />
         </>
       )}
+      <Labels shot={shot} u={u} />
     </div>
   );
   return shot.tags ? <FlyIn u={u}>{picture}</FlyIn> : picture;
@@ -82,12 +85,13 @@ export function Studio({clip, shot, t}: {clip: string; shot: Shot; t: number}) {
 function Lifted({clip, shot, cam, rect, grow, p}: {clip: string; shot: Shot; cam: ReturnType<typeof camera>; rect: Rect; grow: number; p: number}) {
   const [x, y, w, h] = rect;
   const sx = cam.tx + (x + w / 2) * cam.k, sy = cam.ty + (y + h / 2) * cam.k;
-  const s = 1 + Math.min(grow, Math.max(0, Math.min(1840 / (w * cam.k), 1000 / (h * cam.k)) - 1)) * p;
+  const pad = 10;
+  // As large as it may grow and still fit the frame, its edge included.
+  const s = 1 + Math.min(grow, Math.max(0, Math.min(1840 / ((w + 2 * pad) * cam.k), 1000 / ((h + 2 * pad) * cam.k)) - 1)) * p;
   // Kept inside the frame: a panel at its edge moves in as it grows.
-  const hw = (w * cam.k * s) / 2, hh = (h * cam.k * s) / 2;
+  const hw = ((w + 2 * pad) * cam.k * s) / 2, hh = ((h + 2 * pad) * cam.k * s) / 2;
   const dx = Math.max(40 - (sx - hw), Math.min(0, 1880 - (sx + hw)));
   const dy = Math.max(40 - (sy - hh), Math.min(0, 1040 - (sy + hh)));
-  const pad = 10;
   return (
     <div style={{position: 'absolute', inset: 0, transformOrigin: `${sx}px ${sy}px`, transform: `translate(${dx}px, ${dy - 14 * p}px) scale(${s})`,
       filter: `drop-shadow(0 ${30 * p}px ${50 * p}px rgba(0,0,0,${0.55 * p}))`}}>
@@ -151,5 +155,40 @@ function Tags({u, k}: {u: number; k: number}) {
         );
       })}
     </>
+  );
+}
+
+const LANGS: [string, string][] = [['en', 'English'], ['zh', '中文'], ['ja', '日本語'], ['es', 'Español']];
+
+/** A name over the picture, low on the left, sliding in as its stretch starts; or, over a dubbed stretch, the row of
+ * languages with the one heard lit. */
+function Labels({shot, u}: {shot: Shot; u: number}) {
+  const now = (shot.labels ?? []).find((l) => u >= l.t && u < l.t + l.len);
+  if (!now) return null;
+  const d = u - now.t;
+  const p = spring(d, 0, 0.45, 0.5);
+  if (now.lang) {
+    const span = (shot.labels ?? []).filter((l) => l.lang);
+    const first = span[0]!.t;
+    const q = spring(u - first, 0, 0.5, 0.4);
+    return (
+      <div style={{position: 'absolute', left: 0, right: 0, top: 56, display: 'flex', justifyContent: 'center', gap: 14,
+        transform: `translateY(${(1 - q) * -120}px)`}}>
+        {LANGS.map(([code, name]) => {
+          const on = code === now.lang;
+          const pop = on ? 1 + 0.12 * (1 - spring(d, 0, 0.4, 0.6)) : 1;
+          return (
+            <div key={code} style={{font: `700 38px ${SANS}`, padding: '14px 30px', borderRadius: 999, transform: `scale(${pop})`,
+              background: on ? VERMILION : 'rgba(15,13,11,0.72)', color: on ? '#fff' : 'rgba(255,255,255,0.7)',
+              boxShadow: '0 14px 34px rgba(0,0,0,0.35)'}}>{name}</div>
+          );
+        })}
+      </div>
+    );
+  }
+  return (
+    <div style={{position: 'absolute', left: 64, bottom: 64, font: `800 44px ${SANS}`, color: '#fff', background: VERMILION,
+      borderRadius: 999, padding: '14px 34px', boxShadow: '0 14px 34px rgba(0,0,0,0.35)',
+      transform: `translateX(${(1 - p) * -60}px)`, opacity: clamp01(d / 0.12)}}>{now.text?.[LANG] ?? ''}</div>
   );
 }

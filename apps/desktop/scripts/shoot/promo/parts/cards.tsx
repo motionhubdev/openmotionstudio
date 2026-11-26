@@ -5,6 +5,8 @@ import {Easing, seededRandom} from '@motionhub/runtime';
 import {AIS, CHAPTERS, INTRO, MOTIONS} from './words';
 import claudeIcon from '../media/claude-code.png';
 import codexIcon from '../media/codex.png';
+import geminiIcon from '../media/gemini.svg';
+import deepseekIcon from '../media/deepseek.svg';
 import {ChapterNumber, COBALT, Headline, INK, LANG, MONO, MUTED, PAPER, PINK, SANS, VERMILION, clamp01, ease, pieces, spring} from './kit';
 
 export type Exit = 'box' | 'blinds' | 'iris' | 'wipe' | 'flash';
@@ -142,33 +144,25 @@ function Mosaic({t}: {t: number}) {
 
 /** Chapter 4: the AIs it works with, their own marks beside their names, and any model by its API key. */
 function Logos({t}: {t: number}) {
-  const icons = [claudeIcon, codexIcon, null];
+  // Each mark on its tile: the agents' own art on ink, the services' icons, inverted to white, on their brand colours.
+  const marks: [string, string, boolean][] = [[codexIcon, INK, false], [claudeIcon, INK, false], [geminiIcon, '#8E75B2', true], [deepseekIcon, '#5786FE', true]];
   return (
-    <div style={{display: 'flex', gap: 30, marginTop: 70}}>
-      {AIS[LANG].map((name, i) => {
-        const p = spring(t, 0.45 + i * 0.16, 0.55, 0.45);
-        const icon = icons[i];
+    <div style={{display: 'flex', gap: 26, marginTop: 70}}>
+      {AIS.map((name, i) => {
+        const p = spring(t, 0.45 + i * 0.14, 0.55, 0.45);
+        const [icon, tile, invert] = marks[i]!;
         return (
-          <div key={name} style={{display: 'flex', alignItems: 'center', gap: 20, font: `700 46px ${SANS}`, color: INK, background: '#fff',
-            borderRadius: 999, padding: '18px 40px 18px 20px', boxShadow: '0 16px 40px rgba(42,38,34,0.14)',
-            transform: `translateY(${(1 - p) * 60}px) scale(${0.6 + 0.4 * p})`, opacity: clamp01((t - 0.45 - i * 0.16) / 0.1)}}>
-            {icon ? <span style={{width: 72, height: 72, borderRadius: 18, background: INK, display: 'grid', placeItems: 'center'}}><img src={icon} style={{width: 50, height: 50}} /></span> : <Key />}
+          <div key={name} style={{display: 'flex', alignItems: 'center', gap: 18, font: `700 42px ${SANS}`, color: INK, background: '#fff',
+            borderRadius: 999, padding: '16px 36px 16px 18px', boxShadow: '0 16px 40px rgba(42,38,34,0.14)',
+            transform: `translateY(${(1 - p) * 60}px) scale(${0.6 + 0.4 * p})`, opacity: clamp01((t - 0.45 - i * 0.14) / 0.1)}}>
+            <span style={{width: 66, height: 66, borderRadius: 16, background: tile, display: 'grid', placeItems: 'center'}}>
+              <img src={icon} style={{width: invert ? 38 : 46, height: invert ? 38 : 46, filter: invert ? 'invert(1)' : undefined}} />
+            </span>
             {name}
           </div>
         );
       })}
     </div>
-  );
-}
-
-/** A key, drawn: any model reached by its API key. */
-function Key() {
-  return (
-    <svg width={72} height={72} viewBox="0 0 72 72">
-      <rect width={72} height={72} rx={18} fill={INK} />
-      <circle cx={27} cy={36} r={11} fill="none" stroke={PAPER} strokeWidth={6} />
-      <path d="M38 36 H58 M50 36 V45 M57 36 V43" stroke={PAPER} strokeWidth={6} strokeLinecap="round" />
-    </svg>
   );
 }
 
