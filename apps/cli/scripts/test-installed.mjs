@@ -174,6 +174,18 @@ export default function Main() {
   await writeFile(join(clipped, 'film.tsx'), clipFilm('"media/clip.mp4"'));
   assert.throws(() => oms('check', clipped, '--json'), error =>
     error.status === 1 && JSON.parse(error.stdout).issues.some(issue => issue.text.includes('import the clip')));
+  // Its web player carries the clip as a file of its own beside the frame, which the bundle names by its path, and
+  // frame.js none of its bytes: no file in the folder grows past its largest clip with the clips it carries.
+  await writeFile(join(clipped, 'film.tsx'), clipFilm('clip'));
+  const clippedWeb = join(scratch, 'clipped-web');
+  oms('player', clipped, '--out', clippedWeb);
+  const carried = await readdir(join(clippedWeb, 'clips'));
+  assert.equal(carried.length, 1);
+  assert.match(carried[0], /^[0-9a-f]{16}\.mp4$/);
+  assert.deepEqual(await readFile(join(clippedWeb, 'clips', carried[0])), await readFile(join(clipped, 'media/clip.mp4')));
+  const clippedFrame = await readFile(join(clippedWeb, 'frame.js'), 'utf8');
+  assert.ok(clippedFrame.includes(JSON.stringify(JSON.stringify(`clips/${carried[0]}`)).slice(1, -1)) && !clippedFrame.includes('data:video/'));
+  assert.match(await readFile(join(clippedWeb, 'index.html'), 'utf8'), new RegExp(`"clips":\\["clips/${carried[0]}"\\]`));
 
   // A render: the film's picture, its sound mixed in and its lines as subtitles, beside and inside the MP4.
   const scored = join(scratch, 'Scored');

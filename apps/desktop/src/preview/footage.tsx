@@ -1,7 +1,8 @@
 // The preview core's <Video>: a recorded clip drawn in the film, as @motionhub/runtime's <Video> asks of an engine. The
 // film imports the clip, as it does an image, so it travels with the bundle everywhere the film plays (oms's web player
-// carries it as a data: URL). Its file is fetched once and played from a blob: URL, so it seeks to any time whatever the
-// server it came from: the oms-preview: scheme and oms's own server answer no ranges.
+// carries it as a file of its own beside the frame, clips/…, which the player hands the frame as a Blob). Its file is
+// fetched once and played from a blob: URL, so it seeks to any time whatever the server it came from: the oms-preview:
+// scheme and oms's own server answer no ranges.
 //
 // - In a render, a still and oms's web player (the core's Still) it is a picture of the time asked for: the clip is moved
 //   to its time and the frame waits until that frame is decoded (`seeked`) and painted into a canvas (footageSettled).
@@ -9,12 +10,13 @@
 // - In the Studio's preview (the core's Player), and in oms's web player while it plays, it plays beside the film's
 //   clock, and is put back on it when it drifts.
 //
-// Each page the film plays in holds the whole of each clip in memory (the web player carries it in its page, as base64),
-// so a clip is cut to the seconds the film needs. A clip plays muted: its own sound is not the film's. It is shown from `startAt` seconds of its sequence, its source
+// Each page the film plays in holds the whole of each clip in memory (the web player downloads every clip before it
+// plays), so a clip is cut to the seconds the film needs. A clip plays muted: its own sound is not the film's. It is shown from `startAt` seconds of its sequence, its source
 // from `trimBefore` seconds at `playbackRate`, and its last frame holds once the source has ended.
 
 import { useTime } from '@motionhub/runtime';
 import { type CSSProperties, createContext, useContext, useLayoutEffect, useRef } from 'react';
+import type { FromPreview, ToPreview } from '../shared/preview';
 
 export interface FootageProps {
   src: string;
@@ -72,18 +74,41 @@ export const footageLoading = (): boolean => pending.size > 0;
 
 const sources = new Map<string, Promise<string>>();
 
-/** A URL the clip seeks in: an imported clip's file (`build/…`) fetched once into a blob: URL, or a data: URL as given. */
+/**
+ * A clip oms's web player carries beside its frame (`clips/…`), from the player: the frame loads nothing itself (its
+ * origin is opaque and its policy names no source), so it asks its parent, which fetched the file, for its bytes.
+ */
+function fromPlayer(src: string): Promise<string> {
+  return new Promise((done, refuse) => {
+    const onMessage = (event: MessageEvent<ToPreview>) => {
+      const message = event.data;
+      if (event.source !== parent || message?.type !== 'oms:clip' || message.src !== src) return;
+      removeEventListener('message', onMessage);
+      if (message.blob instanceof Blob) done(URL.createObjectURL(message.blob));
+      else refuse(new Error(`<Video>: the clip ${src} did not load (${message.message ?? 'the player sent nothing'}).`));
+    };
+    addEventListener('message', onMessage);
+    parent.postMessage({ type: 'oms:clip', src } satisfies FromPreview, '*');
+  });
+}
+
+/**
+ * A URL the clip seeks in: an imported clip's file (`build/…`) fetched once into a blob: URL, the web player's
+ * (`clips/…`) handed over by the player into one, or a data: or blob: URL as given.
+ */
 function playable(src: string): Promise<string> {
   let source = sources.get(src);
   if (!source) {
     source = /^(data|blob):/.test(src)
       ? Promise.resolve(src)
-      : /^build\//.test(src)
-        ? fetch(src).then(async (response) => {
-            if (!response.ok) throw new Error(`<Video>: the clip ${src} did not load (${response.status}).`);
-            return URL.createObjectURL(await response.blob());
-          })
-        : Promise.reject(new Error(`<Video src="${src}">: import the clip and give it that, as an image is given (import clip from './media/clip.mp4'; <Video src={clip} />).`));
+      : /^clips\//.test(src) && window.__omsInline
+        ? fromPlayer(src)
+        : /^build\//.test(src)
+          ? fetch(src).then(async (response) => {
+              if (!response.ok) throw new Error(`<Video>: the clip ${src} did not load (${response.status}).`);
+              return URL.createObjectURL(await response.blob());
+            })
+          : Promise.reject(new Error(`<Video src="${src}">: import the clip and give it that, as an image is given (import clip from './media/clip.mp4'; <Video src={clip} />).`));
     sources.set(src, source);
   }
   return source;

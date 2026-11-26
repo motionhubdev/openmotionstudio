@@ -3,13 +3,13 @@
 Every key change to OpenMotionStudio, newest first, by date. What counts as key and the entry format are in
 `CLAUDE.md`, "The changelog".
 
-## 2026-11-26 — oms 0.2.1
+## 2026-11-26 — oms 0.3.0
 
-- **What:** `@motionhub/oms` 0.2.1 on npm: the web player plays a film's clips while it plays (the entry below).
-- **Why:** A film with recorded clips played in the web player at a few frames a second; people who install `oms` from npm had no fix for it.
-- **Breaking:** None.
-- **Upgrade:** `npm install -g @motionhub/oms@latest`, then build the player again (`oms player`).
-- **Refs:** `apps/cli/package.json`, [publishing oms](docs/ops/publishing-oms.md), the entry below.
+- **What:** `@motionhub/oms` 0.3.0 on npm, with everything since 0.2.0: a web player carries its clips as files beside `frame.js`, and plays them while it plays (the two entries below).
+- **Why:** A film with recorded clips made a player too large for a host's per-file limit, and played at a few frames a second; people who install `oms` from npm had neither fix. A minor version, since a player folder with clips no longer plays opened from disk.
+- **Breaking:** A player folder of a film with a `<Video>` must be served, not opened from disk (the entry below).
+- **Upgrade:** `npm install -g @motionhub/oms@latest`, then write the player again (`oms player`).
+- **Refs:** `apps/cli/package.json`, [publishing oms](docs/ops/publishing-oms.md), the two entries below.
 
 ## 2026-11-26 — The web player plays its clips instead of seeking each frame
 
@@ -18,6 +18,14 @@ Every key change to OpenMotionStudio, newest first, by date. What counts as key 
 - **Breaking:** None. A still, an export and the paused player draw the exact frame as before; while playing, a clip may be up to 0.15 s off the film's time before it is put back.
 - **Upgrade:** Build the player again (`oms player`).
 - **Refs:** `apps/cli/player.ts`, `apps/desktop/src/preview/core.tsx`, `apps/desktop/src/preview/footage.tsx`, [architecture](docs/tech/architecture.md).
+
+## 2026-11-26 — A web player carries its clips as files beside frame.js
+
+- **What:** `oms player` and `oms preview` write each recorded clip a film imports as a file of its own, `clips/<hash>.mp4` or `.webm`, instead of a base64 `data:` URL inside `frame.js`; the player fetches them as the page opens, plays once they are in, and hands each to the sandboxed frame as a Blob when it asks (`oms:clip`). The frame still loads nothing from the host. Faces and images stay in `frame.js`.
+- **Why:** A film with several screen recordings made `frame.js` 15 to 17 MB, which a host with a per-file limit refused (an artifact allows 16 MB a text file); a ten-clip marketing film had its footage recompressed to fit. Now no file is larger than the largest clip, and clips download a third smaller.
+- **Breaking:** A player folder of a film with a `<Video>` no longer plays opened from disk (a `file:` page cannot fetch its clips, and says so): serve the folder, or use `oms preview`. A film without clips is unchanged.
+- **Upgrade:** Write the player again with `oms player` to split the clips out of an existing folder.
+- **Refs:** ADR 0024, `apps/cli/web.ts`, `apps/cli/player.ts`, `apps/desktop/src/preview/footage.tsx`, `docs/tech/architecture.md`.
 
 ## 2026-11-24 — oms 0.2.0
 
