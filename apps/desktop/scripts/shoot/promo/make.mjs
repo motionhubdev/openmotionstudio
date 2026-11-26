@@ -46,7 +46,7 @@ const FILM = [432, 75, 1100, 619];
 const AGENT = [0, 540, 864, 486];
 const LIBRARY = [415, 60, 1505, 847];
 const DIALOG = [192, 108, 1536, 864];
-const MARKING = [700, 120, 1000, 563];     // the marked Moon and the note beside it
+const MARKING = [560, 100, 1000, 563];     // the marked dark half and the note beside it
 const AGENTS = [0, 560, 860, 484];         // the agent menu, over the foot of the assistant
 const VOICE = [400, 40, 1520, 855];        // the voice view: its lines and the voices
 const PICKER = [1000, 100, 920, 518];      // the voices, searched and chosen
@@ -59,13 +59,19 @@ const EXPORTING = [1380, 0, 540, 304];     // the export button, counting
 const browse = [1, 2, 3, 4].filter((k) => m[`browse-${k}`] !== undefined).map((k) => m[`browse-${k}`]);
 // The first motion opened shows the catalogue (its reel is still loading); the next two play their reels; the last one's
 // reel loads too late, and its look is in the samples that follow.
-const reels = browse.slice(1, 3);
+const reels = browse.slice(1, 3).map((b) => {
+  // From when its reel plays: at least 1.5 s after the click, later if the take saw it start later.
+  const k = browse.indexOf(b) + 1;
+  return Math.max(b + 1.5, (m[`reel-${k}`] ?? 0) + 0.6);
+});
 const applied = m['look-sent'] !== undefined;  // whether a look was applied in the take
 const BEAT = 0.46;  // the music's beat: the samples change every two
-// Samples made in motionhub's motions (the website's own, beside the film) and the film's own look, on the beat.
-const SAMPLES = process.env.PROMO_SAMPLES ?? resolve(here, '../../../../../../openmotionstudio-web/site/media');
-const samples = [['clay-world', 'Clay World', 5], ['riso-pop', 'Riso Pop', 4], ['pixel-quest', 'Pixel Quest', 6], ['ink-scroll', 'Ink Scroll', 5],
-  ['stage-light', 'Stage Light', 4]].map(([file, name, from]) => [join(SAMPLES, `look-${file}.mp4`), name, from]).filter(([file]) => existsSync(file));
+// The film itself restyled in motionhub's motions (renders of the take's project, each in one motion: PROMO_STYLED/<slug>.mp4),
+// all at the same moment, two beats each on the drop; then the film in its own look.
+const STYLED = process.env.PROMO_STYLED ?? join(run, 'styled');
+const STYLED_AT = 2.4;  // the first scene: the Sun lighting half of the Moon
+const samples = [['clay-world', 'Clay World'], ['night-diagram', 'Night Diagram'], ['ink-scroll', 'Ink Scroll'], ['pixel-quest', 'Pixel Quest'],
+  ['riso-pop', 'Riso Pop']].map(([slug, name]) => [join(STYLED, `${slug}.mp4`), name, STYLED_AT]).filter(([file]) => existsSync(file));
 // The film spoken in other languages (dub.mjs): each a render of the take's project with its lines translated.
 const DUBS = process.env.PROMO_DUBS ?? join(run, 'dubs');
 const dubs = ['zh', 'ja', 'es'].map((lang) => [lang, join(DUBS, `${lang}.mp4`)]).filter(([, file]) => existsSync(file));
@@ -73,31 +79,31 @@ const dubs = ['zh', 'ja', 'es'].map((lang) => [lang, join(DUBS, `${lang}.mp4`)])
 const LINE = {en: 3.9, zh: 3.2, ja: 5.0, es: 4.9};
 const chapters = [
   {id: 'intro', exit: 'box', segs: [[m['play-look'] + 3.6, m['play-look'] + 8.0, 1, FULL]], tags: true},
-  // After Start creating, the whole editor while the agent works, then the first cut.
+  // After Start creating, the whole editor while the agent works, then the first cut played through, all three scenes.
   {id: 'ch1', exit: 'box',
     segs: [[m.brief - 0.3, m.brief + 1.9, 1, HOME], [m['brief-sent'] - 1.1, m['brief-sent'] + 0.05, 1, HOME],
-      [m.editor + 1, m.made - 0.2, {len: 3.0}, FULL], [m['play-v1'] + 0.3, m['play-v1'] + 4.3, 1, STAGE]],
+      [m.editor + 1, m.made - 0.2, {len: 3.0}, FULL], [m['play-v1'] + 0.3, m['play-v1'] + 14.8, {len: 10.5}, STAGE]],
     lifts: [[m.brief + 0.5, m.brief + 1.9, [352, 225, 1406, 217]]],
     clicks: [[m['brief-sent'] - 0.05, 1667, 358]]},
   // The catalogue, every poster loaded; each motion opened once its reel plays; then, on the drop, films in motionhub's
   // motions two beats each, and this film in its own look.
   {id: 'ch2', exit: 'blinds',
     segs: [[browse[0] - 1.8, browse[0] - 0.2, 1, LIBRARY],
-      ...reels.map((b) => [b + 1.5, b + 3.2, 1, LIBRARY]),
+      ...reels.map((r) => [r, r + 1.7, 1, LIBRARY]),
       ...(applied ? [[m['look-open'] - 0.3, m['look-sent'] + 0.4, {len: 1.9}, DIALOG], [m['look-sent'] + 1, m['look-done'] - 0.2, {len: 0.6}, AGENT]] : []),
       ...samples.map(([file, name, from]) => [from, from + 2 * BEAT, 1, FULL, {src: file, label: {en: name, zh: name}}]),
       [m['play-voice'] + 10.6, m['play-voice'] + 10.6 + 4 * BEAT, 1, FILM, {label: {en: 'Its own look', zh: '它自己的风格'}}]],
-    lifts: [...reels.map((b) => [b + 1.7, b + 3.1, [1478, 215, 420, 262], 0.6]), ...(applied ? [[m['look-sent'] - 1.4, m['look-sent'] + 0.3, [655, 447, 615, 201]]] : [])],
+    lifts: [...reels.map((r) => [r + 0.2, r + 1.6, [1478, 215, 420, 262], 0.6]), ...(applied ? [[m['look-sent'] - 1.4, m['look-sent'] + 0.3, [655, 447, 615, 201]]] : [])],
     clicks: applied ? [[m['look-sent'] - 1.75, 1560, 1029], [m['look-sent'] - 0.05, 1164, 600]] : [],
     drop: {seg: 1 + reels.length + (applied ? 2 : 0)}},
   // Circled, the note, sent; then the picture before and after.
   {id: 'ch3', exit: 'iris',
-    segs: [[m.drag - 1.0, m.drag + 2.2, 1, STAGE], [m.note - 0.2, m.note + 4.8, {len: 3.3}, MARKING],
+    segs: [[m.drag - 1.0, m.drag + 2.2, 1, STAGE], [m.note - 0.2, m.note + 7.5, {len: 4.6}, MARKING],
       [m.sent - 0.7, m.sent + 0.4, 1, AGENT], [m.sent + 1.6, m['agent-done'] - 0.2, {len: 0.8}, AGENT],
-      [m['play-look'] + 2.8, m['play-look'] + 4.6, 1, FILM, {label: {en: 'Before', zh: '改前'}}],
-      [m['play-v2'] + 2.8, m['play-v2'] + 4.9, 1, FILM, {label: {en: 'After', zh: '改后'}}]],
-    lifts: [[m.note + 0.3, m.note + 4.6, [1205, 165, 340, 150]]],
-    clicks: [[m.drag - 0.05, 760, 170], [m.note + 4.4, 1360, 280], [m.sent - 0.05, 352, 1029]]},
+      [m['play-look'] + 0.7, m['play-look'] + 2.5, 1, FILM, {label: {en: 'Before', zh: '改前'}}],
+      [m['play-v2'] + 0.7, m['play-v2'] + 2.8, 1, FILM, {label: {en: 'After', zh: '改后'}}]],
+    lifts: [[m.note + 0.3, m.note + 7.1, [640, 165, 330, 145]]],
+    clicks: [[m.drag - 0.05, 981, 165], [m.note + 7.25, 789, 279], [m.sent - 0.05, 352, 1029]]},
   // The agent menu: its rows, then the models of the agent in use.
   {id: 'ch4', exit: 'wipe', card: 2.6,
     segs: [[m['agents-open'] - 0.6, m['agents-close'] + 0.3, 1.25, AGENTS]],
@@ -196,15 +202,10 @@ execFileSync(oms[0], [...oms.slice(1), 'sound', here, '--cues', cues.join(', '),
 for (const [family, weights] of [['Inter', '400,700,800'], ['JetBrains Mono', '500'], ['Noto Sans SC', '500,900']])
   execFileSync(oms[0], [...oms.slice(1), 'font', here, '--family', family, '--weights', weights], {stdio: 'ignore'});
 
-if (process.env.RENDER === '0') {
-  writeFileSync(join(here, 'parts', 'lang.json'), JSON.stringify({lang: (process.env.LANGS ?? 'en').split(',')[0]}));
-  process.exit(0);
-}
-
 // The sound. The music: from its first drop (TRACK_DROP, on the timeline's drop) to the end of that section (SPLICE[0]),
 // then on from the start of its second (SPLICE[1]), so it runs the film's whole length and ends as the track does. The
 // narration: each voiced segment's own file, from where its picture starts; the music sinks under each line. Each is
-// made once, as a WAV the film's length, then laid with the effects under each language's picture.
+// made once, as a WAV the film's length.
 mkdirSync(out, {recursive: true});
 const narration = scenes.flatMap((s) => (s.voices ?? []).map((v) => ({...v, at: s.from + s.uiStart + v.at})));
 const trackAt = TRACK_DROP - drop;  // where in the track the film's first second is (before 0: the film waits for it)
@@ -233,21 +234,30 @@ if (narration.length) {
 } else {
   ff('-f', 'lavfi', '-i', `anullsrc=r=48000:cl=stereo`, '-t', String(total), voice);
 }
+// The film plays all three (film.tsx): the beds above, the effects. A first look is the web player of one language
+// (PLAYER=1: out/player-<lang>/, opened in a browser, nothing rendered); the finished film renders each language and
+// takes it to the website's size.
+if (process.env.RENDER === '0') {
+  writeFileSync(join(here, 'parts', 'lang.json'), JSON.stringify({lang: (process.env.LANGS ?? 'en').split(',')[0]}));
+  process.exit(0);
+}
 const timelineAt = statSync(join(here, 'parts', 'timeline.json')).mtimeMs;
-for (const lang of (process.env.LANGS ?? 'en,zh').split(',')) {
+for (const lang of (process.env.LANGS ?? (process.env.PLAYER ? 'en' : 'en,zh')).split(',')) {
   writeFileSync(join(here, 'parts', 'lang.json'), JSON.stringify({lang}));
+  if (process.env.PLAYER) {
+    const player = join(out, `player-${lang}`);
+    rmSync(player, {recursive: true, force: true});
+    execFileSync(oms[0], [...oms.slice(1), 'player', here, '--out', player], {stdio: 'inherit'});
+    continue;
+  }
   const film = join(here, `film.${lang}.mp4`);
-  // A render made since this timeline was written is this film already.
+  // A render made since this timeline was written, in this language, is this film already.
   if (!(existsSync(film) && statSync(film).mtimeMs > timelineAt)) {
     rmSync(film, {force: true});
     rmSync(film.replace(/\.mp4$/, '.srt'), {force: true});
     execFileSync(oms[0], [...oms.slice(1), 'render', here, '--out', film], {stdio: 'inherit'});
   }
-  ff('-i', film, '-i', bed, '-i', voice, '-filter_complex',
-    // The effects and the narration are padded without end: the bed, the film's length, ends the mix (an input that ran
-    // out first would stall amix).
-    `[0:a]aresample=48000,aformat=channel_layouts=stereo,volume=0.6,apad[fx];[2:a]apad[vo];[1:a][fx][vo]amix=inputs=3:normalize=0:duration=first,alimiter=limit=0.7:level=disabled[a]`,
-    '-map', '0:v', '-map', '[a]', '-t', String(total), '-vf', 'scale=1440:810:flags=lanczos',
+  ff('-i', film, '-map', '0:v', '-map', '0:a', '-t', String(total), '-vf', 'scale=1440:810:flags=lanczos', '-af', 'alimiter=limit=0.7:level=disabled',
     '-c:v', 'libx264', '-preset', 'slow', '-crf', '23', '-profile:v', 'high', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-b:a', '128k',
     '-movflags', '+faststart', join(out, `studio-loop.${lang}.mp4`));
 }

@@ -46,7 +46,10 @@ export default function Main() {
   const scenes = timeline.scenes as unknown as SceneInfo[];
   return (
     <Film>
-      <Sound src="media/effects.wav" />
+      {/* make.mjs builds them: the music (sunk under the narration), the narration, and the effects a little under both. */}
+      <Sound src="media/music-bed.wav" />
+      <Sound src="media/narration.wav" />
+      <Sound src="media/effects.wav" volume={-4.4} />
       <Layer id="ground"><Faces /><div style={{width: '100%', height: '100%', background: PAPER}} /></Layer>
       {scenes.map((s) => {
         if (s.id === 'open')
