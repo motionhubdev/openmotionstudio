@@ -7,7 +7,8 @@
 // - In a render, a still and oms's web player (the core's Still) it is a picture of the time asked for: the clip is moved
 //   to its time and the frame waits until that frame is decoded (`seeked`) and painted into a canvas (footageSettled).
 //   Where oms drives Chrome's frames, it draws them, unphotographed, while a clip waits (apps/cli/chrome.ts).
-// - In the Studio's preview (the core's Player) it plays beside the film's clock, and is put back on it when it drifts.
+// - In the Studio's preview (the core's Player), and in oms's web player while it plays, it plays beside the film's
+//   clock, and is put back on it when it drifts.
 //
 // Each page the film plays in holds the whole of each clip in memory (the web player downloads every clip before it
 // plays), so a clip is cut to the seconds the film needs. A clip plays muted: its own sound is not the film's. It is shown from `startAt` seconds of its sequence, its source
@@ -30,6 +31,8 @@ export interface FootageProps {
 export type FootageClock = 'still' | { playing: boolean };
 export const FootageClockContext = createContext<FootageClock>('still');
 
+/** The slowest rate a browser plays a clip at; a slower one is held on its frame while the film plays. */
+const MIN_RATE = 0.0625;
 /** How far the picture may drift from the film's clock while playing before the clip is put back on it, in seconds. */
 const DRIFT = 0.15;
 /**
@@ -320,7 +323,8 @@ function PlayingFootage({ src, t, props, playing, style }: { src: string; t: num
       await open(video, await playable(src));
       if (move !== newest.current) return;
       const time = footageTime(t, { startAt, trimBefore, playbackRate }, video.duration);
-      if (playing && time !== null && time < video.duration - 0.001) {
+      // A rate slower than a browser plays (Chrome refuses below 1/16) holds the clip on its frame instead.
+      if (playing && time !== null && time < video.duration - 0.001 && playbackRate >= MIN_RATE) {
         video.playbackRate = playbackRate;
         if (Math.abs(video.currentTime - time) > DRIFT) video.currentTime = time;
         // Not awaited: the queue would hold every later move until playback starts. A refused play() leaves the clip

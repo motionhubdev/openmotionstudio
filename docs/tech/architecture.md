@@ -231,8 +231,10 @@ One engine, the Studio's own ([ADR 0005](../adr/0005-the-studio-has-one-engine-i
   its player for a clip (`oms:clip`), and the player, which fetched every clip as the page opened and plays only once
   they are in, hands it over as a Blob, played from a blob: URL the frame makes. A clip that cannot play, does not load in 30 s or
   does not reach a frame in 10 s fails the film with that reason (`reportError`, the page's error), rather than leave a
-  still waiting or photograph the frame before. A still, a frame of an export
-  and a frame of the web player wait until each clip shows its own frame of the time asked for: it is moved there 1 ms
+  still waiting or photograph the frame before. While the web player plays, its clips play beside the film's time as
+  in the Studio's preview (put back on it when they drift, a rate slower than Chrome's 1/16 held on its frame): a seek
+  and a decode for each of the film's frames, two clips side by side, drew 3 to 9 frames a second. A still, a frame of
+  an export and a frame of the web player paused or scrubbed wait until each clip shows its own frame of the time asked for: it is moved there 1 ms
   into the frame (a time on a frame's boundary reaches the browser a hair early), decoded (`seeked`) and painted into a
   canvas that stands in for the `<video>`. A `<video>` is drawn by the compositor from the frame it was last handed,
   which a screenshot can catch a frame late (Chrome drawing on demand without being driven showed the frame before a seek

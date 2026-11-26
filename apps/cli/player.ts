@@ -195,10 +195,11 @@ function show(): void {
   big.hidden = playing || !ready;
   shell.classList.toggle('playing', playing);
   // One frame at a time: the next is asked for once the frame has drawn the last, so a slow frame never queues more.
+  // While it plays, the frame's clips play too rather than seek to each frame (core.tsx, Still).
   if (ready && !drawing && frameNo !== asked) {
     asked = frameNo;
     drawing = true;
-    frame.contentWindow?.postMessage({ type: 'oms:seek', t: frameNo / film.fps }, '*');
+    frame.contentWindow?.postMessage({ type: 'oms:seek', t: frameNo / film.fps, playing }, '*');
   }
 }
 

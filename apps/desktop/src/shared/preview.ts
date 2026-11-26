@@ -108,7 +108,8 @@ export type ToPreview =
   | { type: 'oms:play' }
   | { type: 'oms:pause' }
   | { type: 'oms:play-range'; start: number; end: number }
-  | { type: 'oms:seek'; t: number }
+  /** `playing`, from oms's web player: the film is playing, so its clips may play rather than seek to each frame. */
+  | { type: 'oms:seek'; t: number; playing?: boolean }
   /** Whether the preview's sound is off. */
   | { type: 'oms:mute'; muted: boolean }
   /** The element drawn at a point, in fractions of the frame, or the one `depth` elements around it (studio/pick.js answers). */
