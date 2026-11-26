@@ -3,6 +3,14 @@
 Every key change to OpenMotionStudio, newest first, by date. What counts as key and the entry format are in
 `CLAUDE.md`, "The changelog".
 
+## 2026-11-26 — A web player carries its clips as files beside frame.js
+
+- **What:** `oms player` and `oms preview` write each recorded clip a film imports as a file of its own, `clips/<hash>.mp4` or `.webm`, instead of a base64 `data:` URL inside `frame.js`; the player fetches them as the page opens, plays once they are in, and hands each to the sandboxed frame as a Blob when it asks (`oms:clip`). The frame still loads nothing from the host. Faces and images stay in `frame.js`.
+- **Why:** A film with several screen recordings made `frame.js` 15 to 17 MB, which a host with a per-file limit refused (an artifact allows 16 MB a text file); a ten-clip marketing film had its footage recompressed to fit. Now no file is larger than the largest clip, and clips download a third smaller.
+- **Breaking:** A player folder of a film with a `<Video>` no longer plays opened from disk (a `file:` page cannot fetch its clips, and says so): serve the folder, or use `oms preview`. A film without clips is unchanged.
+- **Upgrade:** Write the player again with `oms player` to split the clips out of an existing folder.
+- **Refs:** ADR 0024, `apps/cli/web.ts`, `apps/cli/player.ts`, `apps/desktop/src/preview/footage.tsx`, `docs/tech/architecture.md`.
+
 ## 2026-11-24 — oms 0.2.0
 
 - **What:** `@motionhub/oms` 0.2.0 on npm, with everything since 0.1.0: films play recorded clips (`<Video>`); `oms render` draws on the GPU where it can be and says which path it drew on (`OMS_RENDER_GPU=0` or `1` to choose); a frame's limit counts only the time the computer is awake, and a Chrome that does not answer when it is closed is killed; `oms pack` leaves out the project's dot-folders and names them; `oms font` cuts in the words a film imports from outside its folder.

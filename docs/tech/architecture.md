@@ -1,6 +1,6 @@
 # Architecture
 
-> **Status:** Plan — steps 1 to 3 and 6 built, 7 under way; signing waits for its accounts · **Updated:** 2026-11-24
+> **Status:** Plan — steps 1 to 3 and 6 built, 7 under way; signing waits for its accounts · **Updated:** 2026-11-26
 
 The components of the Studio and what each owns, the film, the agent and its providers, what is expensive to change, and the order of work.
 
@@ -83,7 +83,7 @@ apps/cli/
   ffmpeg.ts            the person's ffmpeg it renders with, checked for what an export uses
   font.ts              a face from Google Fonts cut to the project's characters, with its licence (oms font)
   web.ts, player.ts    a film as a folder a browser plays without a render: the player's page, the frame's document,
-                       the soundtrack, the preview server; the player's clock and controls (ADR 0018)
+                       its clips, the soundtrack, the preview server; the player's clock and controls (ADR 0018, 0024)
   skills/oms/          the skill Claude Code or Codex reads
 ```
 
@@ -220,12 +220,16 @@ One engine, the Studio's own ([ADR 0005](../adr/0005-the-studio-has-one-engine-i
   and clip) is its `src/voice.json`, given to the provider and the film, so Remotion times the lines as the Studio does,
   plays the clips from `public/voice/` and ducks under them; rendered by Remotion, its sound matches the Studio's own
   export within a frame's worth of fade.
-- **Video**: a recorded clip is the runtime's `<Video src>`, given a file the film imports (`build/…`, carried as a
-  data: URL by the web player; MP4, WebM, or MOV, served as MP4 since Chromium refuses `video/quicktime` in a data:
-  URL), which the preview core draws (`preview/footage.tsx`); a clip named by a path is refused, since the web player
-  carries only what the bundle imports. The core fetches each file once and plays it from a blob: URL, so it seeks
-  anywhere although neither the scheme nor oms's server answers a range; the price is each page holding each whole
-  clip in memory, and the web player's page carrying it as base64. A clip that cannot play, does not load in 30 s or
+- **Video**: a recorded clip is the runtime's `<Video src>`, given a file the film imports (`build/…`; MP4, WebM, or
+  MOV, served as MP4, since Chromium plays a MOV's H.264 when told it is MP4), which the preview core
+  draws (`preview/footage.tsx`); a clip named by a path is refused, since the web player carries only what the bundle
+  imports. The core fetches each file once and plays it from a blob: URL, so it seeks anywhere although neither the
+  scheme nor oms's server answers a range; the price is each page holding each whole clip in memory. The web player
+  carries each clip as a file of its own, `clips/<hash>.mp4` or `.webm` beside the page, which the bundle names in
+  place of `build/…`, so no file in its folder is larger than its largest clip plus the core
+  ([ADR 0024](../adr/0024-a-web-players-clips-are-files-beside-its-frame.md)). Its frame still loads nothing: it asks
+  its player for a clip (`oms:clip`), and the player, which fetched every clip as the page opened and plays only once
+  they are in, hands it over as a Blob, played from a blob: URL the frame makes. A clip that cannot play, does not load in 30 s or
   does not reach a frame in 10 s fails the film with that reason (`reportError`, the page's error), rather than leave a
   still waiting or photograph the frame before. A still, a frame of an export
   and a frame of the web player wait until each clip shows its own frame of the time asked for: it is moved there 1 ms
