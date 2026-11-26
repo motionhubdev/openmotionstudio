@@ -3,6 +3,14 @@
 Every key change to OpenMotionStudio, newest first, by date. What counts as key and the entry format are in
 `CLAUDE.md`, "The changelog".
 
+## 2026-11-26 — The web player plays its clips instead of seeking each frame
+
+- **What:** While oms's web player plays, a film's `<Video>` clips play beside its time, as in the Studio's preview; paused or scrubbed, each shows its exact frame again. A clip at a `playbackRate` slower than a browser plays (below 1/16) is held on its frame while the film plays, in the preview too, instead of failing the film.
+- **Why:** The player moved every clip to each frame and waited for it to decode: a film with a phone recording beside a desktop one played at 3 to 9 frames a second, with callouts drawn over the clips running ahead of them. The same section now plays at 30.
+- **Breaking:** None. A still, an export and the paused player draw the exact frame as before; while playing, a clip may be up to 0.15 s off the film's time before it is put back.
+- **Upgrade:** Build the player again (`oms player`).
+- **Refs:** `apps/cli/player.ts`, `apps/desktop/src/preview/core.tsx`, `apps/desktop/src/preview/footage.tsx`, [architecture](docs/tech/architecture.md).
+
 ## 2026-11-24 — oms 0.2.0
 
 - **What:** `@motionhub/oms` 0.2.0 on npm, with everything since 0.1.0: films play recorded clips (`<Video>`); `oms render` draws on the GPU where it can be and says which path it drew on (`OMS_RENDER_GPU=0` or `1` to choose); a frame's limit counts only the time the computer is awake, and a Chrome that does not answer when it is closed is killed; `oms pack` leaves out the project's dot-folders and names them; `oms font` cuts in the words a film imports from outside its folder.

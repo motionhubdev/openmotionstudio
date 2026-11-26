@@ -12,6 +12,9 @@
 //     still loading or a clip still moving to its frame.
 //   - In oms's web player (apps/cli/web.ts) the page is a document of its own, written into a
 //     sandboxed frame whole: the film comes in it (window.__omsInline), and it is a still the player moves.
+//     While the player plays, its clips play beside the film's time as in the Studio's preview, rather than
+//     seek and decode a frame for each of the film's: a seek per frame cannot keep up with a recording.
+//     Paused or scrubbed, each clip shows its exact frame again.
 //
 // Built by scripts/build-preview.mjs into resources/preview/core.js.
 
@@ -287,13 +290,13 @@ function Player({ Film, film }: { Film: ComponentType; film: FilmInfo }) {
 const loading = () => [...document.images].some((image) => !image.complete) || footageLoading();
 
 function Still({ Film, film }: { Film: ComponentType; film: FilmInfo }) {
-  const [at, setAt] = useState({ t: 0, n: 0, told: false });
+  const [at, setAt] = useState({ t: 0, n: 0, told: false, playing: false });
   const painted = useRef<((t: number) => void) | null>(null);
   useEffect(() => {
     const onMessage = (event: MessageEvent<ToPreview>) => {
       if (event.source !== parent || parent === window || event.data?.type !== 'oms:seek' || !Number.isFinite(event.data.t)) return;
       const t = Math.max(0, Math.min(film.seconds, event.data.t));
-      setAt((a) => ({ t, n: a.n + 1, told: true }));
+      setAt((a) => ({ t, n: a.n + 1, told: true, playing: event.data.type === 'oms:seek' && event.data.playing === true }));
     };
     // An image that finishes loading may be the last one the frame waits for.
     const onLoad = (event: Event) => {
@@ -317,7 +320,7 @@ function Still({ Film, film }: { Film: ComponentType; film: FilmInfo }) {
       seek: (t) =>
         new Promise((done) => {
           painted.current = done;
-          setAt((a) => ({ t, n: a.n + 1, told: false }));
+          setAt((a) => ({ t, n: a.n + 1, told: false, playing: false }));
         }),
     };
   }, [film]);
@@ -325,12 +328,18 @@ function Still({ Film, film }: { Film: ComponentType; film: FilmInfo }) {
     const done = painted.current;
     painted.current = null;
     // Committed, and each clip on its frame: the DevTools screenshot that follows draws a frame from the page as it now is.
+    // A playing clip has no frame to wait for: the next frame is asked for at once.
+    if (at.playing) {
+      post({ type: 'oms:time', t: at.t, playing: false, loading: loading() });
+      return;
+    }
     void footageSettled().then(() => {
       if (at.told) post({ type: 'oms:time', t: at.t, playing: false, loading: loading() });
       done?.(at.t);
     });
   }, [at]);
-  return <Frame Film={Film} film={film} t={at.t} scale={1} clock="still" />;
+  const playing = useMemo<FootageClock>(() => ({ playing: true }), []);
+  return <Frame Film={Film} film={film} t={at.t} scale={1} clock={at.playing ? playing : 'still'} />;
 }
 
 function load(src: string): Promise<void> {
