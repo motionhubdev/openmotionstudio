@@ -49,6 +49,8 @@ import { assetReference, carriesAsset, droppedAsset } from './assets-panel';
 import { reason } from './reason';
 import { type Pickable, ReferencePicker, matchPicks, mentionAt, pickables, useProjectFiles } from './reference-picker';
 import { ModelEffort, useAgentModels } from './settings';
+import { AgentLogo } from './agent-logo';
+import { ProviderLogo } from './provider-logo';
 
 function apply(items: Row[], event: AgentEvent, before: FilmInfo | null): Row[] {
   // The turn rows stay where they are; the transcript's own items take the event as everywhere else.
@@ -307,8 +309,11 @@ function AgentChip({
               else onSettings();
             }}
           >
-            <strong>{active ? active.model : tr("Built-in agent")}</strong>
-            <span>{active ? tr("Built-in agent · {0}", {0: active.name}) : tr("Built-in agent · set up a model in Models")}</span>
+            {active ? <ProviderLogo name={active.name} baseUrl={active.baseUrl} /> : <span className="provider-logo initials" aria-hidden="true">AI</span>}
+            <span className="agent-row-text">
+              <strong>{active ? active.model : tr("Built-in agent")}</strong>
+              <span>{active ? tr("Built-in agent · {0}", {0: active.name}) : tr("Built-in agent · set up a model in Models")}</span>
+            </span>
           </button>
           {agents?.harnesses.map((harness) => (
             <button
@@ -322,8 +327,11 @@ function AgentChip({
                 if (current !== harness.kind) onUseAgent(harness.kind);
               }}
             >
-              <strong>{harness.name}</strong>
-              <span>{harness.state === 'ready' ? tr("Your {0}{1} · its own sign-in", {0: harness.name, 1: harness.version ? ` ${harness.version}` : ''}) : tr(harness.hint ?? '')}</span>
+              <AgentLogo kind={harness.kind} />
+              <span className="agent-row-text">
+                <strong>{harness.name}</strong>
+                <span>{harness.state === 'ready' ? tr("Your {0}{1} · its own sign-in", {0: harness.name, 1: harness.version ? ` ${harness.version}` : ''}) : tr(harness.hint ?? '')}</span>
+              </span>
             </button>
           ))}
           {own && chosen && (
