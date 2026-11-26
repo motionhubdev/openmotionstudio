@@ -3,6 +3,14 @@
 Every key change to OpenMotionStudio, newest first, by date. What counts as key and the entry format are in
 `CLAUDE.md`, "The changelog".
 
+## 2026-11-26 — oms 0.2.1
+
+- **What:** `@motionhub/oms` 0.2.1 on npm: the web player plays a film's clips while it plays (the entry below).
+- **Why:** A film with recorded clips played in the web player at a few frames a second; people who install `oms` from npm had no fix for it.
+- **Breaking:** None.
+- **Upgrade:** `npm install -g @motionhub/oms@latest`, then build the player again (`oms player`).
+- **Refs:** `apps/cli/package.json`, [publishing oms](docs/ops/publishing-oms.md), the entry below.
+
 ## 2026-11-26 — The web player plays its clips instead of seeking each frame
 
 - **What:** While oms's web player plays, a film's `<Video>` clips play beside its time, as in the Studio's preview; paused or scrubbed, each shows its exact frame again. A clip at a `playbackRate` slower than a browser plays (below 1/16) is held on its frame while the film plays, in the preview too, instead of failing the film.
