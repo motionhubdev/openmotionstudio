@@ -122,7 +122,7 @@ function Click({u, c, k}: {u: number; c: {t: number; x: number; y: number}; k: n
 /** The intro: the whole window flies in, tilted, settles flat, and its three parts are named. */
 function FlyIn({u, children}: {u: number; children: ReactNode}) {
   const q = spring(u, 0.15, 1.1, 0.12);
-  const full = ease(u, 2.3, 3.0, 0, 1, Easing.inOutCubic);
+  const full = ease(u, 3.0, 3.7, 0, 1, Easing.inOutCubic);
   const scale = (0.6 + 0.3 * q) * (1 - full) + full;
   return (
     <div style={{position: 'absolute', inset: 0, background: PAPER, perspective: 1800}}>
@@ -135,14 +135,14 @@ function FlyIn({u, children}: {u: number; children: ReactNode}) {
   );
 }
 
-/** The intro's names for the three parts of the window. */
+/** The intro's names for the four parts of the window. */
 function Tags({u, k}: {u: number; k: number}) {
-  const spots: [number, number][] = [[230, 470], [980, 300], [1000, 905]];
+  const spots: [number, number][] = [[230, 470], [980, 300], [1000, 905], [1690, 260]];
   return (
     <>
       {TAGS[LANG].map((name, i) => {
-        const p = spring(u, 0.95 + i * 0.22, 0.5, 0.5);
-        const out = ease(u, 2.2, 2.45);
+        const p = spring(u, 0.95 + i * 0.2, 0.5, 0.5);
+        const out = ease(u, 2.9, 3.15);
         const [x, y] = spots[i]!;
         return (
           <div key={name} style={{position: 'absolute', left: x, top: y, transform: `translate(-50%, -50%) scale(${(p * (1 - out)) / k})`,

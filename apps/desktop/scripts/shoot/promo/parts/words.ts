@@ -8,8 +8,8 @@ export interface Card {
 
 export const INTRO: Card = {head: {en: 'One window for the *whole film*.', zh: '一个窗口，|做完*整部片子*'}};
 
-/** The three parts of the window, named as the intro lands. */
-export const TAGS = {en: ['Your AI', 'The picture', 'The timeline'], zh: ['和 AI 对话', '画面', '时间线']};
+/** The four parts of the window, named as the intro lands. */
+export const TAGS = {en: ['Your AI', 'The picture', 'The timeline', 'The outline'], zh: ['和 AI 对话', '画面', '时间线', '大纲']};
 
 export const CHAPTERS: Card[] = [
   {head: {en: 'Describe it in *one sentence*.', zh: '说*一句话*，|就有一部片子'}},
