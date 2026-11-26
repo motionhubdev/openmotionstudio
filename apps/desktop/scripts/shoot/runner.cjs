@@ -31,7 +31,8 @@ const BROWSE = (process.env.SHOOT_BROWSE || 'Depth Stage,Earth Block,Pixel Quest
 const LOOK_NAME = process.env.SHOOT_LOOK_NAME ?? '';
 const VOICE_WORDS = process.env.SHOOT_VOICE_WORDS || 'Trustworthy';  // typed in the voices' search
 const VOICE = process.env.SHOOT_VOICE || 'English_Trustworthy_Man';  // MiniMax's, chosen from what it finds
-const NOTE = 'Make the line between the lit and the dark half softer, and turn the Moon slowly.';
+// A change the eye sees at once: the Moon twice the size, its halves named.
+const NOTE = 'Make the Moon twice as big, and label its two halves "Lit" and "Dark" in large type.';
 const REGION = [0.3, 0.15, 0.7, 0.85]; // the Moon, as fractions of the film: left, top, right, bottom
 
 app.setPath('userData', USER_DATA);
@@ -108,11 +109,16 @@ function sealVoice() {
   const settings = JSON.parse(fs.readFileSync(settingsFile, 'utf8'));
   // The provider is set up; the voice itself is chosen in the take, in the Voice view.
   settings.voices = { ...settings.voices, minimax: { region: process.env.MINIMAX_REGION || 'china' } };
-  // MiniMax's chat model for the built-in agent too, so the agent menu shows it beside Claude Code and Codex.
-  keys.minimax = keys['voice:minimax'];
+  // Gemini and DeepSeek for the built-in agent, so the agent menu shows them after Codex and Claude Code. Their keys are
+  // placeholders, never used (the film is made by Claude Code), sealed for the take and deleted with keys.json after it.
+  keys.gemini = safeStorage.encryptString('shoot-placeholder').toString('base64');
+  keys.deepseek = safeStorage.encryptString('shoot-placeholder').toString('base64');
   fs.writeFileSync(keysFile, JSON.stringify(keys));
-  settings.providers = [{ id: 'minimax', name: 'MiniMax', protocol: 'openai', baseUrl: 'https://api.minimaxi.com/v1', model: 'MiniMax-M3', images: false }];
-  settings.active = 'minimax';
+  settings.providers = [
+    { id: 'gemini', name: 'Gemini', protocol: 'openai', baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai', model: 'gemini-4-argon', images: true },
+    { id: 'deepseek', name: 'DeepSeek', protocol: 'openai', baseUrl: 'https://api.deepseek.com', model: 'deepseek-v4-pro', images: false },
+  ];
+  settings.active = 'gemini';
   fs.writeFileSync(settingsFile, JSON.stringify(settings));
   return true;
 }
