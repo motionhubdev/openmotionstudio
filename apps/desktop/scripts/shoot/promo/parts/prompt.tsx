@@ -37,25 +37,25 @@ export function Prompt({u}: {u: number}) {
         <div style={{display: 'flex', alignItems: 'center', marginTop: 26}}>
           <img src={claude} style={{width: 40, height: 40, borderRadius: 10}} />
           <span style={{font: `500 30px ${SANS}`, color: MUTED, marginLeft: 14}}>Claude Code</span>
-          <div style={{marginLeft: 'auto', width: 92, height: 92, borderRadius: '50%', background: VERMILION, display: 'flex',
+          <div style={{position: 'relative', marginLeft: 'auto', width: 92, height: 92, borderRadius: '50%', background: VERMILION, display: 'flex',
             alignItems: 'center', justifyContent: 'center', transform: `scale(${pressed})`, boxShadow: '0 12px 30px rgba(196,56,31,0.35)'}}>
             <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
               <path d="M5 12h14M13 6l6 6-6 6" />
             </svg>
+            {press >= 0 && <Ring d={press} />}
           </div>
         </div>
       </div>
-      {press >= 0 && <Ring d={press} />}
       <Making u={u - b(6)} />
     </div>
   );
 }
 
-/** The press of the send button: a ring spreading from it. */
+/** The press of the send button: a ring spreading from it, centred on it. */
 function Ring({d}: {d: number}) {
   if (d > 0.7) return null;
   const r = 46 + 110 * ease(d, 0, 0.6);
-  return <div style={{position: 'absolute', left: 1500 - r, top: 622 - r, width: 2 * r, height: 2 * r, borderRadius: '50%',
+  return <div style={{position: 'absolute', left: 46 - r, top: 46 - r, width: 2 * r, height: 2 * r, borderRadius: '50%',
     border: `6px solid ${VERMILION}`, opacity: 1 - d / 0.7}} />;
 }
 
