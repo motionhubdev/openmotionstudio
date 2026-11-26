@@ -12,6 +12,7 @@ import type { FilmSound } from '../../shared/sound';
 import type { Stage } from '../film/capture';
 import { soundFile } from '../film/mix';
 import { STATE_DIR } from '../project';
+import { describeFind, takenReport, type MediaFind, type MediaKind, type takeMedia } from '../media';
 
 type Tool = Anthropic.Beta.BetaTool;
 type Block = Anthropic.Beta.BetaToolResultBlockParam['content'];
@@ -28,6 +29,10 @@ export interface ToolContext {
   useMotion(id: string): Promise<{ id: string; path: string }>;
   /** Takes a face from Google Fonts, cut to the characters the project writes, into media/fonts/ with its licence. */
   useFont(family: string, weights: number[]): Promise<{ files: string[]; characters: number; licence: string }>;
+  /** Pictures, clips or sounds a film may use commercially, from Wikimedia Commons and Openverse (media.ts). */
+  searchMedia(kind: MediaKind, words: string): Promise<MediaFind[]>;
+  /** Takes one found file into media/ with its credit in media/credits.json. */
+  useMedia(id: string, name: string, cut: { from?: number; seconds?: number }): ReturnType<typeof takeMedia>;
   /** The voice providers the person has set up. */
   voiceKinds(): Promise<VoiceKind[]>;
   /** The voices a set-up provider offers. */
@@ -101,6 +106,34 @@ export const TOOLS: Tool[] = [
     description:
       "Searches motionhub.dev's catalogue of motions (looks) by words in their names, lines, purpose and tags: motions with any of the words, those with more of them first. No words lists them all.",
     input_schema: { type: 'object', properties: { words: { type: 'string' } } },
+  },
+  {
+    name: 'search_media',
+    description:
+      "Searches the open web for pictures, clips or sounds the film may use commercially (public domain, CC0, CC BY, CC BY-SA): pictures on Wikimedia Commons and Openverse, clips on Commons, sounds on Openverse (Freesound's among them) and Commons. Use it for what drawing cannot give: real places, people, events, the sound of a place. Search in English, a few concrete words. Each result has its id, licence and author; take one with use_media.",
+    input_schema: {
+      type: 'object',
+      properties: {
+        kind: { type: 'string', enum: ['image', 'video', 'sound'] },
+        words: { type: 'string', description: 'What to find, in English, as "runners headlamps night mountain".' },
+      },
+      required: ['kind', 'words'],
+    },
+  },
+  {
+    name: 'use_media',
+    description:
+      "Takes a file search_media found into the project's media/ (a picture as it is; a clip cut and made H.264 without sound; a sound cut and made AAC), with its credit in media/credits.json, and says how to draw or play it and how to credit it. Look at a picture with still once it is drawn. Credit every file that needs it in the film's closing credits, and show a share-alike (CC BY-SA) picture whole: never crop, recolour or draw over it.",
+    input_schema: {
+      type: 'object',
+      properties: {
+        id: { type: 'string', description: 'The id search_media gave.' },
+        name: { type: 'string', description: 'Its file name in media/, lower case with hyphens, as alps-wind.' },
+        from: { type: 'number', description: 'For a clip or sound: seconds into it to start.' },
+        seconds: { type: 'number', description: 'For a clip (at most 30) or sound (at most 300): how long a part to take.' },
+      },
+      required: ['id', 'name'],
+    },
   },
   {
     name: 'ask_person',
@@ -273,6 +306,17 @@ export async function runTool(name: string, raw: unknown, ctx: ToolContext): Pro
         const found = await ctx.searchMotions(typeof input.words === 'string' ? input.words : '');
         if (!found.length) return text('No motion has any of those words. Search with none to list them all.');
         return text(found.map((m) => `${m.id}: ${m.name}. ${m.line}${m.fit ? ` For: ${m.fit}` : ''}`).join('\n'));
+      }
+      case 'search_media': {
+        const kind = field(input, 'kind') as MediaKind;
+        const found = await ctx.searchMedia(kind, field(input, 'words'));
+        if (!found.length) return text('Nothing under a licence a film may use commercially: try other words, fewer or more general, or draw it.');
+        return text(`${found.map((f, i) => describeFind(f, i + 1)).join('\n')}\nTake one with use_media.`);
+      }
+      case 'use_media': {
+        const number = (key: string) => (input[key] === undefined ? undefined : Number(input[key]));
+        const taken = await ctx.useMedia(field(input, 'id'), field(input, 'name'), { from: number('from'), seconds: number('seconds') });
+        return text(takenReport(taken).join('\n'));
       }
       case 'ask_person': {
         askOf(input);

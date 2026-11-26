@@ -3,6 +3,14 @@
 Every key change to OpenMotionStudio, newest first, by date. What counts as key and the entry format are in
 `CLAUDE.md`, "The changelog".
 
+## 2026-11-26 — The agent finds pictures, clips and sounds a film may use commercially
+
+- **What:** The Studio's agent (built-in, and Claude Code or Codex through the Studio's tools) has `search_media` and `use_media`, and `oms` has `oms media search <image|video|sound> <words…>` and `oms media use <id> <folder> --name <name>`. They search Wikimedia Commons and Openverse (Freesound's sounds, Flickr's pictures and more) and offer only public domain, CC0, CC BY and CC BY-SA files; `use_media` asks the source for the licence again, takes the file into `media/` (a picture at most 1,920 wide; a clip cut to at most 30 s and made H.264 without sound; a sound cut and made AAC) and keeps its credit in `media/credits.json`, saying how to credit it and that a share-alike picture is shown whole.
+- **Why:** A film about a real place or event could only draw it: no photograph of it, no sound of it. VisoTalk's `asset search` found pictures only; this also finds the sound of a place and recorded clips, and records each file's credit where a publisher can read it.
+- **Breaking:** None.
+- **Upgrade:** None in the Studio. Terminal agents: `oms install` again for the skill's new commands.
+- **Refs:** `apps/desktop/src/main/media.ts`, `apps/desktop/src/main/agent/tools.ts`, `apps/cli/oms.mjs`, `apps/desktop/src/main/film/film.md`.
+
 ## 2026-11-26 — oms 0.3.0
 
 - **What:** `@motionhub/oms` 0.3.0 on npm, with everything since 0.2.0: a web player carries its clips as files beside `frame.js`, and plays them while it plays (the two entries below).
