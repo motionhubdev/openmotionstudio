@@ -1,8 +1,10 @@
 // The web player's page (index.html of `oms player`): plays a film in any browser without rendering it. The film is drawn
 // in a sandboxed frame: frame.js holds its whole document (the Studio's preview core with the film in it, web.ts), which
 // this page writes into the frame (srcdoc), so the frame loads nothing from the host; the core is held still and moved
-// by this page (ADR 0018). This page owns the clock, the film's sound as one soundtrack mixed as its MP4's is, and the
-// controls, as motionhub's reel player draws them. Built by apps/desktop/scripts/build-cli.mjs into dist/player.js.
+// by this page (ADR 0018). The film's recorded clips are files of their own (clips/…): this page fetches each and hands
+// it to the frame as a Blob when the frame asks (footage.tsx, `fromPlayer`; ADR 0024), and plays once every clip is in.
+// This page owns the clock, the film's sound as one soundtrack mixed as its MP4's is, and the controls, as motionhub's
+// reel player draws them. Built by apps/desktop/scripts/build-cli.mjs into dist/player.js.
 //
 // The clock is the soundtrack's while it plays (an <audio> reports its time in steps of 10 to 50 ms, so the time
 // between steps runs on the page's clock, never past a quarter second, never backwards); without one, or while the
@@ -22,6 +24,8 @@ interface Shown {
   sound: boolean;
   /** Served by `oms preview`: the page reloads, at the time it was at, when the film is built again. */
   live: boolean;
+  /** The recorded clips beside the page (clips/<hash>.mp4 or .webm). */
+  clips: string[];
 }
 
 interface FromFrame {
@@ -29,6 +33,7 @@ interface FromFrame {
   t?: number;
   loading?: boolean;
   message?: string;
+  src?: string;
 }
 
 const film = JSON.parse(document.getElementById('oms-film')!.textContent!) as Shown;
@@ -121,6 +126,34 @@ if (audio) {
   audio.addEventListener('pause', takeIn);
 }
 
+/**
+ * Each clip, fetched whole as the page opens, typed as the frame's <video> plays it. A page opened from disk cannot
+ * fetch, so its clips do not load, and the frame says which.
+ */
+const clips = new Map(
+  film.clips.map((path) => {
+    const blob = fetch(path).then(async (response) => {
+      if (!response.ok) throw new Error(`the host answered ${response.status}`);
+      const bytes = await response.blob();
+      return bytes.slice(0, bytes.size, path.endsWith('.webm') ? 'video/webm' : 'video/mp4');
+    });
+    blob.catch(() => {});
+    return [path, blob] as const;
+  }),
+);
+const clipsIn = Promise.allSettled(clips.values());
+
+/** Answers the frame's ask for a clip once it is in. */
+function giveClip(src: string): void {
+  const reply = (answer: { blob?: Blob; message?: string }) => frame.contentWindow?.postMessage({ type: 'oms:clip', src, ...answer }, '*');
+  const blob = clips.get(src);
+  if (!blob) return reply({ message: 'the player carries no such clip' });
+  blob.then(
+    (bytes) => reply({ blob: bytes }),
+    (error: Error) => reply({ message: location.protocol === 'file:' ? 'a page opened from a file cannot fetch its clips: serve the folder' : error.message }),
+  );
+}
+
 let t = 0;
 let playing = false;
 let ready = false;
@@ -162,10 +195,11 @@ function show(): void {
   big.hidden = playing || !ready;
   shell.classList.toggle('playing', playing);
   // One frame at a time: the next is asked for once the frame has drawn the last, so a slow frame never queues more.
+  // While it plays, the frame's clips play too rather than seek to each frame (core.tsx, Still).
   if (ready && !drawing && frameNo !== asked) {
     asked = frameNo;
     drawing = true;
-    frame.contentWindow?.postMessage({ type: 'oms:seek', t: frameNo / film.fps }, '*');
+    frame.contentWindow?.postMessage({ type: 'oms:seek', t: frameNo / film.fps, playing }, '*');
   }
 }
 
@@ -298,12 +332,15 @@ const fullscreen = () => {
 addEventListener('message', (event: MessageEvent<FromFrame>) => {
   if (event.source !== frame.contentWindow) return;
   const message = event.data;
-  if (message?.type === 'oms:ready') {
-    ready = true;
-    setBuffering(false);
-    show();
-    if (params.get('autoplay') === '1') void play();
-  } else if (message?.type === 'oms:error') fail(`The film failed: ${message.message}`);
+  if (message?.type === 'oms:ready')
+    void clipsIn.then(() => {
+      ready = true;
+      setBuffering(false);
+      show();
+      if (params.get('autoplay') === '1') void play();
+    });
+  else if (message?.type === 'oms:clip' && typeof message.src === 'string') giveClip(message.src);
+  else if (message?.type === 'oms:error') fail(`The film failed: ${message.message}`);
   else if (message?.type === 'oms:time') {
     drawing = false;
     if (!message.loading) gaveUp = false;

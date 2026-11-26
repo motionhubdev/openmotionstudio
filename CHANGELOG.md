@@ -3,6 +3,46 @@
 Every key change to OpenMotionStudio, newest first, by date. What counts as key and the entry format are in
 `CLAUDE.md`, "The changelog".
 
+## 2026-11-26 — oms 0.3.1
+
+- **What:** `@motionhub/oms` 0.3.1 on npm, with `oms media search` and `oms media use` (the entry below): pictures, clips and sounds a film may use commercially, from Wikimedia Commons and Openverse, with their credit in `media/credits.json`.
+- **Why:** Terminal agents could not find a real place's picture or sound for a film; the Studio's agent now can, and people who install `oms` from npm had no way to.
+- **Breaking:** None.
+- **Upgrade:** `npm install -g @motionhub/oms@latest`, then move the installed skill folder aside (`~/.claude/skills/oms` or `~/.codex/skills/oms`) and run `oms install claude` or `oms install codex` again for the skill's new commands.
+- **Refs:** `apps/cli/package.json`, [publishing oms](docs/ops/publishing-oms.md), the entry below.
+
+## 2026-11-26 — The agent finds pictures, clips and sounds a film may use commercially
+
+- **What:** The Studio's agent (built-in, and Claude Code or Codex through the Studio's tools) has `search_media` and `use_media`, and `oms` has `oms media search <image|video|sound> <words…>` and `oms media use <id> <folder> --name <name>`. They search Wikimedia Commons and Openverse (Freesound's sounds, Flickr's pictures and more) and offer only public domain, CC0, CC BY and CC BY-SA files; `use_media` asks the source for the licence again, takes the file into `media/` (a picture at most 1,920 wide; a clip cut to at most 30 s and made H.264 without sound; a sound cut, levelled to -16 LUFS so a `<Sound>`'s volume means the same for any file, and made AAC) and keeps its credit in `media/credits.json`, saying how to credit it and that a share-alike picture is shown whole.
+- **Why:** A film about a real place or event could only draw it: no photograph of it, no sound of it. VisoTalk's `asset search` found pictures only; this also finds the sound of a place and recorded clips, and records each file's credit where a publisher can read it.
+- **Breaking:** None.
+- **Upgrade:** None in the Studio. Terminal agents: oms 0.3.1 (the entry above).
+- **Refs:** `apps/desktop/src/main/media.ts`, `apps/desktop/src/main/agent/tools.ts`, `apps/cli/oms.mjs`, `apps/desktop/src/main/film/film.md`.
+
+## 2026-11-26 — oms 0.3.0
+
+- **What:** `@motionhub/oms` 0.3.0 on npm, with everything since 0.2.0: a web player carries its clips as files beside `frame.js`, and plays them while it plays (the two entries below).
+- **Why:** A film with recorded clips made a player too large for a host's per-file limit, and played at a few frames a second; people who install `oms` from npm had neither fix. A minor version, since a player folder with clips no longer plays opened from disk.
+- **Breaking:** A player folder of a film with a `<Video>` must be served, not opened from disk (the entry below).
+- **Upgrade:** `npm install -g @motionhub/oms@latest`, then write the player again (`oms player`).
+- **Refs:** `apps/cli/package.json`, [publishing oms](docs/ops/publishing-oms.md), the two entries below.
+
+## 2026-11-26 — The web player plays its clips instead of seeking each frame
+
+- **What:** While oms's web player plays, a film's `<Video>` clips play beside its time, as in the Studio's preview; paused or scrubbed, each shows its exact frame again. A clip at a `playbackRate` slower than a browser plays (below 1/16) is held on its frame while the film plays, in the preview too, instead of failing the film.
+- **Why:** The player moved every clip to each frame and waited for it to decode: a film with a phone recording beside a desktop one played at 3 to 9 frames a second, with callouts drawn over the clips running ahead of them. The same section now plays at 30.
+- **Breaking:** None. A still, an export and the paused player draw the exact frame as before; while playing, a clip may be up to 0.15 s off the film's time before it is put back.
+- **Upgrade:** Build the player again (`oms player`).
+- **Refs:** `apps/cli/player.ts`, `apps/desktop/src/preview/core.tsx`, `apps/desktop/src/preview/footage.tsx`, [architecture](docs/tech/architecture.md).
+
+## 2026-11-26 — A web player carries its clips as files beside frame.js
+
+- **What:** `oms player` and `oms preview` write each recorded clip a film imports as a file of its own, `clips/<hash>.mp4` or `.webm`, instead of a base64 `data:` URL inside `frame.js`; the player fetches them as the page opens, plays once they are in, and hands each to the sandboxed frame as a Blob when it asks (`oms:clip`). The frame still loads nothing from the host. Faces and images stay in `frame.js`.
+- **Why:** A film with several screen recordings made `frame.js` 15 to 17 MB, which a host with a per-file limit refused (an artifact allows 16 MB a text file); a ten-clip marketing film had its footage recompressed to fit. Now no file is larger than the largest clip, and clips download a third smaller.
+- **Breaking:** A player folder of a film with a `<Video>` no longer plays opened from disk (a `file:` page cannot fetch its clips, and says so): serve the folder, or use `oms preview`. A film without clips is unchanged.
+- **Upgrade:** Write the player again with `oms player` to split the clips out of an existing folder.
+- **Refs:** ADR 0024, `apps/cli/web.ts`, `apps/cli/player.ts`, `apps/desktop/src/preview/footage.tsx`, `docs/tech/architecture.md`.
+
 ## 2026-11-25 — The agent menu shows each agent's mark and Claude's model versions
 
 - **What:** The composer's agent menu leads each row with its mark: Claude Code's and Codex's own, and for the built-in agent the icon of the service its model is reached through (Anthropic, DeepSeek, Gemini, MiniMax, Ollama, OpenRouter, LM Studio, from Simple Icons; initials for any other). Claude Code's models are named with their versions (Fable 5.2, Opus 5.5, Sonnet 5.5, Haiku 5.5). The website's hero film is an OMS film again, shot from an explainer of the Moon's phases (`apps/desktop/scripts/shoot/promo`).

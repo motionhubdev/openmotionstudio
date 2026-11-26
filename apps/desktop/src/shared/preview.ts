@@ -108,7 +108,8 @@ export type ToPreview =
   | { type: 'oms:play' }
   | { type: 'oms:pause' }
   | { type: 'oms:play-range'; start: number; end: number }
-  | { type: 'oms:seek'; t: number }
+  /** `playing`, from oms's web player: the film is playing, so its clips may play rather than seek to each frame. */
+  | { type: 'oms:seek'; t: number; playing?: boolean }
   /** Whether the preview's sound is off. */
   | { type: 'oms:mute'; muted: boolean }
   /** The element drawn at a point, in fractions of the frame, or the one `depth` elements around it (studio/pick.js answers). */
@@ -116,7 +117,9 @@ export type ToPreview =
   /** Tries a look (and, for an element of text alone, words) on the element last picked, replacing any tried before; none restores it. */
   | { type: 'oms:tweak'; styles: Partial<Record<Tweakable, string>>; text?: string }
   /** Draws one layer alone, every other <Layer> hidden; null draws them all again (studio/pick.js). */
-  | { type: 'oms:solo'; layer: string | null };
+  | { type: 'oms:solo'; layer: string | null }
+  /** oms's web player: the clip a frame asked for (clips/…), as its file's bytes, or why it has none. */
+  | { type: 'oms:clip'; src: string; blob?: Blob; message?: string };
 
 export type FromPreview =
   | { type: 'oms:ready'; film: FilmInfo }
@@ -124,7 +127,9 @@ export type FromPreview =
   | { type: 'oms:time'; t: number; playing: boolean; loading?: boolean }
   | { type: 'oms:error'; message: string }
   /** `levels` is how many elements, the innermost first, a pick at that point can step out through. */
-  | { type: 'oms:picked'; element: PickedElement | null; box: Box | null; levels: number };
+  | { type: 'oms:picked'; element: PickedElement | null; box: Box | null; levels: number }
+  /** oms's web player's frame, which loads nothing itself: asks its player for a clip the film carries beside it (clips/…). */
+  | { type: 'oms:clip'; src: string };
 
 /**
  * The script that moves a render page to `t` and resolves, once its images are decoded and its faces loaded, with the

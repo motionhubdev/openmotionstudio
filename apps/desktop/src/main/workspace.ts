@@ -74,6 +74,7 @@ import { isAbsolute, relative, resolve } from 'node:path';
 import { ProviderStore, providers } from './providers';
 import { packProject } from './oms-file';
 import { takeFont } from './font';
+import { CREDITS, searchMedia, takeMedia } from './media';
 import OFL from './ofl.txt?raw';
 
 /** The ffmpeg shipped with the app; inside a package it is unpacked beside the archive. */
@@ -596,6 +597,13 @@ export function createWorkspace(host: WorkspaceHost, changed: () => void = () =>
             if (state.published) for (const [path, bytes] of await noteFiles(dir, true)) if (taken.files.includes(path)) state.published.set(path, bytes);
             return taken;
           },
+          searchMedia: (kind, words) => searchMedia(kind, words),
+          useMedia: async (id, name, cut) => {
+            const taken = await takeMedia(dir, id, name, cut, ffmpegPath());
+            // Written by the Studio, as a font it takes is: published as they are now.
+            if (state.published) for (const [path, bytes] of await noteFiles(dir, true)) if (path === taken.file || path === CREDITS) state.published.set(path, bytes);
+            return taken;
+          },
           voiceKinds: async () => (await providers().voices()).map((v) => v.kind),
           voiceChoices: async (kind) => voicesOf(await providers().voiceSetup(kind)),
           voiceFilm: () => voiceOpenFilm(state),
@@ -1015,6 +1023,8 @@ export function createWorkspace(host: WorkspaceHost, changed: () => void = () =>
           searchMotions: (words) => searchMotions(words),
           useMotion: (id) => useMotion(dir, id),
           useFont: (family, weights) => takeFont(dir, family, weights, OFL),
+          searchMedia: (kind, words) => searchMedia(kind, words),
+          useMedia: (id, name, cut) => takeMedia(dir, id, name, cut, ffmpegPath()),
           voiceKinds: async () => (await providers().voices()).map((v) => v.kind),
           voiceChoices: async (kind) => voicesOf(await providers().voiceSetup(kind)),
           voiceFilm: () => voiceOpenFilm(state),

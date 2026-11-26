@@ -1,7 +1,8 @@
 // `oms player` and `oms preview`: a film as a folder any static web host plays, without rendering it (ADR 0018). The
 // folder holds index.html and player.js, the player (player.ts: the clock, the soundtrack, the controls); frame.js, the
 // document the player writes into a sandboxed frame (srcdoc): the Studio's preview core, held still and moved by the
-// player, with the film's bundle, its faces and its images in it; and soundtrack.mp4, the film's sounds mixed as its
+// player, with the film's bundle, its faces and its images in it; clips/, each recorded clip the film imports as a file
+// of its own, which the player fetches and hands the frame as a Blob; and soundtrack.mp4, the film's sounds mixed as its
 // MP4's are (mix.ts), so the page sounds as the MP4 does and keeps one clock. The frame's origin is opaque, and a host
 // need not let it load anything: it loads nothing. Its scripts run because the player's policy and its own allow
 // them by their hashes, and nothing else.
@@ -36,8 +37,8 @@ export const scriptText = (text: string) => text.replace(/<\/(script)/gi, '<\\/$
 const hashOf = (text: string) => `'sha256-${createHash('sha256').update(text, 'utf8').digest('base64')}'`;
 
 /**
- * The film's bundle with each file it imports but sounds (`"build/<file>"`: faces, images) as a data: URL, and the
- * motions' faces stylesheet with its faces (`url(/project/…)`) the same, read by `projectFile`.
+ * The film's bundle with each file in `files` (`"build/<file>"`: faces, images) as a data: URL, and the motions' faces
+ * stylesheet with its faces (`url(/project/…)`) the same, read by `projectFile`.
  */
 export async function inlineFiles(script: string, css: string, files: { name: string; bytes: Buffer }[], projectFile: (path: string) => Promise<Buffer | null>) {
   for (const { name, bytes } of files) script = script.split(JSON.stringify(`build/${name}`)).join(JSON.stringify(dataUrl(TYPES[extname(name).toLowerCase()]!, bytes)));
@@ -79,7 +80,7 @@ export function framePage(core: string, film: string, css: string, voice: unknow
 }
 
 /** The player's page: what it shows of the film, and player.js, which plays it. */
-export const playerPage = (shown: { seconds: number; width: number; height: number; fps: number; title: string; sound: boolean; live: boolean }, frameHashes: string[]): string => `<!doctype html>
+export const playerPage = (shown: { seconds: number; width: number; height: number; fps: number; title: string; sound: boolean; live: boolean; clips: string[] }, frameHashes: string[]): string => `<!doctype html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' ${frameHashes.join(' ')}; style-src 'unsafe-inline'; media-src 'self' data: blob:; connect-src 'self'; img-src 'self' data: blob:; font-src data:; base-uri 'none'; form-action 'none'">
@@ -154,10 +155,29 @@ const run = (ffmpeg: string, args: string[]) =>
   );
 
 /**
+ * Copies each clip in `clips` into `out` as `clips/<its hash>.<mp4|webm>` and points the bundle's `"build/<file>"` at it,
+ * so the largest file the folder holds is its largest clip, not frame.js with every clip in it as base64. A MOV is named
+ * .mp4, the type a host serves it as and Chromium plays it as. Returns the bundle and the clips' paths.
+ */
+async function writeClips(script: string, clips: { name: string; bytes: Buffer }[], out: string): Promise<{ script: string; paths: string[] }> {
+  const paths = new Set<string>();
+  for (const { name, bytes } of clips) {
+    const path = `clips/${createHash('sha256').update(bytes).digest('hex').slice(0, 16)}${TYPES[extname(name).toLowerCase()] === 'video/webm' ? '.webm' : '.mp4'}`;
+    if (!paths.has(path)) {
+      await mkdir(join(out, 'clips'), { recursive: true });
+      await writeFile(join(out, path), bytes);
+      paths.add(path);
+    }
+    script = script.split(JSON.stringify(`build/${name}`)).join(JSON.stringify(path));
+  }
+  return { script, paths: [...paths].sort() };
+}
+
+/**
  * Writes the player of the film built in `output` (its build 1) into `out`, which must not hold anything yet: index.html,
  * player.js from `scripts`, frame.js (the frame's document, with the preview core from `scripts`, the bundle and every
- * file it imports but sounds), and its sounds and narration as soundtrack.mp4, mixed in `work` by `ffmpeg` (asked for
- * only when the film has a sound).
+ * file it imports but sounds and clips), the clips in clips/, and its sounds and narration as soundtrack.mp4, mixed in
+ * `work` by `ffmpeg` (asked for only when the film has a sound).
  */
 export async function writePlayer(
   dir: string,
@@ -172,12 +192,14 @@ export async function writePlayer(
   // What the bundle imports but sounds, which are in the soundtrack.
   const imported = built.filter((name) => !/^film(-\d+)?\.js$/.test(name) && name !== FACES && TYPES[extname(name).toLowerCase()] && !TYPES[extname(name).toLowerCase()]!.startsWith('audio/'));
   const files = await Promise.all(imported.map(async (name) => ({ name, bytes: await readFile(join(output, name)) })));
+  const isClip = (name: string) => TYPES[extname(name).toLowerCase()]!.startsWith('video/');
   const css = existsSync(join(output, FACES)) ? await readFile(join(output, FACES), 'utf8') : '';
   const projectFile = async (path: string) => {
     const file = await safePreviewFile(dir, path, true).catch(() => null);
     return file ? readFile(file) : null;
   };
-  const inlined = await inlineFiles(await readFile(join(output, 'film-1.js'), 'utf8'), css, files, projectFile);
+  const clips = await writeClips(await readFile(join(output, 'film-1.js'), 'utf8'), files.filter((file) => isClip(file.name)), out);
+  const inlined = await inlineFiles(clips.script, css, files.filter((file) => !isClip(file.name)), projectFile);
   // Without its source map, which carries the film's source and would double the download.
   const bundle = inlined.script.replace(/\n\/\/# sourceMappingURL=data:[^\n]*\n?$/, '\n');
   const frame = framePage(await readFile(scripts.core, 'utf8'), bundle, inlined.css, await narrationOf(dir));
@@ -196,7 +218,7 @@ export async function writePlayer(
       soundtrack = true;
     }
   }
-  await writeFile(join(out, 'index.html'), playerPage({ seconds, width: film.width, height: film.height, fps: film.fps, title, sound: soundtrack, live }, frame.hashes));
+  await writeFile(join(out, 'index.html'), playerPage({ seconds, width: film.width, height: film.height, fps: film.fps, title, sound: soundtrack, live, clips: clips.paths }, frame.hashes));
   return { soundtrack };
 }
 

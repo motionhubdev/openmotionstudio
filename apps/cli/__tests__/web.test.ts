@@ -26,18 +26,20 @@ const film: FilmInfo = {
   speech: {},
 };
 
-/** A film's build as buildFilmOnce leaves it: the bundle, an image and a face it imports, the motions' faces. */
+/** A film's build as buildFilmOnce leaves it: the bundle, an image, a face and two clips it imports, the motions' faces. */
 async function built() {
   const project = join(dir, 'project');
   const output = join(dir, 'build');
   await mkdir(join(project, 'motions/@a/look/react/fonts'), { recursive: true });
   await writeFile(join(project, 'motions/@a/look/react/fonts/serif.woff2'), 'SERIF');
   await mkdir(output, { recursive: true });
-  await writeFile(join(output, 'film-1.js'), 'var face = "build/face-AB12.woff2"; var shot = "build/shot-CD34.png";\n//# sourceMappingURL=data:application/json;base64,e30=\n');
+  await writeFile(join(output, 'film-1.js'), 'var face = "build/face-AB12.woff2"; var shot = "build/shot-CD34.png"; var take = "build/take-GH78.mov"; var screen = "build/screen-IJ90.webm";\n//# sourceMappingURL=data:application/json;base64,e30=\n');
   await writeFile(join(output, 'film.js'), 'the same build, by another name');
   await writeFile(join(output, 'face-AB12.woff2'), 'FACE');
   await writeFile(join(output, 'shot-CD34.png'), 'PNG');
   await writeFile(join(output, 'beep-EF56.mp3'), 'MP3');
+  await writeFile(join(output, 'take-GH78.mov'), 'MOV');
+  await writeFile(join(output, 'screen-IJ90.webm'), 'WEBM');
   await writeFile(join(output, 'fonts.css'), "@font-face { font-family: 'Serif'; src: url('/project/motions/@a/look/react/fonts/serif.woff2') format('woff2'); }\n");
   const scripts = { core: join(dir, 'core.js'), player: join(dir, 'player.js') };
   await writeFile(scripts.core, 'CORE');
@@ -51,7 +53,14 @@ describe('the web player of a film', () => {
     const out = join(dir, 'web');
     const ffmpeg = () => Promise.reject(new Error('a film without sounds needs no ffmpeg'));
     await expect(writePlayer(project, output, film, out, { scripts, work: join(dir, 'mix'), ffmpeg, title: 'Sky <blue>' })).resolves.toEqual({ soundtrack: false });
-    expect((await readdir(out)).sort()).toEqual(['frame.js', 'index.html', 'player.js']);
+    expect((await readdir(out)).sort()).toEqual(['clips', 'frame.js', 'index.html', 'player.js']);
+    // Each clip is a file of its own, named by its bytes' hash, a MOV as the MP4 a host serves and Chromium plays it as.
+    const named = (bytes: string, ext: string) => `clips/${createHash('sha256').update(bytes).digest('hex').slice(0, 16)}${ext}`;
+    const take = named('MOV', '.mp4');
+    const screen = named('WEBM', '.webm');
+    expect((await readdir(join(out, 'clips'))).sort()).toEqual([take, screen].map((path) => path.slice('clips/'.length)).sort());
+    expect(await readFile(join(out, take), 'utf8')).toBe('MOV');
+    expect(await readFile(join(out, screen), 'utf8')).toBe('WEBM');
     const frameJs = await readFile(join(out, 'frame.js'), 'utf8');
     expect(frameJs.startsWith('window.__omsFrame = "')).toBe(true);
     const html = JSON.parse(frameJs.slice('window.__omsFrame = '.length, -2)) as string;
@@ -59,6 +68,10 @@ describe('the web player of a film', () => {
     expect(html).toContain(`"data:font/woff2;base64,${Buffer.from('FACE').toString('base64')}"`);
     expect(html).toContain(`"data:image/png;base64,${Buffer.from('PNG').toString('base64')}"`);
     expect(html).not.toContain('build/beep-EF56.mp3"');
+    // The bundle names its clips by their paths beside the page, and carries none of their bytes.
+    expect(html).toContain(`var take = ${JSON.stringify(take)}; var screen = ${JSON.stringify(screen)};`);
+    expect(html).not.toContain(Buffer.from('MOV').toString('base64'));
+    expect(html).not.toMatch(/data:video\//);
     expect(html).not.toContain('sourceMappingURL');
     expect(html).toContain(`url(data:font/woff2;base64,${Buffer.from('SERIF').toString('base64')})`);
     expect(html).toContain('<script type="application/json" id="oms-voice">null</script>');
@@ -72,7 +85,7 @@ describe('the web player of a film', () => {
     expect(player).toContain(`script-src 'self' ${hashes.join(' ')};`);
     expect(html).toContain(`script-src ${hashes.join(' ')};`);
     expect(player).toContain('<title>Sky &#60;blue&#62;</title>');
-    expect(player).toContain('{"seconds":2,"width":1280,"height":720,"fps":30,"title":"Sky \\u003cblue>","sound":false,"live":false}');
+    expect(player).toContain(`{"seconds":2,"width":1280,"height":720,"fps":30,"title":"Sky \\u003cblue>","sound":false,"live":false,"clips":${JSON.stringify([take, screen].sort())}}`);
   });
 
   it('never writes into a folder that holds anything', async () => {
@@ -98,7 +111,7 @@ describe('the web player of a film', () => {
   });
 
   it("names the player's own sources and the frame's scripts, and nothing else", () => {
-    const page = playerPage({ seconds: 1, width: 10, height: 10, fps: 30, title: 't', sound: true, live: false }, ["'sha256-a'", "'sha256-b'"]);
+    const page = playerPage({ seconds: 1, width: 10, height: 10, fps: 30, title: 't', sound: true, live: false, clips: [] }, ["'sha256-a'", "'sha256-b'"]);
     expect(page).toContain("default-src 'none'; script-src 'self' 'sha256-a' 'sha256-b'; style-src 'unsafe-inline'; media-src 'self' data: blob:; connect-src 'self'");
     expect(page).toContain('<script src="player.js"></script>');
   });

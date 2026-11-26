@@ -18,6 +18,8 @@ beforeEach(async () => {
     searchMotions: vi.fn(),
     useMotion: vi.fn(),
     useFont: vi.fn(),
+    searchMedia: vi.fn(),
+    useMedia: vi.fn(),
     voiceKinds: vi.fn(),
     voiceChoices: vi.fn(),
     voiceFilm: vi.fn(),
