@@ -30,7 +30,7 @@ export function ProviderLogo({ name, baseUrl }: { name: string; baseUrl?: string
   const mark = MARKS.find((m) => m.match.test(name) || (baseUrl !== undefined && m.match.test(baseUrl)));
   return mark ? (
     <span className="provider-logo" style={{ background: mark.colour }} aria-hidden="true">
-      <span style={{ maskImage: `url(${mark.icon})`, WebkitMaskImage: `url(${mark.icon})` }} />
+      <img src={mark.icon} alt="" />
     </span>
   ) : (
     <span className="provider-logo initials" aria-hidden="true">

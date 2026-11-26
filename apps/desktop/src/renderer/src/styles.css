@@ -575,13 +575,11 @@ button.status:hover {
   border-radius: var(--r-button);
 }
 
-.provider-logo > span {
+/* The icons are drawn black on nothing: inverted, they are white on the brand colour. */
+.provider-logo > img {
   width: 16px;
   height: 16px;
-  background: #fff;
-  mask-size: contain;
-  mask-repeat: no-repeat;
-  mask-position: center;
+  filter: invert(1);
 }
 
 .menu .provider-logo.initials,
