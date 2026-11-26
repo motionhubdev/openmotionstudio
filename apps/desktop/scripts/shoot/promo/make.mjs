@@ -66,6 +66,10 @@ const reels = browse.slice(1, 3).map((b) => {
 });
 const applied = m['look-sent'] !== undefined;  // whether a look was applied in the take
 const BEAT = 0.46;  // the music's beat: the samples change every two
+const BEAT_EXACT = 60 / 130;
+const PRE = 10 * BEAT_EXACT;  // parts/prompt.tsx's PROMPT_LEN
+// The first cut, as the take's project renders it (its scenes at 0, 5 and 11.3 s).
+const FIRST = join(run, 'export.mp4');
 // The film itself restyled in motionhub's motions (renders of the take's project, each in one motion: PROMO_STYLED/<slug>.mp4),
 // all at the same moment, two beats each on the drop; then the film in its own look.
 const STYLED = process.env.PROMO_STYLED ?? join(run, 'styled');
@@ -79,12 +83,11 @@ const dubs = ['zh', 'ja', 'es'].map((lang) => [lang, join(DUBS, `${lang}.mp4`)])
 const LINE = {en: 3.9, zh: 3.2, ja: 5.0, es: 4.9};
 const chapters = [
   {id: 'intro', exit: 'box', segs: [[m['play-look'] + 3.6, m['play-look'] + 8.0, 1, FULL]], tags: true},
-  // After Start creating, the whole editor while the agent works, then the first cut played through, all three scenes.
-  {id: 'ch1', exit: 'box',
-    segs: [[m.brief - 0.3, m.brief + 1.9, 1, HOME], [m['brief-sent'] - 1.1, m['brief-sent'] + 0.05, 1, HOME],
-      [m.editor + 1, m.made - 0.2, {len: 3.0}, FULL], [m['play-v1'] + 0.3, m['play-v1'] + 14.8, {len: 10.5}, STAGE]],
-    lifts: [[m.brief + 0.5, m.brief + 1.9, [352, 225, 1406, 217]]],
-    clicks: [[m['brief-sent'] - 0.05, 1667, 358]]},
+  // The sentence and the agent at work are drawn (parts/prompt.tsx, PRE seconds); then the film it made, full frame, six
+  // beats of each of its three scenes, cut on the beat.
+  {id: 'ch1', exit: 'box', pre: PRE, onBeat: true,
+    segs: [[0.4, 0.4 + 6 * BEAT_EXACT, 1, FULL, {src: FIRST}], [5.4, 5.4 + 6 * BEAT_EXACT, 1, FULL, {src: FIRST}],
+      [12.6, 12.6 + 6 * BEAT_EXACT, 1, FULL, {src: FIRST}]]},
   // The catalogue, every poster loaded; each motion opened once its reel plays; then, on the drop, films in motionhub's
   // motions two beats each, and this film in its own look.
   {id: 'ch2', exit: 'blinds',
@@ -136,6 +139,17 @@ for (const [icon, as] of [['googlegemini.svg', 'gemini.svg'], ['deepseek.svg', '
 // camera rectangle, how]: `how` may name another file to take it from (`src`, its picture cropped to `crop` and filled
 // to the frame), a label to show over it (`label`, {en, zh}), the language it speaks (`lang`), the narration under it
 // (`voice`: a file and the second of it the segment's start matches) and a camera glide (`move`).
+const lenOf = ([a, b, sp]) => (typeof sp === 'object' ? sp.len : (b - a) / sp);
+// A chapter on the beat (onBeat) ends where the music's beat falls: from its film to the drop is a whole number of beats,
+// its last segment lengthened to make it so.
+for (const [i, c] of chapters.entries()) {
+  if (!c.onBeat) continue;
+  const next = chapters.slice(i + 1).find((d) => d.drop);
+  if (next !== chapters[i + 1]) throw new Error('an onBeat chapter must come just before the one with the drop');
+  const rest = c.segs.reduce((x, s) => x + lenOf(s), 0) + (next.card ?? CARD) - EXIT + next.segs.slice(0, next.drop.seg).reduce((x, s) => x + lenOf(s), 0);
+  const last = c.segs.at(-1);
+  last[1] += (BEAT_EXACT - (rest % BEAT_EXACT)) % BEAT_EXACT;
+}
 const scenes = [{id: 'open', kind: 'card', dur: round(probe(join(media, 'card-open.mp4')))}];
 for (const c of chapters) {
   const segs = c.segs.map(([a, b, sp, rect, how = {}]) => {
@@ -164,10 +178,11 @@ for (const c of chapters) {
   const uiLen = round(at);
   const card = c.card ?? CARD;
   const uiStart = card - EXIT;
+  const pre = c.pre ?? 0;
   const cams = [...segs.map((s) => ({t: round(s.at), rect: s.rect, move: s.move})),
     ...(c.cams ?? []).map(([x, rect, move]) => ({t: clipTime(x), rect, move}))].filter((k) => k.t !== null).sort((p, q) => p.t - q.t);
   scenes.push({
-    id: c.id, kind: 'chapter', exit: c.exit, tags: !!c.tags, card, uiStart, uiLen, dur: round(uiStart + uiLen), cams,
+    id: c.id, kind: 'chapter', exit: c.exit, tags: !!c.tags, card, uiStart, pre: round(pre), uiLen, dur: round(uiStart + pre + uiLen), cams,
     drop: c.drop !== undefined ? (typeof c.drop === 'object' ? round(segs[c.drop.seg].at) : clipTime(c.drop)) : undefined,
     lifts: (c.lifts ?? []).map(([a, b, rect, grow]) => ({a: clipTime(a), b: clipTime(b), rect, grow})).filter((l) => l.a !== null && l.b !== null),
     clicks: (c.clicks ?? []).map(([t, x, y]) => ({t: clipTime(t), x, y})).filter((k) => k.t !== null),
@@ -181,7 +196,7 @@ for (const s of scenes) (s.from = round(t)), (t += s.dur);
 const total = round(t);
 // The music's drop: on the moment a chapter names, else on the second chapter's Studio.
 const dropScene = scenes.find((s) => s.drop !== undefined && s.drop !== null) ?? scenes[2];
-const drop = round(dropScene.from + dropScene.uiStart + (dropScene.drop ?? 0));
+const drop = round(dropScene.from + dropScene.uiStart + dropScene.pre + (dropScene.drop ?? 0));
 // Written only when it changes, so the films rendered from it are known to be current (below).
 const timelineFile = join(here, 'parts', 'timeline.json');
 const timelineText = JSON.stringify({total, drop, scenes}, null, 1);
@@ -192,7 +207,11 @@ const cues = [];
 for (const s of scenes.filter((s) => s.kind === 'chapter')) {
   cues.push(`${(s.from + 0.02).toFixed(2)}:cut`, `${(s.from + 0.4).toFixed(2)}:land`,
     `${(s.from + s.uiStart).toFixed(2)}:move:${EXIT}`);
-  for (const k of s.clicks) cues.push(`${(s.from + s.uiStart + k.t).toFixed(2)}:land`);
+  for (const k of s.clicks) cues.push(`${(s.from + s.uiStart + s.pre + k.t).toFixed(2)}:land`);
+  if (s.pre) {
+    for (const [k, role] of [[5, 'land'], [7, 'count'], [8, 'count'], [9, 'count']]) cues.push(`${(s.from + s.uiStart + k * BEAT_EXACT).toFixed(2)}:${role}`);
+    cues.push(`${(s.from + s.uiStart + s.pre).toFixed(2)}:cut`);
+  }
 }
 rmSync(join(media, 'effects.wav'), {force: true});
 execFileSync(oms[0], [...oms.slice(1), 'sound', here, '--cues', cues.join(', '), '--seconds', String(total),
@@ -207,7 +226,7 @@ for (const [family, weights] of [['Inter', '400,700,800'], ['JetBrains Mono', '5
 // narration: each voiced segment's own file, from where its picture starts; the music sinks under each line. Each is
 // made once, as a WAV the film's length.
 mkdirSync(out, {recursive: true});
-const narration = scenes.flatMap((s) => (s.voices ?? []).map((v) => ({...v, at: s.from + s.uiStart + v.at})));
+const narration = scenes.flatMap((s) => (s.voices ?? []).map((v) => ({...v, at: s.from + s.uiStart + (s.pre ?? 0) + v.at})));
 const trackAt = TRACK_DROP - drop;  // where in the track the film's first second is (before 0: the film waits for it)
 const lead = Math.max(0, -trackAt);
 const under = narration.map((v) => `clip((t-${(v.at - 0.3).toFixed(3)})/0.3,0,1)*clip((${(v.at + v.len + 0.3).toFixed(3)}-t)/0.3,0,1)`);

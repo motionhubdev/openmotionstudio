@@ -4,6 +4,7 @@ import {Film, Layer, Line, Scene, Sound, Video, useTime} from '@motionhub/runtim
 import timeline from './parts/timeline.json';
 import {Card, type Exit} from './parts/cards';
 import {Studio, type Shot} from './parts/ui';
+import {Prompt} from './parts/prompt';
 import {Faces, LANG, MUTED, PAPER, SANS, clamp01} from './parts/kit';
 import {CHAPTERS, CLOSING, INTRO} from './parts/words';
 import cardOpen from './media/card-open.mp4';
@@ -21,14 +22,16 @@ export const film = {width: 1920, height: 1080, fps: 30};
 const clips: Record<string, string> = {intro: uiIntro, ch1: ui1, ch2: ui2, ch3: ui3, ch4: ui4, ch5: ui5, ch6: ui6};
 const EXIT = 0.4;
 
-type SceneInfo = Shot & {id: string; kind: 'card' | 'chapter'; dur: number; card: number; exit: Exit};
+type SceneInfo = Shot & {id: string; kind: 'card' | 'chapter'; dur: number; card: number; exit: Exit; pre?: number};
 
 function Chapter({info}: {info: SceneInfo}) {
   const t = useTime();
   const n = info.id === 'intro' ? 0 : Number(info.id.slice(2));
   return (
     <>
-      <Studio clip={clips[info.id]!} shot={info} t={t} />
+      {/* A drawn part first (chapter 1's sentence), then the clip. */}
+      {info.pre ? t >= info.uiStart && t < info.uiStart + info.pre && <Prompt u={t - info.uiStart} /> : null}
+      <Studio clip={clips[info.id]!} shot={{...info, uiStart: info.uiStart + (info.pre ?? 0)}} t={t} />
       <Card n={n} t={t} card={info.card} exitLen={EXIT} exit={info.exit} />
     </>
   );

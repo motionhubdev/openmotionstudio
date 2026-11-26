@@ -35,4 +35,8 @@ export const MOTIONS: [string, string, string][] = [
 /** The AIs the Studio works with, shown in chapter 4, in the order its agent menu lists them. */
 export const AIS = ['Codex', 'Claude Code', 'Gemini', 'DeepSeek'];
 
+/** Chapter 1: the sentence typed and sent, and the agent at work on it. */
+export const PROMPT = {en: 'A 15-second explainer: why the Moon has phases.', zh: '15 秒讲解片：月亮为什么有阴晴圆缺？'};
+export const MAKING = {en: 'Making your film', zh: '正在做成片子'};
+
 export const CLOSING = {en: 'Free · Open source · No account', zh: '免费 · 开源 · 不用注册'};
