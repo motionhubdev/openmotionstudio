@@ -355,7 +355,8 @@ function AgentChip({
                 onSettings();
               }}
             >
-              <span className="provider-logo initials" aria-hidden="true">AI</span>
+              {/* A mark, the same in every language. */}
+              <span className="provider-logo initials" aria-hidden="true">{'AI'}</span>
               <span className="agent-row-text">
                 <strong>{tr("Built-in agent")}</strong>
                 <span>{tr("Built-in agent · set up a model in Models")}</span>

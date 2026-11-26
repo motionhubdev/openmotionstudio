@@ -624,6 +624,7 @@ export const zh: Record<string, string> = {
   " · model {0}, effort {1}": " · 模型 {0}，推理强度 {1}",
   "Choose the agent, current: {0}": "选择 Agent，当前为：{0}",
   "Built-in agent · {0}": "内置 Agent · {0}",
+  "Built-in agent · {0} · add its key in Models": "内置 Agent · {0} · 请在模型设置中添加它的 key",
   "Your {0}{1} · its own sign-in": "您的 {0}{1} · 使用其独立账号",
   "Everything about how {0} runs": "{0} 的完整运行设置",
   "This project, {0} {1}: {2}{3}": "此项目共 {0} 轮：{2}{3}",
