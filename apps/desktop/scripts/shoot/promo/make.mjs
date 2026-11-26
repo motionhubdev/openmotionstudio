@@ -41,7 +41,7 @@ const FILM = [432, 75, 1100, 619];
 const AGENT = [0, 540, 864, 486];
 const LIBRARY = [415, 60, 1505, 847];
 const DIALOG = [192, 108, 1536, 864];
-const MARKING = [300, 220, 1000, 563];     // the marked spot and the note under it
+const MARKING = [700, 120, 1000, 563];     // the marked Moon and the note beside it
 const AGENTS = [0, 560, 860, 484];         // the agent menu, over the foot of the assistant
 const VOICE = [400, 40, 1520, 855];        // the voice view: its lines and the voices
 const PICKER = [1000, 100, 920, 518];      // the voices, searched and chosen
@@ -64,16 +64,16 @@ const chapters = [
       [browse[0] - 1.8, browse[0] + 0.2, 1, LIBRARY],
       ...browse.map((b) => [b + 1.3, b + 3.1, 1, LIBRARY]),
       [m['look-open'] - 0.3, m['look-sent'] + 0.4, {len: 1.9}, DIALOG],
-      [m['look-sent'] + 1, m['look-done'] - 0.2, {len: 0.6}, AGENT], [m['play-look'] + 0.3, m['play-look'] + 3.8, 1, STAGE]],
+      [m['look-sent'] + 1, m['look-done'] - 0.2, {len: 0.6}, AGENT], [m['play-look'] + 1.0, m['play-look'] + 4.5, 1, STAGE]],
     lifts: [...browse.map((b) => [b + 1.5, b + 3.0, [1478, 215, 420, 262], 0.6]), [m['look-sent'] - 1.4, m['look-sent'] + 0.3, [655, 447, 615, 201]]],
     clicks: [[m['look-sent'] - 1.75, 1560, 1029], [m['look-sent'] - 0.05, 1164, 600]],
-    drop: m['play-look'] + 0.3},
+    drop: m['play-look'] + 1.0},
   {id: 'ch3', exit: 'iris',
     segs: [[m.drag - 1.0, m.drag + 2.2, 1, STAGE], [m.note - 0.2, m.note + 4.8, {len: 3.3}, MARKING],
       [m.sent - 0.7, m.sent + 0.4, 1, AGENT], [m.sent + 1.6, m['agent-done'] - 0.2, {len: 0.8}, AGENT],
       [m['play-v2'] + 0.8, m['play-v2'] + 4.2, 1, FILM]],
-    lifts: [[m.note + 0.3, m.note + 4.6, [480, 465, 340, 140]]],
-    clicks: [[m.drag - 0.05, 0, 0], [m.note + 4.4, 636, 579], [m.sent - 0.05, 352, 1029]].filter(([, x]) => x)},
+    lifts: [[m.note + 0.3, m.note + 4.6, [1205, 165, 340, 150]]],
+    clicks: [[m.drag - 0.05, 760, 170], [m.note + 4.4, 1360, 280], [m.sent - 0.05, 352, 1029]]},
   {id: 'ch4', exit: 'wipe', card: 2.6,
     segs: [[m['agents-open'] - 0.6, m['agents-close'] + 0.3, 1.25, AGENTS]],
     lifts: [[m['agents-open'] + 0.4, m['agents-close'] - 0.1, [10, 540, 385, 485], 0.25]],
