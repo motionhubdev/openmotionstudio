@@ -52,6 +52,7 @@ const EXPORTING = [1380, 0, 540, 304];     // the export button, counting
 // off the screen and when (take time), where the pointer clicks (take time, x, y), and its title card's length.
 // Operations run at their own speed (or near it); only waiting is cut short.
 const browse = [1, 2, 3, 4].filter((k) => m[`browse-${k}`] !== undefined).map((k) => m[`browse-${k}`]);
+const applied = m['look-sent'] !== undefined;  // whether a look was applied in the take
 const chapters = [
   {id: 'intro', exit: 'box', segs: [[m['play-look'] + 3.8, m['play-look'] + 8.0, 1, FULL]], tags: true},
   {id: 'ch1', exit: 'box',
@@ -59,14 +60,15 @@ const chapters = [
       [m.editor + 1, m.made - 0.2, {len: 2.6}, AGENT], [m['play-v1'] + 0.3, m['play-v1'] + 4.3, 1, STAGE]],
     lifts: [[m.brief + 0.5, m.brief + 1.9, [352, 225, 1406, 217]]],
     clicks: [[m['brief-sent'] - 0.05, 1667, 358]]},
+  // The catalogue, every poster loaded; then each motion opened, once its reel plays (about 1.3 s on); then, if one was
+  // applied, its dialog and the agent restyling; then the film plays.
   {id: 'ch2', exit: 'blinds',
-    segs: [      // The catalogue, every poster loaded; then each motion opened, once its reel plays (about 1.3 s on).
-      [browse[0] - 1.8, browse[0] + 0.2, 1, LIBRARY],
+    segs: [[browse[0] - 1.8, browse[0] + 0.2, 1, LIBRARY],
       ...browse.map((b) => [b + 1.3, b + 3.1, 1, LIBRARY]),
-      [m['look-open'] - 0.3, m['look-sent'] + 0.4, {len: 1.9}, DIALOG],
-      [m['look-sent'] + 1, m['look-done'] - 0.2, {len: 0.6}, AGENT], [m['play-look'] + 1.0, m['play-look'] + 4.5, 1, STAGE]],
-    lifts: [...browse.map((b) => [b + 1.5, b + 3.0, [1478, 215, 420, 262], 0.6]), [m['look-sent'] - 1.4, m['look-sent'] + 0.3, [655, 447, 615, 201]]],
-    clicks: [[m['look-sent'] - 1.75, 1560, 1029], [m['look-sent'] - 0.05, 1164, 600]],
+      ...(applied ? [[m['look-open'] - 0.3, m['look-sent'] + 0.4, {len: 1.9}, DIALOG], [m['look-sent'] + 1, m['look-done'] - 0.2, {len: 0.6}, AGENT]] : []),
+      [m['play-look'] + 1.0, m['play-look'] + 4.5, 1, STAGE]],
+    lifts: [...browse.map((b) => [b + 1.5, b + 3.0, [1478, 215, 420, 262], 0.6]), ...(applied ? [[m['look-sent'] - 1.4, m['look-sent'] + 0.3, [655, 447, 615, 201]]] : [])],
+    clicks: applied ? [[m['look-sent'] - 1.75, 1560, 1029], [m['look-sent'] - 0.05, 1164, 600]] : [],
     drop: m['play-look'] + 1.0},
   {id: 'ch3', exit: 'iris',
     segs: [[m.drag - 1.0, m.drag + 2.2, 1, STAGE], [m.note - 0.2, m.note + 4.8, {len: 3.3}, MARKING],
@@ -88,7 +90,7 @@ const chapters = [
   {id: 'ch6', exit: 'box',
     segs: [[m['export-open'] - 0.3, m['export-start'] + 0.6, {len: 3.2}, DIALOG], [m['export-start'] + 0.6, m['export-done'] + 1.5, {len: 4.2}, FULL]],
     cams: [[m['export-start'] + 0.8, EXPORTING, 1.2]],
-    lifts: [[m['export-open'] + 0.8, m['export-start'] + 0.3, [650, 370, 610, 330]]],
+    lifts: [[m['export-open'] + 0.8, m['export-start'] - 0.15, [650, 370, 610, 330]]],
     clicks: [[m['export-open'] - 0.05, 1803, 38], [m['export-start'] - 0.05, 1183, 664]]},
 ];
 
