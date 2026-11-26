@@ -1,5 +1,5 @@
 // The website's hero shoot, as Electron's main script on the Xvfb display (shoot.sh). One take walks the whole Studio:
-// describe an explainer at Home and let Claude Code make it; look through motionhub's motions and apply one; mark a
+// describe an explainer at Home and let Claude Code make it; look through motionhub's motions (applying one if asked); mark a
 // spot on the picture with a note and send it; open the agent menu and its models; choose a voice and have the lines
 // spoken; export the MP4. marks.json keeps the time of each beat for the cut (promo/make.mjs).
 //
@@ -19,12 +19,16 @@ const W = 1920, H = 1080, ZOOM = 1.1;
 // What the take asks for: the website's first example, why the Moon has phases, short. The Moon stands in the middle
 // of the first scene so the region (REGION) finds it.
 const BRIEF = process.env.SHOOT_BRIEF ||
-  'A 15-second explainer: why the Moon has phases. Scene 1: the Sun on the left lights exactly half of a large Moon in ' +
-  'the middle of the frame. Scene 2: seen from above, the Moon circles Earth and its lit half always faces the Sun. ' +
-  'Scene 3: from Earth we see more or less of that lit half: new, crescent, half, full. One short line of narration a scene.';
+  'A 15-second explainer: why the Moon has phases, in a look of its own: a deep night-blue sky, the Sun a warm white-gold ' +
+  'light on the left, the Moon one real three.js sphere lit by that light alone (a procedural cratered surface, no ' +
+  'downloaded texture), Earth a small blue disc. Scene 1: sunlight always lights exactly half of the Moon, large in the ' +
+  'middle of the frame. Scene 2: seen from above, the Moon circles Earth, its lit half always facing the Sun. Scene 3: ' +
+  'from Earth we see more or less of that lit half: new, crescent, half, full, each the same sphere seen from another ' +
+  'place, never a drawn crescent. One short line of narration a scene.';
 const LOOK = process.env.SHOOT_LOOK || '';                         // typed in the motions' search, if any
 const BROWSE = (process.env.SHOOT_BROWSE || 'Depth Stage,Earth Block,Pixel Quest,Stage Light').split(',');  // opened in turn
-const LOOK_NAME = process.env.SHOOT_LOOK_NAME || 'Clay World';  // the one applied: real 3D clay, for science and cycles
+// The one applied, if any: the Moon keeps its own look by default, the motions only looked through.
+const LOOK_NAME = process.env.SHOOT_LOOK_NAME ?? '';
 const VOICE_WORDS = process.env.SHOOT_VOICE_WORDS || 'Trustworthy';  // typed in the voices' search
 const VOICE = process.env.SHOOT_VOICE || 'English_Trustworthy_Man';  // MiniMax's, chosen from what it finds
 const NOTE = 'Make the line between the lit and the dark half softer, and turn the Moon slowly.';
@@ -181,24 +185,26 @@ require(path.join(DESKTOP, 'out/main/index.js'));
       mark(`reel-${i + 1}`);
       await sleep(2400);
     }
-    await press(wc, card(LOOK_NAME), 'a look', 700);
-    mark('look-open');
-    await sleep(2800);
-    await press(wc, `() => document.querySelector('.library-detail .button.primary')`, 'apply', 700);
-    await sleep(500);
-    // The confirmation is a dialog over the drawer, its own Apply button beside Cancel.
-    await press(wc, `() => document.querySelector('.modal-shell .dialog-actions .button.primary')`, 'apply confirmed', 600);
-    mark('look-sent');
-    await turn(wc, 'the look');
+    if (LOOK_NAME) {
+      await press(wc, card(LOOK_NAME), 'a look', 700);
+      mark('look-open');
+      await sleep(2800);
+      await press(wc, `() => document.querySelector('.library-detail .button.primary')`, 'apply', 700);
+      await sleep(500);
+      // The confirmation is a dialog over the drawer, its own Apply button beside Cancel.
+      await press(wc, `() => document.querySelector('.modal-shell .dialog-actions .button.primary')`, 'apply confirmed', 600);
+      mark('look-sent');
+      await turn(wc, 'the look');
+    }
     mark('look-done');
     await sleep(1500);
     if (await exists(wc, `() => document.querySelector('.library-detail, .library-grid')`)) { key(wc, 'Escape'); await sleep(400); key(wc, 'Escape'); }
     await sleep(1200);
     const framed = await until(() => rect(wc, `() => document.querySelector('iframe[title="Film preview"]')`), 'film frame');
-    // The film in its new look, from the start; then again, paused 4.5 s in, the sun and its rays drawn.
+    // The film from the start (in its new look, if one was applied); then again, paused 2 s in, the Moon in sight.
     await playFromStart(wc, framed, 'play-look', 8000);
     await sleep(600);
-    await playFromStart(wc, framed, 'play-look-2', 4500);
+    await playFromStart(wc, framed, 'play-look-2', 2000);
     mark('paused');
     await sleep(700);
 
