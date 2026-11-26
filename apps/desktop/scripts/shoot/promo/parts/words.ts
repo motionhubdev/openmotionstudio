@@ -37,10 +37,14 @@ export const AIS = ['Codex', 'Claude Code', 'Gemini', 'DeepSeek'];
 
 /** Chapter 1: the sentence typed and sent, and the agent at work on it. */
 export const PROMPT = {en: 'A 15-second explainer: why the Moon has phases.', zh: '15 秒讲解片：月亮为什么有阴晴圆缺？'};
-export const MAKING = {en: 'Making your film', zh: '正在做成片子'};
+export const MAKING = {en: 'Claude Code is making it', zh: 'Claude Code 正在制作'};
+/** Its steps, and what they made: the film's lines (in English, the film's own language) and its check. */
+export const STEPS = [{en: 'Writes the script', zh: '写好脚本'}, {en: 'Builds 3 scenes', zh: '搭出 3 个场景'}, {en: 'Checks every frame', zh: '逐帧检查'}];
+export const SCRIPT = ['Sunlight always lights exactly half of the Moon.', 'As the Moon circles Earth, its lit half keeps facing the Sun.', 'From Earth, we see more or less of that lit half.'];
+export const CHECKED = {en: ['11 frames · no problems', '15 s · 1920 × 1080'], zh: ['11 帧 · 没有问题', '15 秒 · 1920 × 1080']};
 
 /** Chapter 3: the note written beside the circled dark half. */
-export const NOTE = {en: 'The dark half melts into the sky. Give it a faint earthshine.', zh: '暗面和夜空融在一起了，加一点地照，让整个月亮看得见。'};
+export const NOTE = {en: 'The Moon looks flat. Give it a real surface: craters and relief.', zh: '月亮看起来太平了，给它加上真实的表面：陨石坑和起伏。'};
 /** Chapter 4: the agent menu's rows, in its order, and the models of the one chosen. */
 export const AGENT_ROWS: [string, {en: string; zh: string}][] = [
   ['Codex', {en: 'OpenAI · your sign-in', zh: 'OpenAI · 你自己的账号'}],

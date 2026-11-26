@@ -11,6 +11,7 @@ import gemini from '../media/gemini.svg';
 import deepseek from '../media/deepseek.svg';
 import before from '../media/moon-before.png';
 import after from '../media/moon-after.png';
+import final from '../media/moon-final.png';
 
 const b = (k: number) => k * BEAT;
 const zh = LANG === 'zh';
@@ -45,17 +46,17 @@ function typed(text: string, p: number) {
   return parts.slice(0, Math.round(parts.length * clamp01(p))).join('');
 }
 
-/** Chapter 3 (13 beats): the Moon's dark half circled, a note typed beside it and sent; then the picture wiped from
- * before to after, the camera closing on the dark half. */
+/** Chapter 3 (13 beats): the flat Moon circled, a note typed beside it and sent; then the picture wiped from before to
+ * after (its surface), the camera closing on the Moon's face. */
 export function Circle({u}: {u: number}) {
-  const CX = 1165, CY = 420;  // the dark half, in the film's frame
+  const CX = 952, CY = 456;  // the Moon, in the film's frame
   const close = ease(u, b(8), b(11), 0, 1, Easing.inOutCubic);
-  const k = 1 + 0.03 * clamp01(u / b(8)) + 0.4 * close;
-  const wipe = ease(u, b(9), b(10.5), 0, 100, Easing.inOutCubic);
+  const k = 1 + 0.03 * clamp01(u / b(8)) + 0.35 * close;
+  const wipe = ease(u, b(9.2), b(10.4), 0, 100, Easing.inOutCubic);
   const draw = ease(u, b(1), b(2.4), 0, 1, Easing.inOutCubic);
   const gone = ease(u, b(7.6), b(8.4));
   const noteIn = spring(u, b(2.6), 0.5, 0.35);
-  const L = 2 * Math.PI * Math.sqrt((180 * 180 + 345 * 345) / 2);
+  const L = 2 * Math.PI * Math.sqrt((375 * 375 + 375 * 375) / 2);
   return (
     <div style={{position: 'absolute', inset: 0, overflow: 'hidden', background: '#000'}}>
       <div style={{position: 'absolute', inset: 0, transformOrigin: `${CX}px ${CY}px`, transform: `scale(${k})`}}>
@@ -64,16 +65,16 @@ export function Circle({u}: {u: number}) {
         {wipe > 0 && wipe < 100 && <div style={{position: 'absolute', top: 0, bottom: 0, left: `${wipe}%`, width: 5, background: '#fff',
           boxShadow: '0 0 24px rgba(255,255,255,0.6)'}} />}
         <svg width="1920" height="1080" style={{position: 'absolute', inset: 0, opacity: 1 - gone}}>
-          <ellipse cx={CX} cy={CY} rx="180" ry="345" fill="none" stroke={VERMILION} strokeWidth="9" strokeLinecap="round"
+          <ellipse cx={CX} cy={CY} rx="375" ry="375" fill="none" stroke={VERMILION} strokeWidth="9" strokeLinecap="round"
             strokeDasharray={L} strokeDashoffset={L * (1 - draw)} transform={`rotate(-4 ${CX} ${CY})`} />
         </svg>
       </div>
-      <div style={{...PANEL, position: 'absolute', left: 1360, top: 250, width: 500, padding: '40px 40px 30px', boxSizing: 'border-box',
+      <div style={{...PANEL, position: 'absolute', left: 1380, top: 250, width: 480, padding: '40px 40px 30px', boxSizing: 'border-box',
         opacity: noteIn * (1 - gone), transform: `translateY(${(1 - noteIn) * 50 - gone * 40}px)`}}>
         <div style={{font: `${zh ? 500 : 400} 42px/1.32 ${SANS}`, color: INK, minHeight: 222}}>{typed(NOTE[LANG], (u - b(3)) / b(3))}</div>
         <div style={{display: 'flex', justifyContent: 'flex-end', marginTop: 16}}><Send press={u - b(7)} size={76} /></div>
       </div>
-      <Pill text={zh ? '改前' : 'Before'} show={(u - b(8)) / 0.3 - Math.max(0, (u - b(9.6)) / 0.2)} />
+      <Pill text={zh ? '改前' : 'Before'} show={Math.min((u - b(8)) / 0.3, 1 - (u - b(9.2)) / 0.2)} />
       <Pill text={zh ? '改后' : 'After'} show={(u - b(10.4)) / 0.3} />
     </div>
   );
@@ -193,7 +194,7 @@ export function Export({u}: {u: number}) {
       {u >= b(2) && (
         <div style={{...PANEL, position: 'absolute', left: 360, top: 330, width: 1200, padding: 34, boxSizing: 'border-box',
           display: 'flex', alignItems: 'center', gap: 44, opacity: clamp01(file * 1.5), transform: `translateY(${(1 - file) * 80}px) scale(${0.94 + 0.06 * file})`}}>
-          <img src={after} style={{width: 512, height: 288, borderRadius: 20, objectFit: 'cover'}} />
+          <img src={final} style={{width: 512, height: 288, borderRadius: 20, objectFit: 'cover'}} />
           <div>
             <div style={{font: `700 46px/1.2 ${SANS}`, color: INK, letterSpacing: '-0.01em'}}>{EXPORT_FILE.name}</div>
             <div style={{font: `500 32px ${SANS}`, color: MUTED, marginTop: 14}}>{EXPORT_FILE.meta[LANG]}</div>

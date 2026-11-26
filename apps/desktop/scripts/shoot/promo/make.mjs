@@ -69,7 +69,10 @@ const BEAT = 0.46;  // the music's beat: the samples change every two
 const BEAT_EXACT = 60 / 130;
 // The first cut (the take's project before the note and the voice, from its history: first.mp4, scenes at 0, 5 and 10 s)
 // and the finished film (export.mp4, as the take exported it).
-const FIRST = existsSync(join(run, 'first.mp4')) ? join(run, 'first.mp4') : join(run, 'export.mp4');
+// The first cut is shown as a plain ball (flat.mp4: first.mp4 with the Moon's relief and colour taken out), so that
+// chapter 3's note, a real surface, shows: before is flat.mp4, after first.mp4.
+const FIRST = existsSync(join(run, 'flat.mp4')) ? join(run, 'flat.mp4') : join(run, 'export.mp4');
+const SURFACE = existsSync(join(run, 'first.mp4')) ? join(run, 'first.mp4') : join(run, 'export.mp4');
 const FINAL = join(run, 'export.mp4');
 // The film itself restyled in motionhub's motions (renders of the take's project, each in one motion: PROMO_STYLED/<slug>.mp4),
 // all at the same moment, two beats each on the drop; then the film in its own look.
@@ -79,14 +82,14 @@ const samples = [['clay-world', 'Clay World'], ['night-diagram', 'Night Diagram'
   ['riso-pop', 'Riso Pop']].map(([slug, name]) => [join(STYLED, `${slug}.mp4`), name, STYLED_AT]).filter(([file]) => existsSync(file));
 // The film spoken in other languages (dub.mjs): each a render of the take's project with its lines translated.
 const DUBS = process.env.PROMO_DUBS ?? join(run, 'dubs');
-const dubs = ['zh', 'ja', 'es'].map((lang) => [lang, join(DUBS, `${lang}.mp4`)]).filter(([, file]) => existsSync(file));
+const dubs = ['zh', 'ja', 'ko'].map((lang) => [lang, join(DUBS, `${lang}.mp4`)]).filter(([, file]) => existsSync(file));
 // How long each language is heard: its first line, said whole (it starts 0.4 s in; the scene changes at 5 s).
-const LINE = {en: 3.9, zh: 3.2, ja: 5.0, es: 4.9};
+const LINE = {en: 3.9, zh: 3.2, ja: 5.0, ko: 4.0};
 const chapters = [
   {id: 'intro', exit: 'box', segs: [[m['play-look'] + 3.6, m['play-look'] + 8.0, 1, FULL]], tags: true},
   // The sentence and the agent at work are drawn (parts/prompt.tsx, PRE seconds); then the film it made, full frame, six
   // beats of each of its three scenes, cut on the beat.
-  {id: 'ch1', exit: 'box', pre: 10, onBeat: true, cues: [[5, 'land'], [7, 'count'], [8, 'count'], [9, 'count']],
+  {id: 'ch1', exit: 'box', pre: 13, onBeat: true, cues: [[5, 'land'], [7, 'count'], [8.2, 'land'], [9, 'count'], [10.2, 'land'], [11, 'count'], [12.2, 'land']],
     segs: [[0.4, 0.4 + 6 * BEAT_EXACT, 1, FULL, {src: FIRST}], [5.4, 5.4 + 6 * BEAT_EXACT, 1, FULL, {src: FIRST}],
       [11.3, 11.3 + 6 * BEAT_EXACT, 1, FULL, {src: FIRST}]]},
   // Over the card's motions, then on the drop: the film restyled in motionhub's motions, two beats each, then in its own.
@@ -110,7 +113,10 @@ mkdirSync(media, {recursive: true});
 for (const card of ['card-open.mp4', 'card-close.mp4']) copyFileSync(join(here, '..', card), join(media, card));
 // The Moon before and after the note (chapter 3), and the exported film's picture (chapter 6).
 ff('-ss', '2.4', '-i', FIRST, '-frames:v', '1', join(media, 'moon-before.png'));
-ff('-ss', '2.4', '-i', FINAL, '-frames:v', '1', join(media, 'moon-after.png'));
+ff('-ss', '2.4', '-i', SURFACE, '-frames:v', '1', join(media, 'moon-after.png'));
+ff('-ss', '2.4', '-i', FINAL, '-frames:v', '1', join(media, 'moon-final.png'));
+// The first cut's three scenes (chapter 1: what the agent built).
+for (const [k, at] of [[1, 2.4], [2, 7.4], [3, 12.5]]) ff('-ss', String(at), '-i', FIRST, '-frames:v', '1', '-vf', 'scale=704:-1', join(media, `scene-${k}.png`));
 // The agents' own marks, as the Studio shows them.
 for (const icon of ['claude-code.png', 'codex.png']) copyFileSync(join(here, '../../../src/renderer/src/agent-icons', icon), join(media, icon));
 for (const [icon, as] of [['googlegemini.svg', 'gemini.svg'], ['deepseek.svg', 'deepseek.svg']]) copyFileSync(join(here, '../../../src/renderer/src/provider-icons', icon), join(media, as));
