@@ -15,6 +15,7 @@
 // new and say print the `since` to give wait. The URL and its secret are read from dev-control.json in the Studio's user
 // data (--user-data, or OMS_USER_DATA, else where a dev build keeps it).
 import { readFileSync } from 'node:fs';
+import { request } from 'node:http';
 import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
 
@@ -37,8 +38,25 @@ try {
 } catch {
   throw new Error(`No ${file}: start the Studio with \`pnpm dev\` (OMS_STUDIO_CONTROL=0 turns its control off).`);
 }
-const response = await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ call, input }) });
-const answer = await response.json().catch(() => ({ ok: false, error: `The Studio answered ${response.status}.` }));
+// node:http, not fetch: wait and export answer only when the turn or the export ends, often after more than five
+// minutes, and fetch gives up on an answer whose headers take longer than that while the Studio carries on.
+const { status, body } = await new Promise((done, fail) => {
+  const sent = request(url, { method: 'POST', headers: { 'content-type': 'application/json' } }, (response) => {
+    let text = '';
+    response.setEncoding('utf8');
+    response.on('data', (chunk) => (text += chunk));
+    response.on('end', () => done({ status: response.statusCode, body: text }));
+    response.on('error', fail);
+  });
+  sent.on('error', (error) => fail(new Error(`The Studio cannot be reached (${error.message}): is it still running?`)));
+  sent.end(JSON.stringify({ call, input }));
+});
+let answer;
+try {
+  answer = JSON.parse(body);
+} catch {
+  answer = { ok: false, error: `The Studio answered ${status}.` };
+}
 if (!answer.ok) {
   console.error(answer.error);
   process.exit(1);
