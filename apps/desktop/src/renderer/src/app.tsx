@@ -118,6 +118,7 @@ function WorkspaceApp() {
           settingsOpen={!!settings}
           project={project}
           providers={providers}
+          onProviders={setProviders}
           onSettings={(agent) => setSettings(agent ? { agent } : { models: true })}
           onGlobalSettings={() => setSettings({})}
           onVoiceSettings={(voice) => setSettings({ voice })}

@@ -232,6 +232,8 @@ const STARTS: { title: string; line: string; draft?: string; panel?: 'motions' }
  */
 function AgentChip({
   active,
+  providers,
+  onUseProvider,
   agents,
   disabled,
   onUseAgent,
@@ -239,7 +241,7 @@ function AgentChip({
   onAgentSettings,
   onSettings,
   openRequest,
-}: Pick<Props, 'active' | 'agents' | 'onUseAgent' | 'onRefreshAgents' | 'onAgentSettings' | 'onSettings'> & { disabled: boolean; openRequest: number }) {
+}: Pick<Props, 'active' | 'providers' | 'onUseProvider' | 'agents' | 'onUseAgent' | 'onRefreshAgents' | 'onAgentSettings' | 'onSettings'> & { disabled: boolean; openRequest: number }) {
   const { t: tr } = usePreferences();
   const [picking, setPicking] = useState(false);
   useEffect(() => {
@@ -299,22 +301,6 @@ function AgentChip({
       </button>
       {picking && (
         <span className="menu agent-menu" role="menu">
-          <button
-            type="button"
-            role="menuitemradio"
-            aria-checked={current === 'built-in'}
-            onClick={() => {
-              setPicking(false);
-              if (current !== 'built-in') onUseAgent('built-in');
-              else onSettings();
-            }}
-          >
-            {active ? <ProviderLogo name={active.name} baseUrl={active.baseUrl} /> : <span className="provider-logo initials" aria-hidden="true">AI</span>}
-            <span className="agent-row-text">
-              <strong>{active ? active.model : tr("Built-in agent")}</strong>
-              <span>{active ? tr("Built-in agent · {0}", {0: active.name}) : tr("Built-in agent · set up a model in Models")}</span>
-            </span>
-          </button>
           {agents?.harnesses.map((harness) => (
             <button
               key={harness.kind}
@@ -334,6 +320,48 @@ function AgentChip({
               </span>
             </button>
           ))}
+          {/* The built-in agent, once for each service it can run on: choosing one makes it the service in use. */}
+          {providers.length ? (
+            providers.map((provider) => {
+              const inUse = current === 'built-in' && provider.id === active?.id;
+              return (
+                <button
+                  key={provider.id}
+                  type="button"
+                  role="menuitemradio"
+                  aria-checked={inUse}
+                  disabled={!provider.ready}
+                  onClick={() => {
+                    setPicking(false);
+                    if (inUse) onSettings();
+                    else onUseProvider(provider.id);
+                  }}
+                >
+                  <ProviderLogo name={provider.name} baseUrl={provider.baseUrl} />
+                  <span className="agent-row-text">
+                    <strong>{provider.model || provider.name}</strong>
+                    <span>{provider.ready ? tr("Built-in agent · {0}", {0: provider.name}) : tr("Built-in agent · {0} · add its key in Models", {0: provider.name})}</span>
+                  </span>
+                </button>
+              );
+            })
+          ) : (
+            <button
+              type="button"
+              role="menuitemradio"
+              aria-checked={current === 'built-in'}
+              onClick={() => {
+                setPicking(false);
+                onSettings();
+              }}
+            >
+              <span className="provider-logo initials" aria-hidden="true">AI</span>
+              <span className="agent-row-text">
+                <strong>{tr("Built-in agent")}</strong>
+                <span>{tr("Built-in agent · set up a model in Models")}</span>
+              </span>
+            </button>
+          )}
           {own && chosen && (
             <span className="agent-menu-settings">
               {models ? (
@@ -368,6 +396,10 @@ const STATE_WORDS: Record<HarnessState, string> = { unknown: 'Status unavailable
 interface Props {
   ref?: Ref<AssistantHandle>;
   active: ProviderView | undefined;
+  /** Every service the built-in agent can run on, in the order Models keeps them. */
+  providers: ProviderView[];
+  /** Runs the built-in agent on this service. */
+  onUseProvider(id: string): void;
   /** The project's agent and the person's own coding agents (ADR 0008). */
   agents: Agents | null;
   onUseAgent(kind: AgentKind): void;
@@ -440,6 +472,8 @@ const COMPOSER_MAX = 180;
 export function Assistant({
   ref,
   active,
+  providers,
+  onUseProvider,
   agents,
   onUseAgent,
   onRefreshAgents,
@@ -1371,6 +1405,8 @@ export function Assistant({
           {/* What the message goes to, beside the button that sends it. */}
           <AgentChip
             active={active}
+            providers={providers}
+            onUseProvider={onUseProvider}
             agents={agents}
             disabled={working}
             onUseAgent={onUseAgent}

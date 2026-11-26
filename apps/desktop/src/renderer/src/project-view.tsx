@@ -286,6 +286,8 @@ const typing = (target: EventTarget | null) =>
 interface Props {
   project: Project;
   providers: Providers | null;
+  /** Takes the providers as they are after one is made the service in use. */
+  onProviders(providers: Providers): void;
   /** Opens Models, on one of the person's own coding agents when one is named. */
   settingsOpen?: boolean;
   onGlobalSettings(): void;
@@ -298,7 +300,7 @@ interface Props {
   onClose(): void;
 }
 
-export function ProjectView({ onGlobalSettings, settingsOpen, project, providers, onSettings, onVoiceSettings, modelsClosed, onChange, onClose }: Props) {
+export function ProjectView({ onGlobalSettings, settingsOpen, project, providers, onProviders, onSettings, onVoiceSettings, modelsClosed, onChange, onClose }: Props) {
   const { t, t: tr } = usePreferences();
   const [build, setBuild] = useState<BuildResult | null>(null);
   const [review, setReview] = useState<FilmReview | null>(null);
@@ -493,6 +495,16 @@ export function ProjectView({ onGlobalSettings, settingsOpen, project, providers
   const [switches, setSwitches] = useState(0);
   /** The composer's words, kept here: a switch of agent draws the assistant again, and must not drop them. */
   const draft = useRef('');
+  /** Runs the built-in agent on another of the services in Models. */
+  async function useProvider(id: string) {
+    try {
+      if (providers?.active !== id) onProviders(await window.studio.activateProvider(id));
+      if (agents?.current !== 'built-in') await useAgent('built-in');
+    } catch (e) {
+      setToast({ text: reason(e), error: true });
+    }
+  }
+
   async function useAgent(kind: AgentKind) {
     try {
       setAgents(await window.studio.useAgent(kind));
@@ -920,6 +932,8 @@ export function ProjectView({ onGlobalSettings, settingsOpen, project, providers
               ref={assistant}
               key={`${project.path}:${historyRevision}:${switches}`}
               active={active}
+              providers={providers?.providers ?? []}
+              onUseProvider={(id) => void useProvider(id)}
               agents={agents}
               onUseAgent={(kind) => void useAgent(kind)}
               onRefreshAgents={refreshAgents}
