@@ -67,9 +67,10 @@ const reels = browse.slice(1, 3).map((b) => {
 const applied = m['look-sent'] !== undefined;  // whether a look was applied in the take
 const BEAT = 0.46;  // the music's beat: the samples change every two
 const BEAT_EXACT = 60 / 130;
-const PRE = 10 * BEAT_EXACT;  // parts/prompt.tsx's PROMPT_LEN
-// The first cut, as the take's project renders it (its scenes at 0, 5 and 11.3 s).
-const FIRST = join(run, 'export.mp4');
+// The first cut (the take's project before the note and the voice, from its history: first.mp4, scenes at 0, 5 and 10 s)
+// and the finished film (export.mp4, as the take exported it).
+const FIRST = existsSync(join(run, 'first.mp4')) ? join(run, 'first.mp4') : join(run, 'export.mp4');
+const FINAL = join(run, 'export.mp4');
 // The film itself restyled in motionhub's motions (renders of the take's project, each in one motion: PROMO_STYLED/<slug>.mp4),
 // all at the same moment, two beats each on the drop; then the film in its own look.
 const STYLED = process.env.PROMO_STYLED ?? join(run, 'styled');
@@ -85,52 +86,31 @@ const chapters = [
   {id: 'intro', exit: 'box', segs: [[m['play-look'] + 3.6, m['play-look'] + 8.0, 1, FULL]], tags: true},
   // The sentence and the agent at work are drawn (parts/prompt.tsx, PRE seconds); then the film it made, full frame, six
   // beats of each of its three scenes, cut on the beat.
-  {id: 'ch1', exit: 'box', pre: PRE, onBeat: true,
+  {id: 'ch1', exit: 'box', pre: 10, onBeat: true, cues: [[5, 'land'], [7, 'count'], [8, 'count'], [9, 'count']],
     segs: [[0.4, 0.4 + 6 * BEAT_EXACT, 1, FULL, {src: FIRST}], [5.4, 5.4 + 6 * BEAT_EXACT, 1, FULL, {src: FIRST}],
-      [12.6, 12.6 + 6 * BEAT_EXACT, 1, FULL, {src: FIRST}]]},
-  // The catalogue, every poster loaded; each motion opened once its reel plays; then, on the drop, films in motionhub's
-  // motions two beats each, and this film in its own look.
+      [11.3, 11.3 + 6 * BEAT_EXACT, 1, FULL, {src: FIRST}]]},
+  // Over the card's motions, then on the drop: the film restyled in motionhub's motions, two beats each, then in its own.
   {id: 'ch2', exit: 'blinds',
-    segs: [[browse[0] - 1.8, browse[0] - 0.2, 1, LIBRARY],
-      ...reels.map((r) => [r, r + 1.7, 1, LIBRARY]),
-      ...(applied ? [[m['look-open'] - 0.3, m['look-sent'] + 0.4, {len: 1.9}, DIALOG], [m['look-sent'] + 1, m['look-done'] - 0.2, {len: 0.6}, AGENT]] : []),
-      ...samples.map(([file, name, from]) => [from, from + 2 * BEAT, 1, FULL, {src: file, label: {en: name, zh: name}}]),
-      [m['play-voice'] + 10.6, m['play-voice'] + 10.6 + 4 * BEAT, 1, FILM, {label: {en: 'Its own look', zh: '它自己的风格'}}]],
-    lifts: [...reels.map((r) => [r + 0.2, r + 1.6, [1478, 215, 420, 262], 0.6]), ...(applied ? [[m['look-sent'] - 1.4, m['look-sent'] + 0.3, [655, 447, 615, 201]]] : [])],
-    clicks: applied ? [[m['look-sent'] - 1.75, 1560, 1029], [m['look-sent'] - 0.05, 1164, 600]] : [],
-    drop: {seg: 1 + reels.length + (applied ? 2 : 0)}},
-  // Circled, the note, sent; then the picture before and after.
-  {id: 'ch3', exit: 'iris',
-    segs: [[m.drag - 1.0, m.drag + 2.2, 1, STAGE], [m.note - 0.2, m.note + 7.5, {len: 4.6}, MARKING],
-      [m.sent - 0.7, m.sent + 0.4, 1, AGENT], [m.sent + 1.6, m['agent-done'] - 0.2, {len: 0.8}, AGENT],
-      [m['play-look'] + 0.7, m['play-look'] + 2.5, 1, FILM, {label: {en: 'Before', zh: '改前'}}],
-      [m['play-v2'] + 0.7, m['play-v2'] + 2.8, 1, FILM, {label: {en: 'After', zh: '改后'}}]],
-    lifts: [[m.note + 0.3, m.note + 7.1, [640, 165, 330, 145]]],
-    clicks: [[m.drag - 0.05, 981, 165], [m.note + 7.25, 789, 279], [m.sent - 0.05, 352, 1029]]},
-  // The agent menu: its rows, then the models of the agent in use.
-  {id: 'ch4', exit: 'wipe', card: 2.6,
-    segs: [[m['agents-open'] - 0.6, m['agents-close'] + 0.3, 1.25, AGENTS]],
-    lifts: [[m['agents-open'] + 0.4, m['agents-models'] - 0.15, [18, 575, 380, 400], 0.3],
-      [m['agents-models'], m['agents-close'] - 0.1, [18, 540, 380, 435], 0.3]],
-    clicks: [[m['agents-open'] - 0.05, 270, 1029], [m['agents-models'] - 0.05, 118, 869]]},
-  // A voice searched and chosen, the lines spoken; then the film heard in English, and in other languages in turn.
-  {id: 'ch5', exit: 'wipe',
-    segs: [[m.voice - 0.5, m['voice-sent'] - 0.1, 1.4, VOICE], [m['voice-sent'] + 0.6, m.voiced + 1.0, {len: 1.8}, AGENT],
-      [m['play-voice'] + 0.2, m['play-voice'] + 0.2 + LINE.en, 1, FILM, {lang: 'en', voice: {src: join(run, 'export.mp4'), from: 0.2}}],
-      ...dubs.map(([lang, file]) => [0.2, Math.min(4.95, 0.2 + LINE[lang]), 1, FULL, {src: file, lang, voice: {src: file, from: 0.2}}])],
-    cams: [[m.voice + 1.6, PICKER, 0.8]],
-    lifts: [[m['voice-search'] - 0.4, m['voice-sent'] - 0.15, [1540, 130, 360, 560], 0.2]],
-    clicks: [[m.voice - 0.05, 1673, 32], [m['voice-chosen'] - 0.05, 1710, 414], [m['voice-sent'] - 0.05, 1650, 633]]},
-  {id: 'ch6', exit: 'box',
-    segs: [[m['export-open'] - 0.3, m['export-start'] + 0.6, {len: 3.2}, DIALOG], [m['export-start'] + 0.6, m['export-done'] + 1.5, {len: 4.2}, FULL]],
-    cams: [[m['export-start'] + 0.8, EXPORTING, 1.2]],
-    lifts: [[m['export-open'] + 0.8, m['export-start'] - 0.15, [650, 370, 610, 330]]],
-    clicks: [[m['export-open'] - 0.05, 1803, 38], [m['export-start'] - 0.05, 1183, 664]]},
+    segs: [...samples.map(([file, name, from]) => [from, from + 2 * BEAT_EXACT, 1, FULL, {src: file, label: {en: name, zh: name}}]),
+      [STYLED_AT, STYLED_AT + 4 * BEAT_EXACT, 1, FULL, {src: FINAL, label: {en: 'Its own look', zh: '它自己的风格'}}]],
+    drop: {seg: 0}},
+  // Drawn (parts/drawn.tsx): each its length in beats (pre) and its effects (cues: [beat, role]).
+  {id: 'ch3', exit: 'iris', pre: 13, cues: [[1, 'draw'], [3, 'move'], [7, 'land'], [9, 'move']], segs: []},
+  {id: 'ch4', exit: 'wipe', card: 2.6, pre: 10,
+    cues: [[1, 'count'], [2, 'count'], [3, 'count'], [4, 'count'], [5, 'land'], [6, 'count'], [6.5, 'count'], [7, 'count'], [7.5, 'count'], [8.5, 'land']], segs: []},
+  // A voice chosen; then the film heard in English, and in other languages in turn.
+  {id: 'ch5', exit: 'wipe', pre: 7, cues: [[1, 'count'], [2, 'count'], [3, 'land']],
+    segs: [[0.2, 0.2 + LINE.en, 1, FULL, {src: FINAL, lang: 'en', voice: {src: FINAL, from: 0.2}}],
+      ...dubs.map(([lang, file]) => [0.2, Math.min(4.95, 0.2 + LINE[lang]), 1, FULL, {src: file, lang, voice: {src: file, from: 0.2}}])]},
+  {id: 'ch6', exit: 'box', pre: 8, cues: [[1, 'land'], [2, 'out'], [3, 'count']], segs: []},
 ];
 
 const media = join(here, 'media');
 mkdirSync(media, {recursive: true});
 for (const card of ['card-open.mp4', 'card-close.mp4']) copyFileSync(join(here, '..', card), join(media, card));
+// The Moon before and after the note (chapter 3), and the exported film's picture (chapter 6).
+ff('-ss', '2.4', '-i', FIRST, '-frames:v', '1', join(media, 'moon-before.png'));
+ff('-ss', '2.4', '-i', FINAL, '-frames:v', '1', join(media, 'moon-after.png'));
 // The agents' own marks, as the Studio shows them.
 for (const icon of ['claude-code.png', 'codex.png']) copyFileSync(join(here, '../../../src/renderer/src/agent-icons', icon), join(media, icon));
 for (const [icon, as] of [['googlegemini.svg', 'gemini.svg'], ['deepseek.svg', 'deepseek.svg']]) copyFileSync(join(here, '../../../src/renderer/src/provider-icons', icon), join(media, as));
@@ -151,6 +131,7 @@ for (const [i, c] of chapters.entries()) {
   last[1] += (BEAT_EXACT - (rest % BEAT_EXACT)) % BEAT_EXACT;
 }
 const scenes = [{id: 'open', kind: 'card', dur: round(probe(join(media, 'card-open.mp4')))}];
+let tRun = scenes[0].dur, dropAt = null;
 for (const c of chapters) {
   const segs = c.segs.map(([a, b, sp, rect, how = {}]) => {
     const speed = typeof sp === 'object' ? (b - a) / sp.len : sp;
@@ -173,22 +154,29 @@ for (const c of chapters) {
     return `[${k}:v]trim=duration=${(s.b - s.a).toFixed(3)},${crop}scale=1920:1080:force_original_aspect_ratio=increase,crop=1920:1080,setsar=1,setpts=(PTS-STARTPTS)/${s.speed.toFixed(4)},fps=30[s${i}]`;
   });
   graph.push(`${segs.map((_, i) => `[s${i}]`).join('')}concat=n=${segs.length}:v=1:a=0,format=yuv420p[v]`);
-  ff(...inputs, '-filter_complex', graph.join(';'), '-map', '[v]', '-an',
+  rmSync(join(media, `ui-${c.id}.mp4`), {force: true});
+  if (segs.length) ff(...inputs, '-filter_complex', graph.join(';'), '-map', '[v]', '-an',
     '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '18', '-g', '15', join(media, `ui-${c.id}.mp4`));
   const uiLen = round(at);
   const card = c.card ?? CARD;
   const uiStart = card - EXIT;
-  const pre = c.pre ?? 0;
+  // A drawn part (pre, in beats) starts on the music's beat: after the drop, it waits beat0 seconds for one; before it,
+  // the chapter is onBeat (above) and its drawn part ends on one.
+  const beat0 = c.pre && dropAt !== null ? round((((dropAt - (tRun + uiStart)) % BEAT_EXACT) + BEAT_EXACT) % BEAT_EXACT) : 0;
+  const pre = c.pre ? beat0 + c.pre * BEAT_EXACT : 0;
   const cams = [...segs.map((s) => ({t: round(s.at), rect: s.rect, move: s.move})),
     ...(c.cams ?? []).map(([x, rect, move]) => ({t: clipTime(x), rect, move}))].filter((k) => k.t !== null).sort((p, q) => p.t - q.t);
   scenes.push({
-    id: c.id, kind: 'chapter', exit: c.exit, tags: !!c.tags, card, uiStart, pre: round(pre), uiLen, dur: round(uiStart + pre + uiLen), cams,
+    id: c.id, kind: 'chapter', exit: c.exit, tags: !!c.tags, card, uiStart, pre: round(pre), beat0, cues: c.cues ?? [], uiLen, dur: round(uiStart + pre + uiLen), cams,
     drop: c.drop !== undefined ? (typeof c.drop === 'object' ? round(segs[c.drop.seg].at) : clipTime(c.drop)) : undefined,
     lifts: (c.lifts ?? []).map(([a, b, rect, grow]) => ({a: clipTime(a), b: clipTime(b), rect, grow})).filter((l) => l.a !== null && l.b !== null),
     clicks: (c.clicks ?? []).map(([t, x, y]) => ({t: clipTime(t), x, y})).filter((k) => k.t !== null),
     labels: segs.filter((s) => s.label || s.lang).map((s) => ({t: round(s.at), len: round(s.len), text: s.label, lang: s.lang})),
     voices: segs.filter((s) => s.voice).map((s) => ({at: round(s.at), len: round(s.len), src: s.voice.src, from: s.voice.from})),
   });
+  const done = scenes.at(-1);
+  if (done.drop !== undefined) dropAt = tRun + uiStart + pre + done.drop;
+  tRun += done.dur;
 }
 scenes.push({id: 'close', kind: 'card', dur: END});
 let t = 0;
@@ -202,15 +190,16 @@ const timelineFile = join(here, 'parts', 'timeline.json');
 const timelineText = JSON.stringify({total, drop, scenes}, null, 1);
 if (!existsSync(timelineFile) || readFileSync(timelineFile, 'utf8') !== timelineText) writeFileSync(timelineFile, timelineText);
 
-// The effects: a cut as each card opens, a landing as its headline lands, a move as it gives way, a land on each click.
+// The effects: a cut as each card opens, a landing as its headline lands, a move as it gives way, a land on each click,
+// a drawn part's own on its beats, a cut where its clip comes in.
 const cues = [];
 for (const s of scenes.filter((s) => s.kind === 'chapter')) {
   cues.push(`${(s.from + 0.02).toFixed(2)}:cut`, `${(s.from + 0.4).toFixed(2)}:land`,
     `${(s.from + s.uiStart).toFixed(2)}:move:${EXIT}`);
   for (const k of s.clicks) cues.push(`${(s.from + s.uiStart + s.pre + k.t).toFixed(2)}:land`);
   if (s.pre) {
-    for (const [k, role] of [[5, 'land'], [7, 'count'], [8, 'count'], [9, 'count']]) cues.push(`${(s.from + s.uiStart + k * BEAT_EXACT).toFixed(2)}:${role}`);
-    cues.push(`${(s.from + s.uiStart + s.pre).toFixed(2)}:cut`);
+    for (const [k, role] of s.cues) cues.push(`${(s.from + s.uiStart + s.beat0 + k * BEAT_EXACT).toFixed(2)}:${role}`);
+    if (s.uiLen) cues.push(`${(s.from + s.uiStart + s.pre).toFixed(2)}:cut`);
   }
 }
 rmSync(join(media, 'effects.wav'), {force: true});

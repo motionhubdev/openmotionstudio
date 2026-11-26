@@ -39,4 +39,23 @@ export const AIS = ['Codex', 'Claude Code', 'Gemini', 'DeepSeek'];
 export const PROMPT = {en: 'A 15-second explainer: why the Moon has phases.', zh: '15 秒讲解片：月亮为什么有阴晴圆缺？'};
 export const MAKING = {en: 'Making your film', zh: '正在做成片子'};
 
+/** Chapter 3: the note written beside the circled dark half. */
+export const NOTE = {en: 'The dark half melts into the sky. Give it a faint earthshine.', zh: '暗面和夜空融在一起了，加一点地照，让整个月亮看得见。'};
+/** Chapter 4: the agent menu's rows, in its order, and the models of the one chosen. */
+export const AGENT_ROWS: [string, {en: string; zh: string}][] = [
+  ['Codex', {en: 'OpenAI · your sign-in', zh: 'OpenAI · 你自己的账号'}],
+  ['Claude Code', {en: 'Anthropic · your sign-in', zh: 'Anthropic · 你自己的账号'}],
+  ['Gemini', {en: 'Google · your key', zh: 'Google · 你自己的 key'}],
+  ['DeepSeek', {en: 'DeepSeek · your key', zh: 'DeepSeek · 你自己的 key'}],
+];
+export const MODELS = ['Fable 5.2', 'Opus 5.5', 'Sonnet 5.5', 'Haiku 5.5'];
+/** Chapter 5: voices to choose from (MiniMax's), the first chosen. */
+export const VOICES: [string, {en: string; zh: string}][] = [
+  ['Trustworthy Man', {en: 'English · warm, steady', zh: '英文 · 温暖、沉稳'}],
+  ['Trustworthy Advisor', {en: 'English · calm, clear', zh: '英文 · 平静、清晰'}],
+  ['Wise Woman', {en: 'English · soft, unhurried', zh: '英文 · 柔和、从容'}],
+];
+/** Chapter 6: the film, exported. */
+export const EXPORT_FILE = {name: 'why-the-moon-has-phases.mp4', meta: {en: '1920 × 1080 · 16 s · with its voice', zh: '1920 × 1080 · 16 秒 · 带旁白'}};
+
 export const CLOSING = {en: 'Free · Open source · No account', zh: '免费 · 开源 · 不用注册'};
