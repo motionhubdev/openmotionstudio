@@ -3,6 +3,14 @@
 Every key change to OpenMotionStudio, newest first, by date. What counts as key and the entry format are in
 `CLAUDE.md`, "The changelog".
 
+## 2026-11-25 — The agent menu shows each agent's mark and Claude's model versions
+
+- **What:** The composer's agent menu leads each row with its mark: Claude Code's and Codex's own, and for the built-in agent the icon of the service its model is reached through (Anthropic, DeepSeek, Gemini, MiniMax, Ollama, OpenRouter, LM Studio, from Simple Icons; initials for any other). Claude Code's models are named with their versions (Fable 5.2, Opus 5.5, Sonnet 5.5, Haiku 5.5). The website's hero film is an OMS film again, shot from an explainer of the Moon's phases (`apps/desktop/scripts/shoot/promo`).
+- **Why:** In the menu the agents were names alone, hard to tell apart at a glance, and "Opus" did not say which Opus.
+- **Breaking:** None.
+- **Upgrade:** Nothing. The names follow what Claude Code's aliases run: change them in `CLAUDE_MODELS` when a new model ships.
+- **Refs:** `apps/desktop/src/renderer/src/assistant.tsx`, `apps/desktop/src/renderer/src/provider-logo.tsx`, `apps/desktop/src/renderer/src/provider-icons/`, `apps/desktop/src/main/agent/claude.ts`.
+
 ## 2026-11-25 — Applying a motion new to the project restyles the film
 
 - **What:** Apply to the video, for a motion from motionhub the project does not hold yet, takes it into the project and then asks the agent to restyle the film with it, as it does for one already held. The website's hero film is shot again from one take through the whole Studio (describe, look, mark, voice, export) and cut into eight captioned chapters, in English and in Chinese (`apps/desktop/scripts/shoot`).
