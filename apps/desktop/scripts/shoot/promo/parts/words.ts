@@ -58,7 +58,6 @@ export const VOICES: [string, {en: string; zh: string}][] = [
   ['Trustworthy Man', {en: 'English · warm, steady', zh: '英文 · 温暖、沉稳'}],
   ['Reliable Executive', {en: 'Chinese · calm, assured', zh: '中文 · 沉着、可靠'}],
   ['Intellectual Senior', {en: 'Japanese · wise, measured', zh: '日文 · 睿智、从容'}],
-  ['Calm Lady', {en: 'Korean · calm, gentle', zh: '韩文 · 平静、温柔'}],
 ];
 /** Chapter 6: the film, exported. */
 export const EXPORT_FILE = {name: 'why-the-moon-has-phases.mp4', meta: {en: '1920 × 1080 · 16 s · with its voice', zh: '1920 × 1080 · 16 秒 · 带旁白'}};

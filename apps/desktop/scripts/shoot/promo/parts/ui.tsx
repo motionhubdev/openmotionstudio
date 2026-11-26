@@ -165,7 +165,7 @@ function Tags({u, k}: {u: number; k: number}) {
   );
 }
 
-const LANGS: [string, string][] = [['en', 'English'], ['zh', '中文'], ['ja', '日本語'], ['ko', '한국어']];
+const LANGS: [string, string][] = [['en', 'English'], ['zh', '中文'], ['ja', '日本語']];
 
 /** A name over the picture, low on the left, sliding in as its stretch starts; or, over a dubbed stretch, the row of
  * languages with the one heard lit. */

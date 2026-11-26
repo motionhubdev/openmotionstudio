@@ -83,26 +83,28 @@ const samples = [['clay-world', 'Clay World'], ['night-diagram', 'Night Diagram'
   ['riso-pop', 'Riso Pop']].map(([slug, name]) => [join(STYLED, `${slug}.mp4`), name, STYLED_AT]).filter(([file]) => existsSync(file));
 // The film spoken in other languages (dub.mjs): each a render of the take's project with its lines translated.
 const DUBS = process.env.PROMO_DUBS ?? join(run, 'dubs');
-const dubs = ['zh', 'ja', 'ko'].map((lang) => [lang, join(DUBS, `${lang}.mp4`)]).filter(([, file]) => existsSync(file));
+const dubs = ['zh', 'ja'].map((lang) => [lang, join(DUBS, `${lang}.mp4`)]).filter(([, file]) => existsSync(file));
 // How long each language is heard: its first line, said whole (it starts 0.4 s in; the scene changes at 5 s).
-const LINE = {en: 3.9, zh: 3.2, ja: 5.0, ko: 4.5};
+const LINE = {en: 3.9, zh: 3.2, ja: 5.0};
 const chapters = [
   {id: 'intro', exit: 'box', segs: [[m['play-look'] + 3.6, m['play-look'] + 8.0, 1, FULL, {ov: {src: SURFACE, from: 1.0}}]], tags: true},
   // The sentence and the agent at work are drawn (parts/prompt.tsx, PRE seconds); then the film it made, full frame, six
   // beats of each of its three scenes, cut on the beat.
   {id: 'ch1', exit: 'box', pre: 13, onBeat: true, cues: [[5, 'land'], [7, 'count'], [8.2, 'land'], [9, 'count'], [10.2, 'land'], [11, 'count'], [12.2, 'land']],
     // After the steps, the whole editor with the film playing in it; the camera glides into the picture until it fills the
-    // frame and stays there to the end of the first scene (no cut: the clean film over the preview plays on).
+    // frame and stays there: the film cuts between its scenes in the clean overlay, the camera never moves again (a camera
+    // change at a cut shows the editor for a frame wherever the two videos are a frame apart, as a browser plays them).
     segs: [[m['play-v1'], m['play-v1'] + 5.0, 1, FULL, {ov: {src: SURFACE, from: 0}}],
-      [5.4, 5.4 + 6 * BEAT_EXACT, 1, FULL, {src: SURFACE}],
-      [11.3, 11.3 + 6 * BEAT_EXACT, 1, FULL, {src: SURFACE}]],
+      [m['play-v1'] + 5.0, m['play-v1'] + 5.0 + 6 * BEAT_EXACT, 1, PREVIEW, {ov: {src: SURFACE, from: 5.4}, move: 0.001}],
+      [m['play-v1'] + 5.0 + 6 * BEAT_EXACT, m['play-v1'] + 5.0 + 12 * BEAT_EXACT, 1, PREVIEW, {ov: {src: SURFACE, from: 11.3}, move: 0.001}]],
     cams: [[m['play-v1'] + 1.2, PREVIEW, 1.6]]},
   // Over the card's motions, then on the drop: the film restyled in motionhub's motions, two beats each, then in its own.
-  // The motions in the editor first: the catalogue, one opened, its reel playing.
+  // The motions in the editor first: the catalogue, one opened, the camera gliding in to its reel playing (a glide on the
+  // one video, not a raised copy of it, which starts a second player mid-clip and stutters).
   {id: 'ch2', exit: 'blinds',
     segs: [[browse[0] - 1.8, browse[0] - 0.2, 1, LIBRARY], [reels[0], reels[0] + 1.7, 1, LIBRARY], ...samples.map(([file, name, from]) => [from, from + 2 * BEAT_EXACT, 1, FULL, {src: file, label: {en: name, zh: name}}]),
       [STYLED_AT, STYLED_AT + 4 * BEAT_EXACT, 1, FULL, {src: FINAL, label: {en: 'Its own look', zh: '它自己的风格'}}]],
-    lifts: [[reels[0] + 0.2, reels[0] + 1.6, [1478, 215, 420, 262], 0.6]],
+    cams: [[reels[0] + 0.15, [1180, 90, 740, 416], 0.8]],
     drop: {seg: 2}},
   // Drawn (parts/drawn.tsx): each its length in beats (pre) and its effects (cues: [beat, role]).
   {id: 'ch3', exit: 'iris', pre: 13, cues: [[1, 'draw'], [3, 'move'], [7, 'land'], [9, 'move']], segs: []},
