@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 
 const root = dirname(fileURLToPath(import.meta.url));
-const usage = 'oms install <claude|codex> | init <folder> | check <folder> [--json] | still <folder> --at <seconds> --out <new.png> | render <folder> --out <new.mp4> | player <folder> --out <new folder> | pack <folder> [--out <file.oms>] | preview <folder> [--port <n>] | motion search <words…> [--json] | motion use <@scope/slug> <folder> | sound <folder> --cues <at:role,…> --seconds <s> --out <new.wav> [--motion <id>] | font <folder> --family <name[:400,700]>… [--weights 400,700] | voice <folder> [--recording <file> [--transcribe <minimax|openai|elevenlabs>]] | voice --list <minimax|elevenlabs|openai|azure>';
+const usage = 'oms install <claude|codex> | init <folder> | check <folder> [--json] | still <folder> --at <seconds> --out <new.png> | render <folder> --out <new.mp4> | player <folder> --out <new folder> | pack <folder> [--out <file.oms>] | preview <folder> [--port <n>] | motion search <words…> [--json] | motion use <@scope/slug> <folder> | sound <folder> --cues <at:role,…> --seconds <s> --out <new.wav> [--motion <id>] | media search <image|video|sound> <words…> | media use <id> <folder> --name <name> [--from <s>] [--seconds <s>] | font <folder> --family <name[:400,700]>… [--weights 400,700] | voice <folder> [--recording <file> [--transcribe <minimax|openai|elevenlabs>]] | voice --list <minimax|elevenlabs|openai|azure>';
 
 /** `oms motion search <words…> [--json]` and `oms motion use <@scope/slug> <folder>`: motions from motionhub, on demand. */
 async function motion(args) {
@@ -25,6 +25,29 @@ async function motion(args) {
   if (action === 'use' && rest.length === 2) {
     const used = await worker.useMotion(resolve(rest[1]), rest[0]);
     return console.log(`Took ${used.id} into ${used.path}. Read its MOTION.md and tokens.json before drawing in it.`);
+  }
+  throw new Error(usage);
+}
+
+/**
+ * `oms media search <image|video|sound> <words…>` and `oms media use <id> <folder> --name <name> [--from <s>] [--seconds <s>]`:
+ * pictures, clips and sounds a film may use commercially, from Wikimedia Commons and Openverse, taken into media/ with
+ * their credit in media/credits.json.
+ */
+async function media(args) {
+  const { values, positionals } = parseArgs({ args, options: { name: { type: 'string' }, from: { type: 'string' }, seconds: { type: 'string' } }, allowPositionals: true });
+  const [action, ...rest] = positionals;
+  const worker = createRequire(import.meta.url)(join(root, 'dist/worker.cjs'));
+  if (action === 'search' && rest.length >= 2) {
+    const found = await worker.searchMedia(rest[0], rest.slice(1).join(' '));
+    if (!found.length) return console.log('Nothing under a licence a film may use commercially: try other words, fewer or more general, or draw it.');
+    found.forEach((f, i) => console.log(worker.describeFind(f, i + 1)));
+    return console.log('Take one with: oms media use <id> "<folder>" --name <name> [--from <s> --seconds <s>]');
+  }
+  if (action === 'use' && rest.length === 2 && values.name) {
+    const number = (text) => (text === undefined ? undefined : Number(text));
+    const taken = await worker.useMedia(resolve(rest[1]), rest[0], values.name, { from: number(values.from), seconds: number(values.seconds) });
+    return console.log(worker.takenReport(taken).join('\n'));
   }
   throw new Error(usage);
 }
@@ -126,6 +149,7 @@ async function run() {
   const [command, ...args] = process.argv.slice(2);
   if (!command || command === '--help') return console.log(usage);
   if (command === 'motion') return motion(args);
+  if (command === 'media') return media(args);
   if (command === 'sound') return sound(args);
   if (command === 'font') return font(args);
   if (command === 'voice') return voice(args);

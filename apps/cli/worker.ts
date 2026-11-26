@@ -24,6 +24,11 @@ export { motionWords, searchMotions, useMotion } from '../desktop/src/main/motio
 // Sound effects from the project's motion's sound, for the cues of its picture.
 export { effectsTrack, parseCues } from '../desktop/src/main/film/effects';
 import { bundledSources, takeFont } from '../desktop/src/main/font';
+import { takeMedia } from '../desktop/src/main/media';
+// Pictures, clips and sounds a film may use commercially, from Wikimedia Commons and Openverse, with their credit.
+export { describeFind, searchMedia, takenReport } from '../desktop/src/main/media';
+/** Takes a found file into the project's media/, a clip or sound cut and encoded by the person's ffmpeg. */
+export const useMedia = (dir: string, id: string, name: string, cut: { from?: number; seconds?: number }) => takeMedia(dir, id, name, cut, findFfmpeg);
 /**
  * A face from Google Fonts cut to the characters the film writes: its project's sources and every source the film is
  * built from, so words it imports from outside the project are in it too. A film that does not build (one whose fonts

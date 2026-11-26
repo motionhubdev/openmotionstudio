@@ -11,6 +11,8 @@ const tools: ToolContext = {
   searchMotions: vi.fn(async () => [{ id: '@hub/calm', name: 'Calm', line: 'Quiet type', fit: '' }]),
   useMotion: vi.fn(),
   useFont: vi.fn(),
+  searchMedia: vi.fn(),
+  useMedia: vi.fn(),
   voiceKinds: vi.fn(),
   voiceChoices: vi.fn(),
   voiceFilm: vi.fn(),
