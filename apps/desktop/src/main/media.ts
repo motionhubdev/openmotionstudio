@@ -258,9 +258,11 @@ export const creditLine = (c: Credit): string => `“${c.title}” by ${c.author
 
 /**
  * Takes the file `id` names (from searchMedia) into the project in `dir` as media/<name>.<type>, with its credit in
- * media/credits.json, replacing neither another file nor a credit. A picture is kept as it comes (at most 1,920 wide);
+ * media/credits.json, replacing only a file it took before (its credit is in media/credits.json). A picture is kept as
+ * it comes (at most 1,920 wide);
  * a clip is cut to `from` + `seconds` (at most 30) and made H.264 MP4 at most 1,920 wide, without sound; a sound is cut
- * the same way (at most 300 s; whole when `seconds` is left out) and made AAC (.m4a). Returns the file and its credit.
+ * the same way (at most 300 s; whole when `seconds` is left out), levelled to -16 LUFS, the loudness a narration speaks
+ * at, so a <Sound>'s volume means the same for every file, and made AAC (.m4a). Returns the file and its credit.
  */
 export async function takeMedia(
   dir: string,
@@ -284,12 +286,14 @@ export async function takeMedia(
   const bytes = Buffer.from(await response.arrayBuffer());
   let file: string;
   const changes: string[] = [];
+  // A file use_media took before may be taken again (cut or levelled anew); any other is never replaced.
+  const flag = (path: string) => (Object.hasOwn(credits, path) ? 'w' : 'wx');
   if (find.kind === 'image') {
     const type = pictureType(bytes);
     if (!type) throw new Error('What came back is not a JPEG, PNG or WebP picture: nothing was saved. Try again in a minute, or another file.');
     file = `media/${name}.${type}`;
     if (find.width && find.width > 1920) changes.push('made smaller');
-    await writeFile(join(dir, file), bytes, { flag: 'wx' }).catch(taken(file));
+    await writeFile(join(dir, file), bytes, { flag: flag(file) }).catch(taken(file));
   } else {
     const longest = LONGEST[find.kind];
     const seconds = cut.seconds ?? (find.seconds !== undefined ? find.seconds - from : undefined);
@@ -305,9 +309,9 @@ export async function takeMedia(
       const exe = typeof ffmpeg === 'string' ? ffmpeg : await ffmpeg();
       if (find.kind === 'video')
         await run(exe, [...range, '-i', source, '-an', '-vf', "scale='min(1920,iw)':-2,format=yuv420p", '-c:v', 'libx264', '-crf', '20', '-preset', 'medium', '-movflags', '+faststart', out]);
-      else await run(exe, [...range, '-i', source, '-vn', '-c:a', 'aac', '-b:a', '192k', out]);
-      changes.push(from || cut.seconds !== undefined ? `${from}–${Math.round((from + seconds) * 10) / 10} s` : 'whole', 'encoded again');
-      await writeFile(join(dir, file), await readFile(out), { flag: 'wx' }).catch(taken(file));
+      else await run(exe, [...range, '-i', source, '-vn', '-af', 'loudnorm=I=-16:TP=-1.5:LRA=11', '-ar', '48000', '-c:a', 'aac', '-b:a', '192k', out]);
+      changes.push(from || cut.seconds !== undefined ? `${from}–${Math.round((from + seconds) * 10) / 10} s` : 'whole', ...(find.kind === 'sound' ? ['levelled'] : []), 'encoded again');
+      await writeFile(join(dir, file), await readFile(out), { flag: flag(file) }).catch(taken(file));
     } finally {
       await rm(scratch, { recursive: true, force: true, maxRetries: 4 });
     }

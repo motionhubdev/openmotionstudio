@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -86,9 +86,12 @@ describe('takeMedia', () => {
     await expect(takeMedia(dir, 'commons:a.jpg', 'a', {}, 'ffmpeg', commons('CC BY-NC 4.0'))).rejects.toThrow('not under a licence');
   });
 
-  it('never replaces a file or takes a name outside media/', async () => {
+  it('replaces only a file it took before, and never takes a name outside media/', async () => {
     await takeMedia(dir, 'commons:a.jpg', 'a', {}, 'ffmpeg', commons('CC0'));
-    await expect(takeMedia(dir, 'commons:a.jpg', 'a', {}, 'ffmpeg', commons('CC0'))).rejects.toThrow('is there already');
+    await expect(takeMedia(dir, 'commons:a.jpg', 'a', {}, 'ffmpeg', commons('CC0'))).resolves.toMatchObject({ file: 'media/a.jpg' });
+    await writeFile(join(dir, 'media/own.jpg'), 'the person’s');
+    await expect(takeMedia(dir, 'commons:a.jpg', 'own', {}, 'ffmpeg', commons('CC0'))).rejects.toThrow('is there already');
+    expect(await readFile(join(dir, 'media/own.jpg'), 'utf8')).toBe('the person’s');
     await expect(takeMedia(dir, 'commons:a.jpg', '../a', {}, 'ffmpeg', commons('CC0'))).rejects.toThrow('lower case');
   });
 
