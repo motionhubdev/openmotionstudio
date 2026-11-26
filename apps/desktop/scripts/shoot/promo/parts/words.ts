@@ -53,11 +53,12 @@ export const AGENT_ROWS: [string, {en: string; zh: string}][] = [
   ['DeepSeek', {en: 'DeepSeek · your key', zh: 'DeepSeek · 你自己的 key'}],
 ];
 export const MODELS = ['Fable 5.2', 'Opus 5.5', 'Sonnet 5.5', 'Haiku 5.5'];
-/** Chapter 5: voices to choose from (MiniMax's), the first chosen. */
+/** Chapter 5: voices to choose from (MiniMax's, the ones the film is dubbed in), the first chosen. */
 export const VOICES: [string, {en: string; zh: string}][] = [
   ['Trustworthy Man', {en: 'English · warm, steady', zh: '英文 · 温暖、沉稳'}],
-  ['Trustworthy Advisor', {en: 'English · calm, clear', zh: '英文 · 平静、清晰'}],
-  ['Wise Woman', {en: 'English · soft, unhurried', zh: '英文 · 柔和、从容'}],
+  ['Reliable Executive', {en: 'Chinese · calm, assured', zh: '中文 · 沉着、可靠'}],
+  ['Intellectual Senior', {en: 'Japanese · wise, measured', zh: '日文 · 睿智、从容'}],
+  ['Calm Lady', {en: 'Korean · calm, gentle', zh: '韩文 · 平静、温柔'}],
 ];
 /** Chapter 6: the film, exported. */
 export const EXPORT_FILE = {name: 'why-the-moon-has-phases.mp4', meta: {en: '1920 × 1080 · 16 s · with its voice', zh: '1920 × 1080 · 16 秒 · 带旁白'}};

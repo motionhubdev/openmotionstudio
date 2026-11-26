@@ -5,7 +5,7 @@ import timeline from './parts/timeline.json';
 import {Card, type Exit} from './parts/cards';
 import {Studio, type Shot} from './parts/ui';
 import {Prompt} from './parts/prompt';
-import {Agents, Circle, Export, Voices} from './parts/drawn';
+import {Agents, Circle, FileCard, Voices} from './parts/drawn';
 import {Faces, LANG, MUTED, PAPER, SANS, clamp01} from './parts/kit';
 import {CHAPTERS, CLOSING, INTRO} from './parts/words';
 import cardOpen from './media/card-open.mp4';
@@ -14,15 +14,20 @@ import uiIntro from './media/ui-intro.mp4';
 import ui1 from './media/ui-ch1.mp4';
 import ui2 from './media/ui-ch2.mp4';
 import ui5 from './media/ui-ch5.mp4';
+import ui6 from './media/ui-ch6.mp4';
+import ovIntro from './media/ov-intro.mp4';
+import ov1 from './media/ov-ch1.mp4';
 
 export const film = {width: 1920, height: 1080, fps: 30};
 
-// Chapters 3, 4 and 6 are drawn whole; 1 and 5 begin drawn.
-const clips: Record<string, string> = {intro: uiIntro, ch1: ui1, ch2: ui2, ch5: ui5};
-const drawn: Record<string, (p: {u: number}) => JSX.Element> = {ch1: Prompt, ch3: Circle, ch4: Agents, ch5: Voices, ch6: Export};
+// Chapters 3 and 4 are drawn whole; 1 and 5 begin drawn, 6 ends drawn.
+const clips: Record<string, string> = {intro: uiIntro, ch1: ui1, ch2: ui2, ch5: ui5, ch6: ui6};
+// The clean film laid over the recorded preview.
+const overlays: Record<string, string> = {intro: ovIntro, ch1: ov1};
+const drawn: Record<string, (p: {u: number}) => JSX.Element> = {ch1: Prompt, ch3: Circle, ch4: Agents, ch5: Voices, ch6: FileCard};
 const EXIT = 0.4;
 
-type SceneInfo = Shot & {id: string; kind: 'card' | 'chapter'; dur: number; card: number; exit: Exit; pre?: number; beat0?: number};
+type SceneInfo = Shot & {id: string; kind: 'card' | 'chapter'; dur: number; card: number; exit: Exit; pre?: number; post?: number; beat0?: number};
 
 function Chapter({info}: {info: SceneInfo}) {
   const t = useTime();
@@ -31,9 +36,10 @@ function Chapter({info}: {info: SceneInfo}) {
   const clip = clips[info.id];
   return (
     <>
-      {/* A drawn part first, from its first beat, then the clip. */}
-      {Drawn && t >= info.uiStart && t < info.uiStart + (info.pre ?? 0) + (clip ? 0 : 1) && <Drawn u={t - info.uiStart - (info.beat0 ?? 0)} />}
-      {clip && <Studio clip={clip} shot={{...info, uiStart: info.uiStart + (info.pre ?? 0)}} t={t} />}
+      {/* A drawn part first, from its first beat, then the clip; or the clip, then a drawn part. */}
+      {Drawn && !info.post && t >= info.uiStart && t < info.uiStart + (info.pre ?? 0) + (clip ? 0 : 1) && <Drawn u={t - info.uiStart - (info.beat0 ?? 0)} />}
+      {clip && <Studio clip={clip} ov={overlays[info.id]} shot={{...info, uiStart: info.uiStart + (info.pre ?? 0)}} t={t} />}
+      {Drawn && info.post ? t >= info.uiStart + info.uiLen && <Drawn u={t - info.uiStart - info.uiLen} /> : null}
       <Card n={n} t={t} card={info.card} exitLen={EXIT} exit={info.exit} />
     </>
   );

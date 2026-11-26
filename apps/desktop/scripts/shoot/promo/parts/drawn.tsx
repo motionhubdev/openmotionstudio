@@ -128,14 +128,19 @@ export function Agents({u}: {u: number}) {
   );
 }
 
-/** Chapter 5 (7 beats): three voices, large; the choice steps down and lands on one, which speaks (its waveform moves). */
+/** Chapter 6's last beats, after the editor exports: the file it made (Export from where the file comes). */
+export function FileCard({u}: {u: number}) {
+  return <Export u={u + b(2)} />;
+}
+
+/** Chapter 5 (7 beats): voices in four languages, large; the choice steps down and lands on one, which speaks (its waveform moves). */
 export function Voices({u}: {u: number}) {
   const inP = spring(u, -b(0.6), 0.6, 0.3);
   const on = u < b(1) ? -1 : u < b(3) ? Math.min(2, Math.floor(u / BEAT)) : 0;
   const chosen = u >= b(3);
   return (
     <div style={{position: 'absolute', inset: 0, background: PAPER}}>
-      <div style={{...PANEL, position: 'absolute', left: 410, top: 230, width: 1100, padding: 22, boxSizing: 'border-box',
+      <div style={{...PANEL, position: 'absolute', left: 410, top: 170, width: 1100, padding: 22, boxSizing: 'border-box',
         opacity: clamp01(inP * 1.5), transform: `translateY(${(1 - inP) * 70}px)`}}>
         {VOICES.map(([name, kind], i) => {
           const lit = i === on;

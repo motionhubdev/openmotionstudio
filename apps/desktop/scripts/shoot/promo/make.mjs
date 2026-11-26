@@ -43,6 +43,8 @@ const FULL = [0, 0, 1920, 1080];
 const HOME = [310, 150, 1500, 844];
 const STAGE = [390, 52, 1184, 666];
 const FILM = [432, 75, 1100, 619];
+// The preview's picture, exactly: the clean render is laid over it (the take's preview plays slow and stutters).
+const PREVIEW = [432, 75.7, 1100, 618.75];
 const AGENT = [0, 540, 864, 486];
 const LIBRARY = [415, 60, 1505, 847];
 const DIALOG = [192, 108, 1536, 864];
@@ -84,19 +86,25 @@ const samples = [['clay-world', 'Clay World'], ['night-diagram', 'Night Diagram'
 const DUBS = process.env.PROMO_DUBS ?? join(run, 'dubs');
 const dubs = ['zh', 'ja', 'ko'].map((lang) => [lang, join(DUBS, `${lang}.mp4`)]).filter(([, file]) => existsSync(file));
 // How long each language is heard: its first line, said whole (it starts 0.4 s in; the scene changes at 5 s).
-const LINE = {en: 3.9, zh: 3.2, ja: 5.0, ko: 4.0};
+const LINE = {en: 3.9, zh: 3.2, ja: 5.0, ko: 4.5};
 const chapters = [
-  {id: 'intro', exit: 'box', segs: [[m['play-look'] + 3.6, m['play-look'] + 8.0, 1, FULL]], tags: true},
+  {id: 'intro', exit: 'box', segs: [[m['play-look'] + 3.6, m['play-look'] + 8.0, 1, FULL, {ov: {src: SURFACE, from: 1.0}}]], tags: true},
   // The sentence and the agent at work are drawn (parts/prompt.tsx, PRE seconds); then the film it made, full frame, six
   // beats of each of its three scenes, cut on the beat.
   {id: 'ch1', exit: 'box', pre: 13, onBeat: true, cues: [[5, 'land'], [7, 'count'], [8.2, 'land'], [9, 'count'], [10.2, 'land'], [11, 'count'], [12.2, 'land']],
-    segs: [[0.4, 0.4 + 6 * BEAT_EXACT, 1, FULL, {src: FIRST}], [5.4, 5.4 + 6 * BEAT_EXACT, 1, FULL, {src: FIRST}],
-      [11.3, 11.3 + 6 * BEAT_EXACT, 1, FULL, {src: FIRST}]]},
+    // After the steps, the whole editor with the film playing in it; the camera glides into the picture until it fills the
+    // frame, and the film goes on full frame from the same moment.
+    segs: [[m['play-v1'], m['play-v1'] + 3.4, 1, FULL, {ov: {src: FIRST, from: 0}}], [3.4, 5.0, 1, FULL, {src: FIRST, move: 0.001}],
+      [5.4, 5.4 + 6 * BEAT_EXACT, 1, FULL, {src: FIRST}],
+      [11.3, 11.3 + 6 * BEAT_EXACT, 1, FULL, {src: FIRST}]],
+    cams: [[m['play-v1'] + 1.2, PREVIEW, 1.6]]},
   // Over the card's motions, then on the drop: the film restyled in motionhub's motions, two beats each, then in its own.
+  // The motions in the editor first: the catalogue, one opened, its reel playing.
   {id: 'ch2', exit: 'blinds',
-    segs: [...samples.map(([file, name, from]) => [from, from + 2 * BEAT_EXACT, 1, FULL, {src: file, label: {en: name, zh: name}}]),
+    segs: [[browse[0] - 1.8, browse[0] - 0.2, 1, LIBRARY], [reels[0], reels[0] + 1.7, 1, LIBRARY], ...samples.map(([file, name, from]) => [from, from + 2 * BEAT_EXACT, 1, FULL, {src: file, label: {en: name, zh: name}}]),
       [STYLED_AT, STYLED_AT + 4 * BEAT_EXACT, 1, FULL, {src: FINAL, label: {en: 'Its own look', zh: '它自己的风格'}}]],
-    drop: {seg: 0}},
+    lifts: [[reels[0] + 0.2, reels[0] + 1.6, [1478, 215, 420, 262], 0.6]],
+    drop: {seg: 2}},
   // Drawn (parts/drawn.tsx): each its length in beats (pre) and its effects (cues: [beat, role]).
   {id: 'ch3', exit: 'iris', pre: 13, cues: [[1, 'draw'], [3, 'move'], [7, 'land'], [9, 'move']], segs: []},
   {id: 'ch4', exit: 'wipe', card: 2.6, pre: 10,
@@ -105,7 +113,10 @@ const chapters = [
   {id: 'ch5', exit: 'wipe', pre: 7, cues: [[1, 'count'], [2, 'count'], [3, 'land']],
     segs: [[0.2, 0.2 + LINE.en, 1, FULL, {src: FINAL, lang: 'en', voice: {src: FINAL, from: 0.2}}],
       ...dubs.map(([lang, file]) => [0.2, Math.min(4.95, 0.2 + LINE[lang]), 1, FULL, {src: file, lang, voice: {src: file, from: 0.2}}])]},
-  {id: 'ch6', exit: 'box', pre: 8, cues: [[1, 'land'], [2, 'out'], [3, 'count']], segs: []},
+  // The whole editor exporting, the camera gliding in to the count; then the file (drawn, after the clip: post).
+  {id: 'ch6', exit: 'box', post: 6, cues: [[0, 'land'], [1, 'count']],
+    segs: [[m['export-start'] + 0.6, m['export-done'] + 1.0, {len: 4.2}, FULL]],
+    cams: [[m['export-start'] + 1.0, EXPORTING, 1.2]]},
 ];
 
 const media = join(here, 'media');
@@ -163,6 +174,19 @@ for (const c of chapters) {
   rmSync(join(media, `ui-${c.id}.mp4`), {force: true});
   if (segs.length) ff(...inputs, '-filter_complex', graph.join(';'), '-map', '[v]', '-an',
     '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '18', '-g', '15', join(media, `ui-${c.id}.mp4`));
+  // The clean film laid over the preview (a segment's ov: {src, from}): one clip as long as the chapter's, black between.
+  rmSync(join(media, `ov-${c.id}.mp4`), {force: true});
+  if (segs.some((s) => s.ov)) {
+    const ins = [], parts = [];
+    for (const s of segs) {
+      const k = ins.filter((x) => x === '-i').length;
+      if (s.ov) ins.push('-ss', s.ov.from.toFixed(3), '-t', (s.len + 0.5).toFixed(3), '-i', s.ov.src);
+      else ins.push('-f', 'lavfi', '-t', s.len.toFixed(3), '-i', 'color=c=black:s=1920x1080:r=30');
+      parts.push(`[${k}:v]trim=duration=${s.len.toFixed(3)},scale=1920:1080,setsar=1,setpts=PTS-STARTPTS,fps=30[o${parts.length}]`);
+    }
+    ff(...ins, '-filter_complex', parts.join(';') + `;${parts.map((_, i) => `[o${i}]`).join('')}concat=n=${parts.length}:v=1:a=0,format=yuv420p[v]`,
+      '-map', '[v]', '-an', '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '18', '-g', '15', join(media, `ov-${c.id}.mp4`));
+  }
   const uiLen = round(at);
   const card = c.card ?? CARD;
   const uiStart = card - EXIT;
@@ -170,10 +194,13 @@ for (const c of chapters) {
   // the chapter is onBeat (above) and its drawn part ends on one.
   const beat0 = c.pre && dropAt !== null ? round((((dropAt - (tRun + uiStart)) % BEAT_EXACT) + BEAT_EXACT) % BEAT_EXACT) : 0;
   const pre = c.pre ? beat0 + c.pre * BEAT_EXACT : 0;
+  // A drawn part after the clip (post, in beats).
+  const post = c.post ? c.post * BEAT_EXACT : 0;
   const cams = [...segs.map((s) => ({t: round(s.at), rect: s.rect, move: s.move})),
     ...(c.cams ?? []).map(([x, rect, move]) => ({t: clipTime(x), rect, move}))].filter((k) => k.t !== null).sort((p, q) => p.t - q.t);
   scenes.push({
-    id: c.id, kind: 'chapter', exit: c.exit, tags: !!c.tags, card, uiStart, pre: round(pre), beat0, cues: c.cues ?? [], uiLen, dur: round(uiStart + pre + uiLen), cams,
+    id: c.id, kind: 'chapter', exit: c.exit, tags: !!c.tags, card, uiStart, pre: round(pre), post: round(post), beat0, cues: c.cues ?? [], uiLen, dur: round(uiStart + pre + uiLen + post), cams,
+    ov: segs.filter((s) => s.ov).map((s) => [round(s.at), round(s.at + s.len)]),
     drop: c.drop !== undefined ? (typeof c.drop === 'object' ? round(segs[c.drop.seg].at) : clipTime(c.drop)) : undefined,
     lifts: (c.lifts ?? []).map(([a, b, rect, grow]) => ({a: clipTime(a), b: clipTime(b), rect, grow})).filter((l) => l.a !== null && l.b !== null),
     clicks: (c.clicks ?? []).map(([t, x, y]) => ({t: clipTime(t), x, y})).filter((k) => k.t !== null),
@@ -203,8 +230,9 @@ for (const s of scenes.filter((s) => s.kind === 'chapter')) {
   cues.push(`${(s.from + 0.02).toFixed(2)}:cut`, `${(s.from + 0.4).toFixed(2)}:land`,
     `${(s.from + s.uiStart).toFixed(2)}:move:${EXIT}`);
   for (const k of s.clicks) cues.push(`${(s.from + s.uiStart + s.pre + k.t).toFixed(2)}:land`);
-  if (s.pre) {
-    for (const [k, role] of s.cues) cues.push(`${(s.from + s.uiStart + s.beat0 + k * BEAT_EXACT).toFixed(2)}:${role}`);
+  if (s.pre || s.post) {
+    const base = s.from + s.uiStart + (s.post ? s.pre + s.uiLen : s.beat0);
+    for (const [k, role] of s.cues) cues.push(`${(base + k * BEAT_EXACT).toFixed(2)}:${role}`);
     if (s.uiLen) cues.push(`${(s.from + s.uiStart + s.pre).toFixed(2)}:cut`);
   }
 }

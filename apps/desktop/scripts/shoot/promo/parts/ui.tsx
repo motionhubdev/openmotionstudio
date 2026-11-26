@@ -19,6 +19,8 @@ export interface Shot {
   tags: boolean;
   /** Words over a stretch of the clip: a name (`text`), or the language it speaks (`lang`), shown in a row of them. */
   labels?: {t: number; len: number; text?: {en: string; zh: string}; lang?: string}[];
+  /** When the clean film shows over the preview, in clip time. */
+  ov?: [number, number][];
 }
 
 /** The camera at `u` seconds into the clip: scale and offset that frame its rectangle, punched in just after a cut, or
@@ -52,7 +54,7 @@ function Frame({k, tx, ty, children}: {k: number; tx: number; ty: number; childr
   );
 }
 
-export function Studio({clip, shot, t}: {clip: string; shot: Shot; t: number}) {
+export function Studio({clip, ov, shot, t}: {clip: string; ov?: string; shot: Shot; t: number}) {
   const u = t - shot.uiStart;
   if (u < 0) return null;
   const cam = camera(shot, u);
@@ -62,6 +64,9 @@ export function Studio({clip, shot, t}: {clip: string; shot: Shot; t: number}) {
   const base = (
     <Frame {...cam}>
       <Video src={clip} startAt={shot.uiStart} />
+      {/* The clean film over the preview's picture. */}
+      {ov && <div style={{position: 'absolute', left: 432, top: 75.7, width: 1100, height: 618.75, overflow: 'hidden',
+        opacity: (shot.ov ?? []).some(([a, b]) => u >= a && u < b) ? 1 : 0}}><Video src={ov} startAt={shot.uiStart} /></div>}
       {shot.clicks.map((c, i) => <Click key={i} u={u} c={c} k={cam.k} />)}
       {shot.tags && <Tags u={u} k={cam.k} />}
     </Frame>
