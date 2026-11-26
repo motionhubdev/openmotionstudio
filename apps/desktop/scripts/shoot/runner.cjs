@@ -16,18 +16,19 @@ const TEMP = process.env.SHOOT_TEMP;
 const USER_DATA = path.join(TEMP, 'user-data');
 const EXPORTED = path.join(TEMP, 'export.mp4');
 const W = 1920, H = 1080, ZOOM = 1.1;
-// What the take asks for: a short science explainer, the sun drawn on the left so the region (REGION) finds it.
+// What the take asks for: the website's first example, why the Moon has phases, short. The Moon stands in the middle
+// of the first scene so the region (REGION) finds it.
 const BRIEF = process.env.SHOOT_BRIEF ||
-  'A 15-second explainer: why the sky is blue. A sun on the left sends a white beam that splits into a rainbow of rays; ' +
-  'air molecules scatter the short blue waves far more than the red; so blue reaches our eyes from every direction. ' +
-  'Three scenes, one short line of narration each.';
+  'A 15-second explainer: why the Moon has phases. Scene 1: the Sun on the left lights exactly half of a large Moon in ' +
+  'the middle of the frame. Scene 2: seen from above, the Moon circles Earth and its lit half always faces the Sun. ' +
+  'Scene 3: from Earth we see more or less of that lit half: new, crescent, half, full. One short line of narration a scene.';
 const LOOK = process.env.SHOOT_LOOK || '';                         // typed in the motions' search, if any
-const BROWSE = (process.env.SHOOT_BROWSE || 'Origami,Depth Stage,Earth Block,Stage Light').split(',');  // opened in turn
-const LOOK_NAME = process.env.SHOOT_LOOK_NAME || 'Lab Notebook';  // the one applied
+const BROWSE = (process.env.SHOOT_BROWSE || 'Depth Stage,Earth Block,Pixel Quest,Stage Light').split(',');  // opened in turn
+const LOOK_NAME = process.env.SHOOT_LOOK_NAME || 'Clay World';  // the one applied: real 3D clay, for science and cycles
 const VOICE_WORDS = process.env.SHOOT_VOICE_WORDS || 'Trustworthy';  // typed in the voices' search
 const VOICE = process.env.SHOOT_VOICE || 'English_Trustworthy_Man';  // MiniMax's, chosen from what it finds
-const NOTE = 'Make the sun glow warmer, and let the rays fan out one by one.';
-const REGION = [0.05, 0.12, 0.42, 0.62]; // the sun and its beam, as fractions of the film: left, top, right, bottom
+const NOTE = 'Make the line between the lit and the dark half softer, and turn the Moon slowly.';
+const REGION = [0.3, 0.15, 0.7, 0.85]; // the Moon, as fractions of the film: left, top, right, bottom
 
 app.setPath('userData', USER_DATA);
 app.setAppPath(DESKTOP);
@@ -167,14 +168,18 @@ require(path.join(DESKTOP, 'out/main/index.js'));
       await press(wc, byLabel('Search motions'), 'search motions', 600);
       await type(wc, LOOK, 70);
     }
-    // The posters load from motionhub.
-    await sleep(3000);
+    // Every poster in sight has loaded from motionhub before anything is opened.
+    await until(() => js(wc, `(() => { const imgs = [...document.querySelectorAll('.library-grid img.poster')]; return imgs.length > 0 && imgs.every(i => i.complete && i.naturalWidth > 0); })()`), 'posters', 45000).catch(() => {});
+    await sleep(1500);
     const card = (name) => `() => { const b = [...document.querySelectorAll('.library-grid li button')].find(e => e.textContent.includes(${JSON.stringify(name)})); if (b) b.scrollIntoView({ block: 'nearest' }); return b; }`;
     for (const [i, name] of BROWSE.entries()) {
       if (!(await exists(wc, card(name)))) continue;
       await press(wc, card(name), name, 600);
       mark(`browse-${i + 1}`);
-      await sleep(2600);  // its reel plays
+      // Its reel, once it plays.
+      await until(() => js(wc, `(() => { const v = document.querySelector('.library-detail video'); return !!document.querySelector('.library-detail iframe.reel-frame') || (!!v && v.readyState >= 3 && v.currentTime > 0.3); })()`), 'reel', 15000).catch(() => {});
+      mark(`reel-${i + 1}`);
+      await sleep(2400);
     }
     await press(wc, card(LOOK_NAME), 'a look', 700);
     mark('look-open');
@@ -241,7 +246,7 @@ require(path.join(DESKTOP, 'out/main/index.js'));
       await press(wc, model, 'model', 600);
       mark('agents-models');
       await sleep(600);
-      for (const i of [1, 2, 3]) {
+      for (const i of [1, 2, 3, 4]) {
         const option = `() => document.querySelectorAll('.select-popup [role=option]')[${i}]`;
         if (!(await exists(wc, option))) break;
         await go(wc, option, 'model option', 350);
