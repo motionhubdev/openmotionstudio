@@ -75,6 +75,7 @@ const BEAT_EXACT = 60 / 130;
 // chapter 3's note, a real surface, shows: before is flat.mp4, after first.mp4.
 const FIRST = existsSync(join(run, 'flat.mp4')) ? join(run, 'flat.mp4') : join(run, 'export.mp4');
 const SURFACE = existsSync(join(run, 'first.mp4')) ? join(run, 'first.mp4') : join(run, 'export.mp4');
+// Chapter 1 shows the film as made, its Moon cratered (SURFACE); only chapter 3's before is the plain ball (FIRST).
 const FINAL = join(run, 'export.mp4');
 // The film itself restyled in motionhub's motions (renders of the take's project, each in one motion: PROMO_STYLED/<slug>.mp4),
 // all at the same moment, two beats each on the drop; then the film in its own look.
@@ -94,9 +95,9 @@ const chapters = [
   {id: 'ch1', exit: 'box', pre: 13, onBeat: true, cues: [[5, 'land'], [7, 'count'], [8.2, 'land'], [9, 'count'], [10.2, 'land'], [11, 'count'], [12.2, 'land']],
     // After the steps, the whole editor with the film playing in it; the camera glides into the picture until it fills the
     // frame, and the film goes on full frame from the same moment.
-    segs: [[m['play-v1'], m['play-v1'] + 3.4, 1, FULL, {ov: {src: FIRST, from: 0}}], [3.4, 5.0, 1, FULL, {src: FIRST, move: 0.001}],
-      [5.4, 5.4 + 6 * BEAT_EXACT, 1, FULL, {src: FIRST}],
-      [11.3, 11.3 + 6 * BEAT_EXACT, 1, FULL, {src: FIRST}]],
+    segs: [[m['play-v1'], m['play-v1'] + 3.4, 1, FULL, {ov: {src: SURFACE, from: 0}}], [3.4, 5.0, 1, FULL, {src: SURFACE, move: 0.001}],
+      [5.4, 5.4 + 6 * BEAT_EXACT, 1, FULL, {src: SURFACE}],
+      [11.3, 11.3 + 6 * BEAT_EXACT, 1, FULL, {src: SURFACE}]],
     cams: [[m['play-v1'] + 1.2, PREVIEW, 1.6]]},
   // Over the card's motions, then on the drop: the film restyled in motionhub's motions, two beats each, then in its own.
   // The motions in the editor first: the catalogue, one opened, its reel playing.
@@ -127,7 +128,7 @@ ff('-ss', '2.4', '-i', FIRST, '-frames:v', '1', join(media, 'moon-before.png'));
 ff('-ss', '2.4', '-i', SURFACE, '-frames:v', '1', join(media, 'moon-after.png'));
 ff('-ss', '2.4', '-i', FINAL, '-frames:v', '1', join(media, 'moon-final.png'));
 // The first cut's three scenes (chapter 1: what the agent built).
-for (const [k, at] of [[1, 2.4], [2, 7.4], [3, 12.5]]) ff('-ss', String(at), '-i', FIRST, '-frames:v', '1', '-vf', 'scale=704:-1', join(media, `scene-${k}.png`));
+for (const [k, at] of [[1, 2.4], [2, 7.4], [3, 12.5]]) ff('-ss', String(at), '-i', SURFACE, '-frames:v', '1', '-vf', 'scale=704:-1', join(media, `scene-${k}.png`));
 // The agents' own marks, as the Studio shows them.
 for (const icon of ['claude-code.png', 'codex.png']) copyFileSync(join(here, '../../../src/renderer/src/agent-icons', icon), join(media, icon));
 for (const [icon, as] of [['googlegemini.svg', 'gemini.svg'], ['deepseek.svg', 'deepseek.svg']]) copyFileSync(join(here, '../../../src/renderer/src/provider-icons', icon), join(media, as));

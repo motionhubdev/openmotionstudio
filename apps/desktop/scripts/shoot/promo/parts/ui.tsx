@@ -33,7 +33,9 @@ function camera(shot: Shot, u: number) {
     return {k, cx: x + w / 2, cy: y + h / 2};
   };
   let {k, cx, cy} = fit(rect);
-  if (move && i > 0) {
+  if (move !== undefined && move < 0.01) {
+    // A seamless cut (a move of no length): straight to the new rectangle, with no punch in.
+  } else if (move && i > 0) {
     const a = fit(shot.cams[i - 1]!.rect);
     const p = ease(u, t, t + move, 0, 1, Easing.inOutCubic);
     // The scale moves evenly in its logarithm, so the push in feels steady.
