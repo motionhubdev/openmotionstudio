@@ -31,9 +31,9 @@ const BROWSE = (process.env.SHOOT_BROWSE || 'Depth Stage,Earth Block,Pixel Quest
 const LOOK_NAME = process.env.SHOOT_LOOK_NAME ?? '';
 const VOICE_WORDS = process.env.SHOOT_VOICE_WORDS || 'Trustworthy';  // typed in the voices' search
 const VOICE = process.env.SHOOT_VOICE || 'English_Trustworthy_Man';  // MiniMax's, chosen from what it finds
-// A change the eye sees at once: the Moon twice the size, its halves named.
-const NOTE = 'Make the Moon twice as big, and label its two halves "Lit" and "Dark" in large type.';
-const REGION = [0.3, 0.15, 0.7, 0.85]; // the Moon, as fractions of the film: left, top, right, bottom
+// What a viewer of the first cut would ask: the dark half is lost in the sky, so the Moon's shape is too.
+const NOTE = 'The dark half melts into the night sky, so the Moon loses its shape. Give it a faint earthshine so the whole disc stays visible.';
+const REGION = [0.5, 0.15, 0.72, 0.85]; // the Moon's dark half, as fractions of the film: left, top, right, bottom
 
 app.setPath('userData', USER_DATA);
 app.setAppPath(DESKTOP);
@@ -168,7 +168,8 @@ require(path.join(DESKTOP, 'out/main/index.js'));
     mark('made');
     await sleep(2500);
     const frame = await until(() => rect(wc, `() => document.querySelector('iframe[title="Film preview"]')`), 'film frame');
-    await playFromStart(wc, frame, 'play-v1', 4500);
+    // The first cut, played through: the whole explainer, made from one sentence.
+    await playFromStart(wc, frame, 'play-v1', 15500);
     await sleep(600);
 
     // 2. A look from motionhub, applied by the agent.
