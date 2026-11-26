@@ -51,8 +51,10 @@ export function Card({n, t, card, exitLen, exit}: {n: number; t: number; card: n
       <>
         {Array.from({length: strips}, (_, i) => {
           const q = ease(t, card - exitLen + i * 0.035, card - 0.04 * (strips - 1 - i) * 0.3, 0, 1, Easing.inOutCubic);
-          const top = (i * 100) / strips, bottom = 100 - ((i + 1) * 100) / strips;
-          return <div key={i}>{sheet(`inset(${top}% 0 ${bottom}% 0)`, `translateX(${(i % 2 ? 1 : -1) * q * 2000}px)`)}</div>;
+          // Each strip overlaps the next by 2 px, so no seam shows the picture beneath while they wait to go (the film is
+          // often seen scaled down, where an edge falls between pixels).
+          const top = Math.max(0, (i * 1080) / strips - 2), bottom = Math.max(0, 1080 - ((i + 1) * 1080) / strips - 2);
+          return <div key={i}>{sheet(`inset(${top}px 0 ${bottom}px 0)`, `translateX(${(i % 2 ? 1 : -1) * q * 2000}px)`)}</div>;
         })}
       </>
     );

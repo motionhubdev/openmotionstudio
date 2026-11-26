@@ -9,8 +9,7 @@
 // once a language with `oms render` and lays the music and the take's narration under it with ffmpeg.
 //
 // MUSIC is Cat Walk by Arulo (Mixkit free licence: https://mixkit.co/free-stock-music/ , track 371), not kept here. Its
-// first drop falls on the timeline's drop (the motions' samples), and the track is spliced to its second loud section so
-// it lasts the whole film.
+// first drop falls on the timeline's drop (the motions' samples), and it plays on from there, unspliced.
 // OMS names the oms command (default: this checkout's apps/cli/oms.mjs, run by node); ffmpeg is the one on the PATH.
 import {execFileSync} from 'node:child_process';
 import {copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync} from 'node:fs';
@@ -31,11 +30,10 @@ const m = Object.fromEntries(JSON.parse(readFileSync(join(run, 'marks.json'), 'u
 
 const CARD = 1.6;   // a title card, its exit included
 const EXIT = 0.4;   // the card's exit, over the Studio already playing beneath it
-// The track: 130 bpm. Its first drop is on a beat at 29.63 s; the first loud section ends on a bar at 57.23 s, the second
-// runs from its downbeat at 88.68 s to a bar at 110.76 s. The bed plays from the film's start to the end of the first,
-// then the second, then the first again from its drop, as long as the film needs.
+// The track: 130 bpm, 124 s, its first drop on a beat at 29.63 s. It is longer than the film, so it plays straight through
+// from where the drop puts it: a splice, however short its crossfade, is heard as the music starting again.
 const TRACK_DROP = 29.63;
-const PIECES = (start) => [[start, 57.23], [88.68, 110.76], [29.63, 57.23], [88.68, 118]];
+const PIECES = (start) => [[start, 123.9]];
 const END = 4.2;    // the closing card, held
 
 // Parts of the 1920x1080 take (x, y, w, h).
@@ -94,8 +92,8 @@ const chapters = [
   // beats of each of its three scenes, cut on the beat.
   {id: 'ch1', exit: 'box', pre: 13, onBeat: true, cues: [[5, 'land'], [7, 'count'], [8.2, 'land'], [9, 'count'], [10.2, 'land'], [11, 'count'], [12.2, 'land']],
     // After the steps, the whole editor with the film playing in it; the camera glides into the picture until it fills the
-    // frame, and the film goes on full frame from the same moment.
-    segs: [[m['play-v1'], m['play-v1'] + 3.4, 1, FULL, {ov: {src: SURFACE, from: 0}}], [3.4, 5.0, 1, FULL, {src: SURFACE, move: 0.001}],
+    // frame and stays there to the end of the first scene (no cut: the clean film over the preview plays on).
+    segs: [[m['play-v1'], m['play-v1'] + 5.0, 1, FULL, {ov: {src: SURFACE, from: 0}}],
       [5.4, 5.4 + 6 * BEAT_EXACT, 1, FULL, {src: SURFACE}],
       [11.3, 11.3 + 6 * BEAT_EXACT, 1, FULL, {src: SURFACE}]],
     cams: [[m['play-v1'] + 1.2, PREVIEW, 1.6]]},
@@ -129,6 +127,8 @@ ff('-ss', '2.4', '-i', SURFACE, '-frames:v', '1', join(media, 'moon-after.png'))
 ff('-ss', '2.4', '-i', FINAL, '-frames:v', '1', join(media, 'moon-final.png'));
 // The first cut's three scenes (chapter 1: what the agent built).
 for (const [k, at] of [[1, 2.4], [2, 7.4], [3, 12.5]]) ff('-ss', String(at), '-i', SURFACE, '-frames:v', '1', '-vf', 'scale=704:-1', join(media, `scene-${k}.png`));
+// OpenMotionStudio's own mark (chapter 1's drawn sentence).
+copyFileSync(resolve(here, '../../../resources/icon.svg'), join(media, 'oms.svg'));
 // The agents' own marks, as the Studio shows them.
 for (const icon of ['claude-code.png', 'codex.png']) copyFileSync(join(here, '../../../src/renderer/src/agent-icons', icon), join(media, icon));
 for (const [icon, as] of [['googlegemini.svg', 'gemini.svg'], ['deepseek.svg', 'deepseek.svg']]) copyFileSync(join(here, '../../../src/renderer/src/provider-icons', icon), join(media, as));
@@ -260,7 +260,7 @@ const pieces = PIECES(Math.max(0, trackAt));
 ff(...pieces.flatMap(() => ['-i', music]), '-filter_complex',
   pieces.map(([a, b], i) => `[${i}:a]atrim=start=${a.toFixed(3)}:end=${b},asetpts=PTS-STARTPTS[p${i}];`).join('') +
   pieces.slice(1).reduce((acc, _, i) => acc + `${i ? `[x${i}]` : '[p0]'}[p${i + 1}]acrossfade=d=0.06:c1=tri:c2=tri[x${i + 1}];`, '') +
-  `[x${pieces.length - 1}]adelay=${Math.round(lead * 1000)}:all=1,apad,atrim=duration=${total},` +
+  `${pieces.length > 1 ? `[x${pieces.length - 1}]` : '[p0]'}adelay=${Math.round(lead * 1000)}:all=1,apad,atrim=duration=${total},` +
   `afade=t=in:d=0.2,afade=t=out:st=${(total - 2.4).toFixed(3)}:d=2.4,volume=0.85,volume='${duck}':eval=frame[a]`,
   '-map', '[a]', '-t', String(total), '-ar', '48000', '-ac', '2', bed);
 const voice = join(media, 'narration.wav');

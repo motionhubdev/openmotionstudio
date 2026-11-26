@@ -37,7 +37,7 @@ export const AIS = ['Codex', 'Claude Code', 'Gemini', 'DeepSeek'];
 
 /** Chapter 1: the sentence typed and sent, and the agent at work on it. */
 export const PROMPT = {en: 'A 15-second explainer: why the Moon has phases.', zh: '15 秒讲解片：月亮为什么有阴晴圆缺？'};
-export const MAKING = {en: 'Claude Code is making it', zh: 'Claude Code 正在制作'};
+export const MAKING = {en: 'OpenMotionStudio is making it', zh: 'OpenMotionStudio 正在制作'};
 /** Its steps, and what they made: the film's lines (in English, the film's own language) and its check. */
 export const STEPS = [{en: 'Writes the script', zh: '写好脚本'}, {en: 'Builds 3 scenes', zh: '搭出 3 个场景'}, {en: 'Checks every frame', zh: '逐帧检查'}];
 export const SCRIPT = ['Sunlight always lights exactly half of the Moon.', 'As the Moon circles Earth, its lit half keeps facing the Sun.', 'From Earth, we see more or less of that lit half.'];

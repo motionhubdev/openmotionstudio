@@ -4,7 +4,7 @@
 import {Easing} from '@motionhub/runtime';
 import {CHECKED, MAKING, PROMPT, SCRIPT, STEPS} from './words';
 import {INK, LANG, MUTED, PAPER, SANS, VERMILION, clamp01, ease, spring} from './kit';
-import claude from '../media/claude-code.png';
+import oms from '../media/oms.svg';
 import scene1 from '../media/scene-1.png';
 import scene2 from '../media/scene-2.png';
 import scene3 from '../media/scene-3.png';
@@ -34,8 +34,8 @@ export function Prompt({u}: {u: number}) {
           <span style={{display: 'inline-block', width: 4, height: 66, marginLeft: 4, verticalAlign: -10, background: VERMILION, opacity: caret ? 1 : 0}} />
         </div>
         <div style={{display: 'flex', alignItems: 'center', marginTop: 26}}>
-          <img src={claude} style={{width: 40, height: 40, borderRadius: 10}} />
-          <span style={{font: `500 30px ${SANS}`, color: MUTED, marginLeft: 14}}>Claude Code</span>
+          <img src={oms} style={{width: 40, height: 40, borderRadius: 10}} />
+          <span style={{font: `500 30px ${SANS}`, color: MUTED, marginLeft: 14}}>OpenMotionStudio</span>
           <div style={{position: 'relative', marginLeft: 'auto', width: 92, height: 92, borderRadius: '50%', background: VERMILION, display: 'flex',
             alignItems: 'center', justifyContent: 'center', transform: `scale(${pressed})`, boxShadow: '0 12px 30px rgba(196,56,31,0.35)'}}>
             <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
@@ -67,7 +67,7 @@ function Making({u}: {u: number}) {
     <div style={{position: 'absolute', inset: 0, opacity: clamp01(u / 0.2)}}>
       <div style={{position: 'absolute', left: 0, right: 0, top: 210, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 24,
         transform: `translateY(${(1 - p) * 50}px)`}}>
-        <img src={claude} style={{width: 72, height: 72, borderRadius: 18}} />
+        <img src={oms} style={{width: 72, height: 72, borderRadius: 18}} />
         <span style={{font: `${zh ? 900 : 800} 68px ${SANS}`, color: INK, letterSpacing: zh ? 0 : '-0.02em'}}>{MAKING[LANG]}</span>
       </div>
       {STEPS.map((step, k) => {
