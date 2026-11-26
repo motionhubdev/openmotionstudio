@@ -43,6 +43,22 @@ Every key change to OpenMotionStudio, newest first, by date. What counts as key 
 - **Upgrade:** Write the player again with `oms player` to split the clips out of an existing folder.
 - **Refs:** ADR 0024, `apps/cli/web.ts`, `apps/cli/player.ts`, `apps/desktop/src/preview/footage.tsx`, `docs/tech/architecture.md`.
 
+## 2026-11-25 — The agent menu shows each agent's mark and Claude's model versions
+
+- **What:** The composer's agent menu leads each row with its mark: Claude Code's and Codex's own, and for the built-in agent the icon of the service its model is reached through (Anthropic, DeepSeek, Gemini, MiniMax, Ollama, OpenRouter, LM Studio, from Simple Icons; initials for any other). Claude Code's models are named with their versions (Fable 5.2, Opus 5.5, Sonnet 5.5, Haiku 5.5). The website's hero film is an OMS film again, shot from an explainer of the Moon's phases (`apps/desktop/scripts/shoot/promo`).
+- **Why:** In the menu the agents were names alone, hard to tell apart at a glance, and "Opus" did not say which Opus.
+- **Breaking:** None.
+- **Upgrade:** Nothing. The names follow what Claude Code's aliases run: change them in `CLAUDE_MODELS` when a new model ships.
+- **Refs:** `apps/desktop/src/renderer/src/assistant.tsx`, `apps/desktop/src/renderer/src/provider-logo.tsx`, `apps/desktop/src/renderer/src/provider-icons/`, `apps/desktop/src/main/agent/claude.ts`.
+
+## 2026-11-25 — Applying a motion new to the project restyles the film
+
+- **What:** Apply to the video, for a motion from motionhub the project does not hold yet, takes it into the project and then asks the agent to restyle the film with it, as it does for one already held. The website's hero film is shot again from one take through the whole Studio (describe, look, mark, voice, export) and cut into eight captioned chapters, in English and in Chinese (`apps/desktop/scripts/shoot`).
+- **Why:** The library asked the agent while the workspace still held the assistant disabled for the import, so the request was dropped: the motion was added and the film never changed. The shoot of the website's film found it.
+- **Breaking:** None.
+- **Upgrade:** Nothing.
+- **Refs:** `apps/desktop/src/renderer/src/project-view.tsx`, `apps/desktop/scripts/shoot/runner.cjs`, `apps/desktop/scripts/shoot/cut.py`.
+
 ## 2026-11-24 — oms 0.2.0
 
 - **What:** `@motionhub/oms` 0.2.0 on npm, with everything since 0.1.0: films play recorded clips (`<Video>`); `oms render` draws on the GPU where it can be and says which path it drew on (`OMS_RENDER_GPU=0` or `1` to choose); a frame's limit counts only the time the computer is awake, and a Chrome that does not answer when it is closed is killed; `oms pack` leaves out the project's dot-folders and names them; `oms font` cuts in the words a film imports from outside its folder.

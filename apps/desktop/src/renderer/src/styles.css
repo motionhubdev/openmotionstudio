@@ -543,6 +543,54 @@ button.status:hover {
   color: var(--muted);
 }
 
+/* The agent menu: each agent led by its own mark, its name over what it is. */
+.agent-menu [role='menuitemradio'] {
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+}
+
+.agent-menu .agent-row-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.agent-menu .agent-logo {
+  width: 26px;
+  height: 26px;
+}
+
+.agent-menu .agent-logo.codex {
+  padding: 4px;
+}
+
+.provider-logo {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--r-button);
+}
+
+/* The icons are drawn black on nothing: inverted, they are white on the brand colour. */
+.provider-logo > img {
+  width: 16px;
+  height: 16px;
+  filter: invert(1);
+}
+
+.menu .provider-logo.initials,
+.provider-logo.initials {
+  background: var(--s2);
+  border: 1px solid var(--line);
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 600;
+}
+
 .toast {
   position: fixed;
   right: 16px;

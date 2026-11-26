@@ -28,12 +28,15 @@ type Block = Anthropic.Beta.BetaContentBlockParam;
 type Notice = { text: string; error: boolean; need?: NoticeNeed };
 type Event = { type: string; subtype?: string; [key: string]: unknown };
 
-/** Claude Code's aliases for the latest model of each family; a full model name works as well. */
+/**
+ * Claude Code's aliases for the latest model of each family; a full model name works as well. Each is named with the
+ * version it runs today: an alias moves to its family's newest model, so the names change when a new one ships.
+ */
 export const CLAUDE_MODELS: AgentModel[] = [
-  { id: 'fable', name: 'Fable', efforts: CLAUDE_EFFORTS },
-  { id: 'opus', name: 'Opus', efforts: CLAUDE_EFFORTS },
-  { id: 'sonnet', name: 'Sonnet', efforts: CLAUDE_EFFORTS },
-  { id: 'haiku', name: 'Haiku', efforts: CLAUDE_EFFORTS },
+  { id: 'fable', name: 'Fable 5.2', efforts: CLAUDE_EFFORTS },
+  { id: 'opus', name: 'Opus 5.5', efforts: CLAUDE_EFFORTS },
+  { id: 'sonnet', name: 'Sonnet 5.5', efforts: CLAUDE_EFFORTS },
+  { id: 'haiku', name: 'Haiku 5.5', efforts: CLAUDE_EFFORTS },
 ];
 
 /**
