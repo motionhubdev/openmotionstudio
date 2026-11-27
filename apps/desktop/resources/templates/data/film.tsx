@@ -1,4 +1,4 @@
-import { Film, Scene, Layer, Line, useTime, interpolate, Easing } from '@motionhub/runtime';
+import { Film, Scene, Layer, Line, Sound, useTime, interpolate, Easing } from '@motionhub/runtime';
 import inter from './media/Inter.woff2';
 
 export const film = { width: 1920, height: 1080, fps: 30 };
@@ -100,6 +100,8 @@ function Latest() {
 export default function Main() {
   return (
     <Film>
+      {/* One cue for each thing the picture does, made with oms sound (media/effects-licence.txt). */}
+      <Sound src="media/effects.mp3" />
       <Layer id="ground">
         <Ground />
       </Layer>

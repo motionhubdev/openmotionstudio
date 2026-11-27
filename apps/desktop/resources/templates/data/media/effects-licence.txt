@@ -1,0 +1,6 @@
+effects.mp3: this film's sound effects, one cue for each thing the picture does (a word or a bar landing, a cut, a
+stroke drawn), rendered by `oms sound` from the sound OpenMotionStudio synthesises itself (@motionhub/runtime/sound:
+oscillators and noise, no samples or recordings). It was made for this template, as part of OpenMotionStudio, under the
+Apache License 2.0 (https://www.apache.org/licenses/LICENSE-2.0); use it in your films freely.
+
+Change the picture's timing and the cues no longer match: ask the agent to make the effects again (oms sound).

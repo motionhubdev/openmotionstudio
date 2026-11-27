@@ -150,8 +150,9 @@ again when the one there is smaller, and read back as a data URL when Home lists
 A template is a folder of `resources/templates/<id>/`: its `film.tsx` and every file it plays (`media/`, with a
 licence beside each face and track, and `voice/` for the narrated one), copied whole into a fresh workspace project, so
 the copy looks and sounds the same on every computer as Home's video of it. The four are `EXAMPLES` in
-`src/main/examples.ts`, each a different capability: kinetic type, a narrated explainer with word-lit captions, a data
-story with its source on screen, and a film timed to the beats of a `<Sound>`. The explainer ships its narration's clips in `voice/`, which
+`src/main/examples.ts`, each a different capability, and each with sound: kinetic type and a data story with its source
+on screen, both with effects made by `oms sound`, a narrated explainer with word-lit captions, and a film timed to the
+beats of a `<Sound>`. The explainer ships its narration's clips in `voice/`, which
 the preview core reads from the project as it reads any narration, so it speaks with no voice provider set up; its
 `<Film voice>` is `recording:template`, a take no provider speaks over. Home plays each template as a video the Studio's
 own export made of it: `pnpm templates` (`scripts/render-templates.mjs`) drives the built app in a hidden window with
