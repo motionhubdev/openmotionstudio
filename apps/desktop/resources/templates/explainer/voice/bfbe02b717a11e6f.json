@@ -1,0 +1,27 @@
+{
+  "text": "Sunlight enters a raindrop.",
+  "voice": "recording:template",
+  "seconds": 1.896,
+  "words": [
+    {
+      "text": "Sunlight",
+      "start": 0.05,
+      "end": 0.525
+    },
+    {
+      "text": "enters",
+      "start": 0.525,
+      "end": 0.862
+    },
+    {
+      "text": "a",
+      "start": 0.862,
+      "end": 0.925
+    },
+    {
+      "text": "raindrop.",
+      "start": 0.925,
+      "end": 1.7
+    }
+  ]
+}

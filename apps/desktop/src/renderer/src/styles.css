@@ -6120,17 +6120,19 @@ input.switch:disabled {
   padding: 16px 16px 4px;
 }
 
-/* A template's film as the Studio exported it, drawn at its own 16:9. */
+/* A template's film as the Studio exported it: a card shows it whole in a 16:9 box, the stage at its own shape. */
 .template-picture video,
 .template-art video {
   display: block;
   width: 100%;
   aspect-ratio: 16 / 9;
-  object-fit: cover;
+  object-fit: contain;
   background: var(--stage);
 }
 
 .template-picture video {
+  aspect-ratio: var(--frame);
+  max-height: 72vh;
   border-radius: var(--r-control);
 }
 

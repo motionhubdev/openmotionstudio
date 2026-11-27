@@ -147,14 +147,19 @@ folder that is gone stays, marked missing. A project's cover is not in the libra
 written to the project's own `.motion-studio/cover.jpg` (its long side 1280 px) when the timeline's stills are made, or
 again when the one there is smaller, and read back as a data URL when Home lists the library.
 
-Home plays each bundled template as a video the Studio's own export made of it: `pnpm templates`
-(`scripts/render-templates.mjs`) drives the built app in a hidden window with an isolated profile, exports every
-template, and keeps a 960 px MP4 without sound and a poster frame per template in `src/renderer/src/templates/`, which
-the renderer bundles; `manifest.json` there holds each template's `film.tsx` hash, and `examples.test.ts` fails when a
-template changed without being rendered again. The files are rendered on a developer's machine and committed (about
-250 KB in all): CI does not render them. A template draws in Inter, its own face: the app ships its Latin variable
-face and its licence (OFL) in `resources/fonts/`, a template copy gets both in its `media/`, and its `film.tsx` imports
-the face and declares it, so the film, its export and Home's video look the same on every computer.
+A template is a folder of `resources/templates/<id>/`: its `film.tsx` and every file it plays (`media/`, with a
+licence beside each face and track, and `voice/` for the narrated one), copied whole into a fresh workspace project, so
+the copy looks and sounds the same on every computer as Home's video of it. The six are `EXAMPLES` in
+`src/main/examples.ts`, each a different capability: kinetic type, a 9:16 launch film of the Studio's own screens, a
+narrated explainer with word-lit captions, a data story with its source on screen, a cut of a screen recording with
+`<Video>`, and a film timed to the beats of a `<Sound>`. The explainer ships its narration's clips in `voice/`, which
+the preview core reads from the project as it reads any narration, so it speaks with no voice provider set up; its
+`<Film voice>` is `recording:template`, a take no provider speaks over. Home plays each template as a video the Studio's
+own export made of it: `pnpm templates` (`scripts/render-templates.mjs`) drives the built app in a hidden window with
+an isolated profile, exports every template, and keeps a MP4 without sound (960 px on its long side) and a poster frame
+per template in `src/renderer/src/templates/`, which the renderer bundles; `manifest.json` there holds the hash of each
+template's whole folder, and `examples.test.ts` fails when any file of a template changed without being rendered
+again. The files are rendered on a developer's machine and committed (about 1 MB in all): CI does not render them.
 
 The preview core loads every face the page declares before it reports the film ready: the project's motions' faces
 (`build/fonts.css`) before the film's code, and the faces the film declares itself once its first frame is drawn, so

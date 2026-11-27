@@ -3,6 +3,14 @@
 Every key change to OpenMotionStudio, newest first, by date. What counts as key and the entry format are in
 `CLAUDE.md`, "The changelog".
 
+## 2026-11-27 — Six starter films, each showing what the Studio can do
+
+- **What:** Home's three templates, which were one film with three titles, are six distinct films: **Kinetic type** (one face's weight axis on a beat), **A launch in portrait** (9:16, built around the Studio's own screens), **A narrated explainer** (how a rainbow forms, in three steps, with its narration's clips in `voice/` and captions lit word by word; it speaks with no voice provider set up), **A story in numbers** (the United Nations' years to each billion people, counted to their real values with the source on screen), **Cut from footage** (a screen recording of the Studio trimmed and framed with `<Video>`) and **Cut to the beat** (a film timed to a CC0 track made for it, through `<Sound>`). Each is a folder of `apps/desktop/resources/templates/`, copied whole into the new project with its faces, clips, track and their licences. Home's detail page gives each its own shape (16:9 or 9:16), and a card rests on a film's frame at 1.5 s.
+- **Why:** The old templates showed none of what the Studio does; a person starting from one learns nothing about narration, captions, footage, sound or a portrait frame.
+- **Breaking:** None. Projects made from the old templates are independent copies and stay as they are.
+- **Upgrade:** Nothing.
+- **Refs:** `apps/desktop/src/main/examples.ts`, `apps/desktop/resources/templates/`, `apps/desktop/scripts/render-templates.mjs`.
+
 ## 2026-11-27 — Anonymous usage statistics, on unless turned off
 
 - **What:** A packaged Studio counts a fixed list of events in PostHog: the app starting, a project opened, a motion added from the hub, an agent turn (agent, outcome, model id, seconds, tool calls, tokens as an order of magnitude) and an export finished, failed or cancelled, with the Studio's version, system, chip and language. Under a random id kept in `settings.json`, with no profile kept and IP addresses dropped; never a path, a name, a brief, a prompt, a reply or a key. Settings → General → "Share anonymous usage statistics" turns it off.

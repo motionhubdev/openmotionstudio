@@ -1,0 +1,42 @@
+{
+  "text": "It reflects, and the colours fan out.",
+  "voice": "recording:template",
+  "seconds": 2.304,
+  "words": [
+    {
+      "text": "It",
+      "start": 0.05,
+      "end": 0.162
+    },
+    {
+      "text": "reflects,",
+      "start": 0.162,
+      "end": 0.7
+    },
+    {
+      "text": "and",
+      "start": 0.75,
+      "end": 0.862
+    },
+    {
+      "text": "the",
+      "start": 0.862,
+      "end": 0.95
+    },
+    {
+      "text": "colours",
+      "start": 0.95,
+      "end": 1.35
+    },
+    {
+      "text": "fan",
+      "start": 1.35,
+      "end": 1.625
+    },
+    {
+      "text": "out.",
+      "start": 1.625,
+      "end": 2.125
+    }
+  ]
+}

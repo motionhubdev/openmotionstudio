@@ -1,6 +1,6 @@
 # Design
 
-> **Status:** Current · **Updated:** 2026-11-25
+> **Status:** Current · **Updated:** 2026-11-27
 
 The Studio's visual system: its identity, colour, type, shape, icons, the workspace's layout, and the rules components follow.
 
@@ -198,8 +198,9 @@ shortcuts) and the content.
   window, shows its folder, or removes it from the list, saying that the files stay. A project whose folder is gone
   stays in the list, marked, with Locate project folder.
 - **Templates** are cards showing the film's poster frame, played from its start while the card is hovered or focused
-  (not with reduced motion). The picture is the template's film as the Studio's own export drew it, never a redrawing; a template sets its type in
-  Inter, which its copy carries in `media/`, so the copy looks as its video did. One opened plays on the stage as the editor's does (on ink, play, a seek, `mm:ss.cc`)
+  (not with reduced motion). The picture is the template's film as the Studio's own export drew it, never a redrawing; a template carries
+  its face (Inter) and every file it plays in its own folder, so the copy looks as its video did. A card shows a
+  portrait film whole on the stage's dark; an opened one plays at its own shape. One opened plays on the stage as the editor's does (on ink, play, a seek, `mm:ss.cc`)
   beside its description and **Use this template**, which copies it into a fresh workspace project; repeated names
   get numeric suffixes. A template's film words are the film's and are
   not translated.
