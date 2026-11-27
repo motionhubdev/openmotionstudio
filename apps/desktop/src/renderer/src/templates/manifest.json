@@ -14,5 +14,13 @@
   "music": {
     "seconds": 8,
     "files": "d8aa59e2d2d5efb3970bdfe6aa6275c466666a5744f4b390cc9ba1a3e81428d5"
+  },
+  "moon": {
+    "seconds": 10,
+    "files": "07a7d6d6ff7b19fd2f89a13ec7d1b4cf83abaaa0e76a3b6f520e002a3105359f"
+  },
+  "poem": {
+    "seconds": 10,
+    "files": "3ac1277f19b0caa66ccca9eed0927fb6056f1a34569e02bf7fe03483a8dcd0a7"
   }
 }

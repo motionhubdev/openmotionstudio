@@ -59,7 +59,8 @@ it('ships a licence beside every face and track a template plays', async () => {
   for (const example of EXAMPLES) {
     const files = await filesOf(join(TEMPLATES, example.id));
     for (const file of files.filter((f) => /^media\/.*\.(woff2|ttf|otf|mp3|wav|m4a|ogg)$/.test(f))) {
-      const stem = file.replace(/\.[^.]+$/, '');
+      // Its licence starts with its name, less a weight (`fonts/ma-shan-zheng-400.ttf`: `fonts/ma-shan-zheng-LICENSE.txt`).
+      const stem = file.replace(/\.[^.]+$/, '').replace(/-\d{3}$/, '');
       expect(files.some((f) => f !== file && f.startsWith(stem) && f.endsWith('.txt')), `${example.id}/${file}`).toBe(true);
     }
   }

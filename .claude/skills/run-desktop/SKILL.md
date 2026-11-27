@@ -72,7 +72,7 @@ the developer build cannot expose an executable path incorrectly left inside `ap
 
 To look at the assistant without a model: `stills:9 ss:folded "click:.work-stills .more" ss:open`.
 
-Examples in the launcher: `kinetic`, `explainer`, `data`, `music`.
+Examples in the launcher: `kinetic`, `explainer`, `data`, `music`, `moon`, `poem`.
 
 ## Gotchas
 
