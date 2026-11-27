@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef } from 'react';
+import { useLayoutEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { Film, Scene, Layer, Line, Sound, useCompositionTime, useTime, interpolate, Easing, seededRandom } from '@motionhub/runtime';
 import inter from './media/Inter.woff2';
@@ -69,7 +69,8 @@ function Moon() {
   const t = useCompositionTime();
   const canvas = useRef<HTMLCanvasElement>(null);
   const world = useRef<{ renderer: THREE.WebGLRenderer; scene: THREE.Scene; camera: THREE.PerspectiveCamera; moon: THREE.Mesh } | null>(null);
-  useEffect(() => {
+  // Made before the first frame is drawn (layout effects run in order), so a still at any time shows the Moon.
+  useLayoutEffect(() => {
     const renderer = new THREE.WebGLRenderer({ canvas: canvas.current!, antialias: true, preserveDrawingBuffer: true, alpha: true });
     renderer.setSize(900, 900, false);
     const scene = new THREE.Scene();
