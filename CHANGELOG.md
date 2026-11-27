@@ -3,6 +3,14 @@
 Every key change to OpenMotionStudio, newest first, by date. What counts as key and the entry format are in
 `CLAUDE.md`, "The changelog".
 
+## 2026-11-27 — The oms skill guards claims, holds and the review more closely
+
+- **What:** The `oms` skill's craft guide adds starting beats for seven kinds of film (ad, tutorial, before and after, data story, offer, kinetic type, logo), rules for a hook, still text while it is read, few beats, one call to action, a held last picture and at most three flashes a second, and widens "Honest pictures": no invented quote, review, price, code, deadline, spec or feature, the product's real screens and supplied logo, generated people and documents said to be generated, before and after framed alike. Its review asks three more questions: every claim given, text still and clear, the story read with the sound off.
+- **Why:** Terminal agents could make a promo with a made-up review or price, or move words while they were meant to be read; the rules are adapted from openmotion's recipes (Apache-2.0).
+- **Breaking:** None.
+- **Upgrade:** Nothing for a skill installed by `npx skills add`; an `oms install` skill takes it from the next oms release.
+- **Refs:** `apps/cli/skills/oms/references/craft.md`, `apps/cli/skills/oms/references/review.md`.
+
 ## 2026-11-27 — Anonymous usage statistics, on unless turned off
 
 - **What:** A packaged Studio counts a fixed list of events in PostHog: the app starting, a project opened, a motion added from the hub, an agent turn (agent, outcome, model id, seconds, tool calls, tokens as an order of magnitude) and an export finished, failed or cancelled, with the Studio's version, system, chip and language. Under a random id kept in `settings.json`, with no profile kept and IP addresses dropped; never a path, a name, a brief, a prompt, a reply or a key. Settings → General → "Share anonymous usage statistics" turns it off.

@@ -10,6 +10,7 @@ Every picture you read stays in your conversation and is sent again with every l
 
 - 85 percent of the way through each line (`start + 0.85 * (end - start)`): what a line names has normally appeared by then.
 - Just after each scene starts (its base picture), and just before the film's end.
+- Frame 0, the cover: does it read as a thumbnail?
 - Times strictly before the film's end.
 
 ## The questions, as a viewer who has not seen the plan
@@ -19,6 +20,9 @@ Every picture you read stays in your conversation and is sent again with every l
 3. Is anything cut off, past an edge, under the caption, or overlapping by accident?
 4. Could a slide deck have made this?
 5. Does it keep the motion's rules (its MOTION.md, its Avoid list)?
+6. Is every word, figure, price, name and date on screen one the person or a source gave, and does anything generated say so (craft.md, "Honest pictures")?
+7. Is each text still while it is read, clear of faces, a product's label and anything moving, and does the last picture hold still?
+8. Does the story read with the sound off?
 
 ## Rounds
 
@@ -31,3 +35,5 @@ When your host can start a subagent, and the film is long or you cannot read ima
 > Look at each picture as a viewer who has not seen the plan. Answer in at most eight lines, worst first, each as `P0|P1 · t=<seconds> · where on screen · the problem → the exact change · what must stay`. P0 is what a viewer would notice at once (missing, unreadable, cut off, empty); P1 is what makes it look unfinished. With nothing to report, answer "no problems". No praise, no summary. Edit nothing.
 
 For a film of figures, a second fresh reviewer gets the sources and checks each figure against them, and the picture against the words, by the rules in craft.md, "Honest pictures".
+
+Questions 6 to 8 are adapted from the review lists of [openmotion](https://github.com/nexu-io/openmotion)'s recipes (Apache-2.0).
