@@ -42,6 +42,13 @@ Every key change to OpenMotionStudio, newest first, by date. What counts as key 
 - **Breaking:** A player folder of a film with a `<Video>` no longer plays opened from disk (a `file:` page cannot fetch its clips, and says so): serve the folder, or use `oms preview`. A film without clips is unchanged.
 - **Upgrade:** Write the player again with `oms player` to split the clips out of an existing folder.
 - **Refs:** ADR 0024, `apps/cli/web.ts`, `apps/cli/player.ts`, `apps/desktop/src/preview/footage.tsx`, `docs/tech/architecture.md`.
+## 2026-11-25 — General settings make the next update step clear
+
+- **What:** Studio updates shows the installed version, check result and next action together, with distinct checking, downloading, success and failure feedback. Automatic checks use the same switch as General's other immediate preferences, and the interface is translated in Chinese.
+- **Why:** The version, check button and result were separate rows, making the current state and next step hard to scan; the update preference also looked different from the switches beside it.
+- **Breaking:** None.
+- **Upgrade:** Nothing.
+- **Refs:** `apps/desktop/src/renderer/src/updates.tsx`, `apps/desktop/src/renderer/src/styles.css`, [design](docs/design.md).
 
 ## 2026-11-25 — The agent menu shows each agent's mark and Claude's model versions
 
