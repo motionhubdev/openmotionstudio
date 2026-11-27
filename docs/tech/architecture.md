@@ -1,6 +1,6 @@
 # Architecture
 
-> **Status:** Plan — steps 1 to 3 and 6 built, 7 under way; signing waits for its accounts · **Updated:** 2026-11-26
+> **Status:** Plan — steps 1 to 3 and 6 built, 7 under way; signing waits for its accounts · **Updated:** 2026-11-27
 
 The components of the Studio and what each owns, the film, the agent and its providers, what is expensive to change, and the order of work.
 
@@ -33,6 +33,7 @@ apps/desktop/
     project.ts         open / create a folder, whether it holds a film, the project library
     dev-control.ts     a dev build's control server, for a script to drive the Studio as its UI does (ADR 0023); not in a release
     oms-file.ts        a project as one film file (.oms) and back: `oms pack`, Home's Import and a .oms the system opens (ADR 0019)
+    statistics.ts      anonymous usage statistics, a fixed list of events sent to PostHog unless turned off (ADR 0025)
     history.ts         local checkpoints of the agent's source writes in .motion-studio/history.json, and restoring
                        one only when no file it touches was changed since (ADR 0007)
     examples.ts        the bundled starting films, copied into a fresh project in the default workspace on each click
@@ -450,6 +451,7 @@ panels, built and planned, each a projection of the project:
   folders hold them.
 - **Where a motion's files go**, since people's projects will hold motions installed that way.
 - **The provider settings and the keychain entries**, which people's machines hold.
+- **What usage statistics send** (ADR 0025): people trust the list of events not to grow into their work.
 
 Cheap to change at any time: every panel, the layout, the skills' wording, the presets.
 
@@ -537,7 +539,6 @@ What gates what: 2 gates everything; 3 gates nothing else; 7 needs nothing after
   another H.264 encoder (the platform's own, or OpenH264).
 - **Keys on Linux without a keyring**: kept today with Electron's fixed secret, which Models warns of. Whether to ask the
   person first, or refuse, is still open.
-- **Telemetry**: none is planned; crash reports, if any, opt-in.
 
 ## How done is verified
 

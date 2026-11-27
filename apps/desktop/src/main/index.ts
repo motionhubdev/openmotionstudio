@@ -19,6 +19,7 @@ import { answerNextSave, createWorkspace, saveAgent, type WorkspaceHost } from '
 import { usageFile } from './usage';
 import { WebContentsView } from 'electron';
 import { log, logFailure } from './log';
+import { count, useStatistics } from './statistics';
 
 // Chromium's graphics backend is selected before app readiness and applies to
 // every window: the UI and the film's preview (stills and exports are drawn in headless Chrome, ADR 0021).
@@ -535,6 +536,17 @@ if (!primary) {
     if (!quitting && !installingUpdate) void shutdown(() => app.quit());
   });
   void app.whenReady().then(async () => {
+    // Anonymous usage statistics (ADR 0025): a packaged build alone, and only while the person shares them.
+    useStatistics({
+      enabled: async () => app.isPackaged && (await providers().preferences()).shareUsageStatistics !== false,
+      id: () => providers().statisticsId(),
+      send: (url, init) => session.defaultSession.fetch(url, init),
+      version: app.getVersion(),
+      platform: process.platform,
+      arch: process.arch,
+      locale: () => app.getLocale(),
+    });
+    count({ event: 'app_started' });
     const updates = new StudioUpdates(app.getVersion(), (url, options) => session.defaultSession.fetch(url, options), state => {
       for (const id of surfaces.keys()) webContents.fromId(id)?.send(EVENTS.update, state);
     }, await createUpdateDownloader());
@@ -671,7 +683,7 @@ if (!primary) {
         if ([CHANNELS.openProject, CHANNELS.createProject, CHANNELS.openRecent, CHANNELS.openExample].includes(channel as never)) {
           let project: Project;
           let brief: string | null = null;
-          if (channel === CHANNELS.openRecent) { await openKnown(args[0], false); return null; }
+          if (channel === CHANNELS.openRecent) { await openKnown(args[0], false); count({ event: 'project_opened', how: 'recent' }); return null; }
           if (channel === CHANNELS.openExample) project = await openExample((await workspaceSettings()).path, args[0]);
           else if (channel === CHANNELS.createProject) {
             if (args[0] !== undefined) {
@@ -696,7 +708,9 @@ if (!primary) {
             if (result.canceled || !result.filePaths[0]) return null;
             project = await takeProject(result.filePaths[0], (await workspaceSettings()).path);
           }
-          openInMain(await editorFor(project, brief)); return null;
+          openInMain(await editorFor(project, brief));
+          count({ event: 'project_opened', how: channel === CHANNELS.openExample ? 'example' : channel === CHANNELS.createProject ? 'create' : 'open' });
+          return null;
         }
         const handler = workspace.handlers.get(channel);
         if (!handler) throw new Error('This Studio action is not available.');

@@ -69,6 +69,7 @@ import { describeReferences, readReferences } from './agent/references';
 import { filmSpans } from '../shared/spans';
 import { type FileNote, ProjectHistory, changesBetween, inProject, noteFiles, putBack } from './history';
 import { NO_TOKENS, type Spent, readUsage, recordUsage, totals } from './usage';
+import { count } from './statistics';
 import { randomUUID } from 'node:crypto';
 import { isAbsolute, relative, resolve } from 'node:path';
 import { ProviderStore, providers } from './providers';
@@ -506,11 +507,14 @@ export function createWorkspace(host: WorkspaceHost, changed: () => void = () =>
     dir: string,
     turn: { agent: AgentKind; usage: TurnUsage; notice?: { error: boolean }; stopped: boolean; tools: number; checkpoint?: string; costUsd?: number },
   ): Promise<void> {
+    const outcome = turn.stopped ? 'stopped' : turn.notice?.error ? 'failed' : 'done';
+    const { input, cacheRead, cacheWrite, output, reasoning } = turn.usage;
+    count({ event: 'agent_turn', agent: turn.agent, outcome, model: turn.usage.model, seconds: turn.usage.seconds, tools: turn.tools, tokens: input + cacheRead + cacheWrite + output + reasoning });
     try {
       await recordUsage(dir, {
         at: new Date().toISOString(),
         agent: turn.agent,
-        outcome: turn.stopped ? 'stopped' : turn.notice?.error ? 'failed' : 'done',
+        outcome,
         ...turn.usage,
         tools: turn.tools,
         ...(turn.costUsd !== undefined ? { costUsd: turn.costUsd } : {}),
@@ -870,7 +874,9 @@ export function createWorkspace(host: WorkspaceHost, changed: () => void = () =>
       const controller = new AbortController();
       working = controller;
       try {
-        return await useMotion(state.project.path, id);
+        const motion = await useMotion(state.project.path, id);
+        count({ event: 'motion_added', motion: motion.id });
+        return motion;
       } finally {
         if (working === controller) working = null;
       }
@@ -1097,6 +1103,7 @@ export function createWorkspace(host: WorkspaceHost, changed: () => void = () =>
       // Held while the export runs, so the computer does not sleep under it and the system does not throttle or suspend
       // a Studio whose window is hidden (App Nap on macOS): an export is meant to end with the person away.
       const awake = powerSaveBlocker.start('prevent-app-suspension');
+      const started = Date.now();
       try {
         const review = await reviewBuild(build, openStage, controller.signal, { bundle: join(buildDir(state.project.path), `film-${build.version}.js`), dir: state.project.path });
         const errors = review.issues.filter((issue) => issue.severity === 'error');
@@ -1118,7 +1125,11 @@ export function createWorkspace(host: WorkspaceHost, changed: () => void = () =>
         // Every stage drew on the one path found for this Chrome (ADR 0022), said with the export.
         const path = await drawPath(await studioChrome(join(app.getAppPath(), 'resources')));
         log('film.exported', { projectPath: state.project.path, gpu: path.gpu, renderer: path.renderer });
+        count({ event: 'export_finished', seconds: (Date.now() - started) / 1000 });
         return { file: result.filePath, gpu: path.gpu, renderer: path.renderer };
+      } catch (error) {
+        count({ event: controller.signal.aborted ? 'export_cancelled' : 'export_failed' });
+        throw error;
       } finally {
         powerSaveBlocker.stop(awake);
         if (exporting === controller) exporting = null;

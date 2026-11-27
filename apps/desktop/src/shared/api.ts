@@ -488,6 +488,8 @@ export interface StudioPreferences {
   /** The person has been told that closing the main window keeps tasks running. */
   backgroundNoticeSeen?: boolean;
   checkUpdatesAutomatically?: boolean;
+  /** Anonymous usage statistics (ADR 0025): shared unless the person turned them off. */
+  shareUsageStatistics?: boolean;
   theme: 'system' | 'light' | 'dark';
   language: 'system' | 'en' | 'zh-CN';
 }
