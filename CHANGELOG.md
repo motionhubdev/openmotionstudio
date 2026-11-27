@@ -3,6 +3,14 @@
 Every key change to OpenMotionStudio, newest first, by date. What counts as key and the entry format are in
 `CLAUDE.md`, "The changelog".
 
+## 2026-11-27 — Anonymous usage statistics, on unless turned off
+
+- **What:** A packaged Studio counts a fixed list of events in PostHog: the app starting, a project opened, a motion added from the hub, an agent turn (agent, outcome, model id, seconds, tool calls, tokens as an order of magnitude) and an export finished, failed or cancelled, with the Studio's version, system, chip and language. Under a random id kept in `settings.json`, with no profile kept and IP addresses dropped; never a path, a name, a brief, a prompt, a reply or a key. Settings → General → "Share anonymous usage statistics" turns it off.
+- **Why:** Without it the makers could not tell how the Studio is used or how often an export fails.
+- **Breaking:** None.
+- **Upgrade:** Nothing; to share nothing, turn the switch off in Settings → General.
+- **Refs:** [ADR 0025](docs/adr/0025-the-studio-counts-anonymous-usage-unless-turned-off.md), `apps/desktop/src/main/statistics.ts`.
+
 ## 2026-11-26 — oms 0.3.1
 
 - **What:** `@motionhub/oms` 0.3.1 on npm, with `oms media search` and `oms media use` (the entry below): pictures, clips and sounds a film may use commercially, from Wikimedia Commons and Openverse, with their credit in `media/credits.json`.

@@ -1,6 +1,6 @@
 # Code signing
 
-> **Status:** Current · **Updated:** 2026-11-19
+> **Status:** Current · **Updated:** 2026-11-27
 
 How OpenMotionStudio's installers are signed, who may sign them, and what the signed program sends over the network.
 
@@ -30,9 +30,12 @@ The program sends nothing to other networked systems unless the person using it 
 
 - it checks GitHub (`api.github.com`) for a newer release, which can be switched off in General settings;
 - it reads motionhub.dev's catalogue of motions and their posters;
-- it talks to the model, voice and agent providers the person sets up, with their own keys or sign-in.
+- it talks to the model, voice and agent providers the person sets up, with their own keys or sign-in;
+- it sends anonymous usage statistics to PostHog (`us.i.posthog.com`), which can be switched off in General settings:
+  a fixed list of events (the app starting, a project opened, a motion added, an agent turn, an export) under a random
+  id, never a path, a name, a prompt, a reply or a key ([ADR 0025](../adr/0025-the-studio-counts-anonymous-usage-unless-turned-off.md)).
 
-It collects no telemetry and sends nothing about the person or their projects to motionhub.
+It sends nothing else about the person or their projects.
 
 ## How CI signs a Windows release
 

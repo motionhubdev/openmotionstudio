@@ -657,6 +657,24 @@ function GeneralPane() {
           }}
         />
       </label>
+      <label className="preference-row">
+        <span>
+          <strong>{t('Share anonymous usage statistics')}</strong>
+          <span className="note">{t('Counts which features are used, such as exports and agent turns, to improve OpenMotionStudio. Never your files, prompts, replies or keys.')}</span>
+        </span>
+        <input
+          type="checkbox"
+          role="switch"
+          className="switch"
+          aria-label={t('Share anonymous usage statistics')}
+          checked={preferences.shareUsageStatistics !== false}
+          disabled={!ready || busy}
+          onChange={(event) => {
+            const enabled = event.target.checked;
+            void update(() => save({ shareUsageStatistics: enabled }));
+          }}
+        />
+      </label>
       {busy && <p role="status">{t('Saving…')}</p>}
       {saved && (
         <p role="status" className="test good">

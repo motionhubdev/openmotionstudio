@@ -34,6 +34,8 @@ export const zh: Record<string, string> = {
   "Light": "浅色",
   "Dark": "深色",
   "Launch at login": "开机自动启动",
+  "Share anonymous usage statistics": "分享匿名使用统计",
+  "Counts which features are used, such as exports and agent turns, to improve OpenMotionStudio. Never your files, prompts, replies or keys.": "统计导出、Agent 对话轮次等功能的使用次数，用于改进 OpenMotionStudio。绝不包含你的文件、提示词、回复或密钥。",
   "Preferences apply to all OpenMotionStudio windows and are saved immediately.": "偏好设置应用于所有 OpenMotionStudio 窗口，并自动保存。",
   "Choose how OpenMotionStudio looks.": "选择 OpenMotionStudio 的界面外观。",
   "Interface language. Film content and model responses are not changed.": "选择界面语言，不修改视频内容和模型回复。",
