@@ -1,6 +1,6 @@
 # Design
 
-> **Status:** Current · **Updated:** 2026-11-24
+> **Status:** Current · **Updated:** 2026-11-25
 
 The Studio's visual system: its identity, colour, type, shape, icons, the workspace's layout, and the rules components follow.
 
@@ -227,7 +227,8 @@ the film's own picture, and with reduced motion nothing animates or plays by its
 Settings (`settings.tsx`) is a page over Home or the editor, which stays mounted under it (its film paused): a back
 arrow and **Settings**, then a rail of sections (General, Model Providers, Coding Agents, Voice Services, Workspace,
 Diagnostics) beside the open one. General's choices (theme, language, launch at login) save as they are made and reach
-every window; a choice that applies at once is a switch, ink when on. A provider's form is saved explicitly; leaving it with edits holds the click and offers Save and continue,
+every window; a choice that applies at once is a switch, ink when on. Updates keeps the installed version, the check or
+download result and the next action together in one quiet card, with automatic checks as a switch below it. A provider's form is saved explicitly; leaving it with edits holds the click and offers Save and continue,
 Discard changes or Keep editing. A change made in another window is announced, never applied over the person's input.
 Workspace shows the default folder (the operating system's Documents folder plus `OpenMotionStudio`); Change folder
 saves a new location for future projects without moving existing ones. Diagnostics opens the app's local logs folder.

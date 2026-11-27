@@ -15,6 +15,7 @@ const listeners = new Set<() => void>();
 const providers = { active: 'test', weakKeyStorage: false, providers: [{id: 'test', name: 'English provider name', model: 'model-English', protocol: 'openai', baseUrl: 'https://example.com', images: true, hasKey: true, ready: true}] };
 const agents = {current: 'built-in', settings: {claude: {model: '', effort: '', fallbackModel: '', budgetUsd: null}, codex: {model: '', effort: ''}}, harnesses: [{kind: 'codex', name: 'Codex', state: 'signed-out', version: '1.0', hint: 'Sign in with your ChatGPT account'}]};
 let update: StudioUpdate = { installed: '0.1.0', available: null, dismissed: null, status: 'idle' };
+let automaticUpdates = true;
 let openedDownloads = 0;
 let openedLogs = 0;
 const updateListeners = new Set<(state: StudioUpdate) => void>();
@@ -32,9 +33,9 @@ const api = {
   openUpdateDownload: async () => { openedDownloads++; },
   showLogs: async () => { openedLogs++; },
   dismissUpdate: async (dismissed: string) => publishUpdate({ dismissed }),
-  preferences: async () => ({ theme: 'light', language, onboardingComplete: complete }),
+  preferences: async () => ({ theme: 'light', language, onboardingComplete: complete, checkUpdatesAutomatically: automaticUpdates }),
   onPreferencesChanged: (callback: () => void) => { listeners.add(callback); return () => listeners.delete(callback); },
-  savePreferences: async (input: any) => { if (input.onboardingComplete !== undefined) complete = input.onboardingComplete; if (input.language) language = input.language; listeners.forEach(callback => callback()); return {theme:'light',language,onboardingComplete:complete}; },
+  savePreferences: async (input: any) => { if (input.onboardingComplete !== undefined) complete = input.onboardingComplete; if (input.language) language = input.language; if (input.checkUpdatesAutomatically !== undefined) automaticUpdates = input.checkUpdatesAutomatically; listeners.forEach(callback => callback()); return {theme:'light',language,onboardingComplete:complete,checkUpdatesAutomatically:automaticUpdates}; },
   projectLibrary: async () => library, validateWorkspace: async () => {},
   openExample: async () => { created++; return null; },
   libraryAction: async (path: string, action: string) => { if (action === 'remove') library = library.filter(project => project.path !== path); },
@@ -70,8 +71,14 @@ const nav = async (label: string) => action(() => { const found = Array.from(doc
   assert(text().includes('导入项目') && text().includes('用数字讲故事'), 'Home not localized');
   await nav('通用');
   assert(text().includes('开机自动启动') && text().includes('简体中文'), 'General settings not localized');
+  const automatic = document.querySelector<HTMLInputElement>('input[role="switch"][aria-label="自动检查更新"]');
+  assert(automatic?.checked && document.querySelector('.update-panel')?.textContent?.includes('版本 0.1.0'), 'Update version or automatic-update switch missing');
+  await action(() => automatic!.click());
+  assert(!automaticUpdates && !automatic!.checked, 'Automatic-update switch did not save');
+  await action(() => automatic!.click());
+  assert(automaticUpdates && automatic!.checked, 'Automatic-update switch did not restore');
   await action(() => button('检查更新').click());
-  assert(text().includes('OpenMotionStudio 0.2.0 已可下载。'), 'Missing available version');
+  assert(document.querySelector('.update-panel')?.textContent?.includes('OpenMotionStudio 0.2.0 已可下载。'), 'Available version missing from update card');
   assert(document.querySelector('.update-notice'), 'Missing update notice');
   await action(() => button('下载更新').click());
   assert(openedDownloads === 1, 'Download action did not reach Studio');

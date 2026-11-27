@@ -615,7 +615,23 @@ button.status:hover {
 .update-actions {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
   gap: 8px;
+}
+
+.update-actions > small {
+  flex: 1 0 100%;
+  text-align: right;
+}
+
+.update-action-progress {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: inherit;
+  font-size: 12px;
+  white-space: nowrap;
 }
 
 .toast.bad {
@@ -5183,6 +5199,92 @@ kbd {
 
 .general-settings > .note {
   margin: 0 0 4px;
+}
+
+/* Updates: the installed version, its result and the next action read as one quiet card. */
+.update-panel {
+  margin-top: 16px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-panel);
+  background: var(--sheet);
+}
+
+.update-summary {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+}
+
+.update-product-icon {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+}
+
+.update-copy {
+  min-width: 0;
+}
+
+.update-version-line {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.update-version {
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--s2);
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 16px;
+  white-space: nowrap;
+}
+
+.update-status {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.update-status > svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+.update-status.good {
+  color: var(--good);
+}
+
+.update-status.bad {
+  color: var(--bad);
+}
+
+.update-status.available {
+  color: var(--text2);
+  font-weight: 500;
+}
+
+.update-settings .update-preference {
+  padding: 20px 0;
+}
+
+@media (max-width: 900px) {
+  .update-summary .update-actions {
+    grid-column: 2 / -1;
+    justify-content: flex-start;
+  }
+
+  .update-summary .update-actions > small {
+    text-align: left;
+  }
 }
 
 .general-settings .preference-row {
