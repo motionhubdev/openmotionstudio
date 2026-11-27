@@ -199,8 +199,7 @@ shortcuts) and the content.
   stays in the list, marked, with Locate project folder.
 - **Templates** are cards showing the film's poster frame, played from its start while the card is hovered or focused
   (not with reduced motion). The picture is the template's film as the Studio's own export drew it, never a redrawing; a template carries
-  its face (Inter) and every file it plays in its own folder, so the copy looks as its video did. A card shows a
-  portrait film whole on the stage's dark; an opened one plays at its own shape. One opened plays on the stage as the editor's does (on ink, play, a seek, `mm:ss.cc`)
+  its face (Inter) and every file it plays in its own folder, so the copy looks as its video did. One opened plays on the stage as the editor's does (on ink, play, a seek, `mm:ss.cc`)
   beside its description and **Use this template**, which copies it into a fresh workspace project; repeated names
   get numeric suffixes. A template's film words are the film's and are
   not translated.

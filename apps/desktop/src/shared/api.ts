@@ -435,9 +435,6 @@ export interface Example {
   name: string;
   line: string;
   seconds: number;
-  /** The film's frame, in pixels: Home draws the template at its own shape. */
-  width: number;
-  height: number;
 }
 export interface Asset {
   path: string;

@@ -90,8 +90,7 @@ if (code) {
   process.exit(code);
 }
 
-// Home shows a template at most a few hundred pixels wide: 960 px on its long side, no sound or subtitles, small enough
-// to bundle.
+// Home shows a template at most a few hundred pixels wide: 960 px, no sound or subtitles, small enough to bundle.
 const manifest = JSON.parse(await readFile(join(temp, 'manifest.json'), 'utf8'));
 for (const id of Object.keys(manifest)) manifest[id].files = await folderHash(join(desktop, 'resources', 'templates', id));
 await mkdir(out, { recursive: true });
@@ -101,10 +100,9 @@ const run = (args) => {
 };
 for (const id of Object.keys(manifest)) {
   const full = join(temp, `${id}.mp4`);
-  const small = "scale='if(gt(iw,ih),960,-2)':'if(gt(iw,ih),-2,960)'";
-  run(['-i', full, '-an', '-sn', '-vf', small, '-c:v', 'libx264', '-preset', 'slow', '-crf', '26',
+  run(['-i', full, '-an', '-sn', '-vf', 'scale=960:-2', '-c:v', 'libx264', '-preset', 'slow', '-crf', '26',
     '-pix_fmt', 'yuv420p', '-movflags', '+faststart', join(out, `${id}.mp4`)]);
-  run(['-ss', String(POSTER_AT), '-i', full, '-frames:v', '1', '-vf', small, '-q:v', '3', join(out, `${id}.jpg`)]);
+  run(['-ss', String(POSTER_AT), '-i', full, '-frames:v', '1', '-vf', 'scale=960:-2', '-q:v', '3', join(out, `${id}.jpg`)]);
   console.log(`Kept ${id}.mp4 and ${id}.jpg`);
 }
 await writeFile(join(out, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n');

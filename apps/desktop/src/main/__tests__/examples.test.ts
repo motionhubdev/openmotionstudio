@@ -24,7 +24,7 @@ async function filesOf(folder: string): Promise<string[]> {
     .sort();
 }
 
-it('builds every starting point as a normal film, at the frame Home says it has', async () => {
+it('builds every starting point as a normal film, at the 16:9 frame Home says it has', async () => {
   for (const example of EXAMPLES) {
     const project = await openExample(dir, example.id);
     let built!: (ok: boolean) => void;
@@ -38,7 +38,7 @@ it('builds every starting point as a normal film, at the frame Home says it has'
       await context.dispose();
     }
     const source = await readFile(join(project.path, 'film.tsx'), 'utf8');
-    expect(source, example.id).toContain(`width: ${example.width}, height: ${example.height}`);
+    expect(source, example.id).toContain('width: 1920, height: 1080');
   }
 });
 

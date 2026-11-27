@@ -7,14 +7,11 @@ import { join } from 'node:path';
 import type { Example, Project } from '../shared/api';
 import { createInWorkspace, projectAt } from './project';
 
-const WIDE = { width: 1920, height: 1080 };
 export const EXAMPLES: Example[] = [
-  { id: 'kinetic', name: 'Kinetic type', line: 'Words on a beat, in one face at every weight.', seconds: 8, ...WIDE },
-  { id: 'product', name: 'A launch in portrait', line: 'A 9:16 launch film built around the product’s own screens.', seconds: 9, width: 1080, height: 1920 },
-  { id: 'explainer', name: 'A narrated explainer', line: 'Three steps, a voice and captions lit word by word.', seconds: 10, ...WIDE },
-  { id: 'data', name: 'A story in numbers', line: 'Real figures that count up and land, with their source on screen.', seconds: 9, ...WIDE },
-  { id: 'footage', name: 'Cut from footage', line: 'A screen recording trimmed, framed and labelled.', seconds: 8, ...WIDE },
-  { id: 'music', name: 'Cut to the beat', line: 'Shapes and words that move on every beat of the track.', seconds: 8, ...WIDE },
+  { id: 'kinetic', name: 'Kinetic type', line: 'Words on a beat, in one face at every weight.', seconds: 8 },
+  { id: 'explainer', name: 'A narrated explainer', line: 'Three steps, a voice and captions lit word by word.', seconds: 10 },
+  { id: 'data', name: 'A story in numbers', line: 'Real figures that count up and land, with their source on screen.', seconds: 9 },
+  { id: 'music', name: 'Cut to the beat', line: 'Shapes and words that move on every beat of the track.', seconds: 8 },
 ];
 /** The templates' folders, as the app ships them. */
 export const TEMPLATES = join(__dirname, '..', '..', 'resources', 'templates');

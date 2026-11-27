@@ -70,10 +70,6 @@ const reducedMotion = () => matchMedia('(prefers-reduced-motion: reduce)').match
  */
 const play = (video: HTMLVideoElement | null) => void video?.play().catch(() => undefined);
 
-/** A frame's shape as people name it: 1920 × 1080 is 16:9. */
-const greatest = (a: number, b: number): number => (b ? greatest(b, a % b) : a);
-const shape = ({ width, height }: Example) => `${width / greatest(width, height)}:${height / greatest(width, height)}`;
-
 /** A template's film on the stage, as the editor plays a film: on ink, with play, a seek and the time. */
 function TemplatePlayer({ example }: { example: Example }) {
   const { t } = usePreferences();
@@ -95,7 +91,7 @@ function TemplatePlayer({ example }: { example: Example }) {
   }, [playing]);
   return (
     <div className="stage template-stage" role="group" aria-label={t('Template preview')}>
-      <div className="template-picture" style={{ '--frame': `${example.width} / ${example.height}` } as CSSProperties}>
+      <div className="template-picture">
         <video
           ref={video}
           src={rendered(example.id, 'mp4')}
@@ -760,7 +756,7 @@ export function Home({ providers, workspace, tasks, examples, busy, error, revis
             <h1>{t(preview.name)}</h1>
             <p>{t(preview.line)}</p>
             <p className="note">
-              {t('{0} seconds', { 0: preview.seconds })} · {shape(preview)} · {t('No model required')}
+              {t('{0} seconds', { 0: preview.seconds })} · 16:9 · {t('No model required')}
             </p>
             <p className="note">{t('Using a template creates a separate project in your workspace.')}</p>
             <button className="button primary" disabled={disabled} onClick={() => void onAction(() => window.studio.openExample(preview.id))}>

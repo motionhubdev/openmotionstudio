@@ -3,7 +3,7 @@
 //
 //   node drive.mjs <shots-dir> [example | folder | file.oms] [step ...]
 //
-// example: kinetic (default), product, explainer, data, footage or music; or the path of a project folder, opened where it is; or a film file
+// example: kinetic (default), explainer, data or music; or the path of a project folder, opened where it is; or a film file
 // (.oms), taken in through Home's Import project into the throwaway workspace. Steps run in order:
 //   ss:<name>        screenshot to <shots-dir>/<name>.png
 //   key:<key>        press a key (Playwright names: Space, ArrowRight, Backslash, BracketLeft, ...)
