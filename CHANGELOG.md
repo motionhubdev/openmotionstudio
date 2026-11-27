@@ -5,11 +5,11 @@ Every key change to OpenMotionStudio, newest first, by date. What counts as key 
 
 ## 2026-11-27 — The oms skill guards claims, holds and the review more closely
 
-- **What:** The `oms` skill's craft guide adds starting beats for seven kinds of film (ad, tutorial, before and after, data story, offer, kinetic type, logo), rules for a hook, still text while it is read, few beats, one call to action, a held last picture and at most three flashes a second, and widens "Honest pictures": no invented quote, review, price, code, deadline, spec or feature, the product's real screens and supplied logo, generated people and documents said to be generated, before and after framed alike. Its review asks three more questions: every claim given, text still and clear, the story read with the sound off.
+- **What:** The `oms` skill's craft guide adds starting beats for seven kinds of film (ad, tutorial, before and after, data story, offer, kinetic type, logo), rules for a hook, still text while it is read, few beats, one call to action, a held last picture and at most three flashes a second, and widens "Honest pictures": no invented quote, review, price, code, deadline, spec or feature, the product's real screens and supplied logo, generated people and documents said to be generated, before and after framed alike. Its review asks three more questions: every claim given, text still and clear, the story read with the sound off. Every agent, the Studio's included, now holds these claims, legibility and the flash limit whatever motion a film draws in; a motion still decides durations, easings and layout ([ADR 0026](docs/adr/0026-a-motion-decides-the-look-not-what-a-film-may-claim.md)).
 - **Why:** Terminal agents could make a promo with a made-up review or price, or move words while they were meant to be read; the rules are adapted from openmotion's recipes (Apache-2.0).
 - **Breaking:** None.
 - **Upgrade:** Nothing for a skill installed by `npx skills add`; an `oms install` skill takes it from the next oms release.
-- **Refs:** `apps/cli/skills/oms/references/craft.md`, `apps/cli/skills/oms/references/review.md`.
+- **Refs:** `apps/cli/skills/oms/references/craft.md`, `apps/cli/skills/oms/references/review.md`, `apps/desktop/src/main/film/film.md`, [ADR 0026](docs/adr/0026-a-motion-decides-the-look-not-what-a-film-may-claim.md).
 
 ## 2026-11-27 — Anonymous usage statistics, on unless turned off
 

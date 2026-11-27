@@ -452,8 +452,10 @@ panels, built and planned, each a projection of the project:
 - **Where a motion's files go**, since people's projects will hold motions installed that way.
 - **The provider settings and the keychain entries**, which people's machines hold.
 - **What usage statistics send** (ADR 0025): people trust the list of events not to grow into their work.
+- **What a motion may replace in the skill** (ADR 0026): its look and timing, never what a film may claim, what must
+  be readable or the flash limit; motion authors write their rules on that line.
 
-Cheap to change at any time: every panel, the layout, the skills' wording, the presets.
+Cheap to change at any time: every panel, the layout, the skills' wording (within ADR 0026), the presets.
 
 ## Order of work
 

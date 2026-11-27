@@ -1,5 +1,7 @@
 # Craft: script, motion, pacing, sound, honesty
 
+Two kinds of rule. What a film may claim ("Honest pictures"), what must be readable, no more than three flashes a second, and the shape of its story (hook, beats, one call to action) hold in every film, whatever its motion. Durations, easings, layouts and words a beat are defaults: in a motion, its `tokens.json` and `MOTION.md` replace them.
+
 ## Script
 
 - Write for 75 to 90 percent of the length asked, not a fraction of it. Read at about 2.8 words a second in English and 4.5 characters a second in Chinese: 45 seconds is about 120 words, in four or five scenes. A narrated film is longer than its speech: each voiced line waits 0.4 s before it, and each scene holds a second after its last, so count those in (eight lines in four scenes add about 7 s).
@@ -12,13 +14,13 @@
 - **The stage is in use as soon as a scene has entered.** By half a second in every layer draws its base state (low bars, a faint curve, the outline); empty axes or a frame waiting for a word are not a picture, and a frame with only a title is unfinished.
 - **One main change a line**, when that line names its subject. Without word times, place it in the line's share of the scene (its `at`, or its slot when the scene's lines share it evenly). A fact is never on screen before its line starts.
 - **Motion means something.** An arrival says "here is a new thing", a growth "this quantity", a slide or morph "this became that", a draw "this leads there". A quantity changes by counting up or growing a bar: `Math.round(interpolate(t, [a, b], [0, 76], {easing: Easing.outQuart, clamp: true}))`. Motion that pulls the eye from what the line is about is decoration; leave it out.
-- **Ease everything**, and clamp: pass `easing` and `clamp: true` to every `interpolate`, with one family of easings through the film. Only time itself moves at a constant speed (`Easing.linear`).
+- **Ease everything**, and clamp: pass `easing` and `clamp: true` to every `interpolate`, with the motion's easings, or one family of them through a film in no motion. Only time itself moves at a constant speed (`Easing.linear`).
 - **Scenes enter**: fade or rise each scene's layers over about half a second (`interpolate(t, [0, 0.5], …)`), from the same ground: keep a film-level ground layer the scenes' colour, so a cut never flashes another one. The cover is the exception (Pacing).
 - **One focus at a time.** The rest stays quiet, or dims the same way each time. What a line replaces leaves before the new thing arrives; before and after share a frame only when the line compares them; things that merge go into each other without overprinting.
 - **Every object has a reason** the lines give, and goes once that reason is past. A layer lives for its whole scene, so "goes" is a fade inside it.
 - **A picture continues; it is not redrawn.** One that runs over several lines is one layer whose numbers move with time. One that carries into the next scene is the same component there, starting where the last scene left it, or a layer in `<Film>`.
-- **Still while read.** Words and figures are sharp and still while they are read: blur, wobble, glitch and drift settle before the hold, and nothing moving (a streak, a cursor, a prop, a shape's edge) crosses them. A cursor reaches its target before it clicks; typing ends before the cut.
-- **A comparison in turn**: the second bar grows once the first has settled, on the same axis; two aligned columns, never two tables.
+- **Still while read.** Words and figures are readable while they are read: whatever moves them settles enough to read before the hold (a motion's own texture may stay), and nothing moving (a streak, a cursor, a prop, a shape's edge) crosses them. A cursor reaches its target before it clicks; typing ends before the cut.
+- **A comparison in turn**: the second bar grows once the first has settled, on the same axis; drawn with the motion's comparison when it has one, else as two aligned columns, never two tables.
 - **On the beat**: a word or figure lands on its spoken word (within 0.1 s, by `useLine`); a cut set to music, within two frames of a beat.
 - **No more than three flashes a second**, and only for a moment: faster flashing is a seizure risk.
 - **Show the thing, not a label for it**: a command with what it prints, a file by its contents, a formula with each term lit as it is named, a feeling by a metaphor, a familiar product or kind of thing beside its name.
@@ -75,4 +77,4 @@ A film's sound is a narration when the person asks for one (`oms voice`, below),
 - A calculation is labelled as one; an illustration says it is one.
 - A range that crosses its reference value is drawn hollow, not as a result.
 
-The kinds of film and several rules on holds and honesty are adapted from the recipes of [openmotion](https://github.com/nexu-io/openmotion) (Apache-2.0).
+The kinds of film and several rules on holds and honesty are adapted from the recipes of [openmotion](https://github.com/nexu-io/openmotion) (Apache-2.0); the offer's beats there follow iart.ai's [promo-video](https://github.com/iart-ai/ecommerce-video-skills/tree/main/skills/promo-video) skill (MIT).
