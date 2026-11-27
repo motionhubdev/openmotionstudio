@@ -1,0 +1,42 @@
+{
+  "text": "Every rainbow starts with sunlight and rain.",
+  "voice": "recording:template",
+  "seconds": 2.664,
+  "words": [
+    {
+      "text": "Every",
+      "start": 0.05,
+      "end": 0.325
+    },
+    {
+      "text": "rainbow",
+      "start": 0.325,
+      "end": 0.8
+    },
+    {
+      "text": "starts",
+      "start": 0.8,
+      "end": 1.063
+    },
+    {
+      "text": "with",
+      "start": 1.063,
+      "end": 1.225
+    },
+    {
+      "text": "sunlight",
+      "start": 1.225,
+      "end": 1.713
+    },
+    {
+      "text": "and",
+      "start": 1.713,
+      "end": 1.85
+    },
+    {
+      "text": "rain.",
+      "start": 1.85,
+      "end": 2.475
+    }
+  ]
+}

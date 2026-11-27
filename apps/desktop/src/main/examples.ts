@@ -8,12 +8,12 @@ import type { Example, Project } from '../shared/api';
 import { createInWorkspace, projectAt } from './project';
 
 export const EXAMPLES: Example[] = [
-  { id: 'kinetic', name: 'Kinetic type', line: 'Words on a beat, in one face at every weight.', seconds: 8 },
-  { id: 'explainer', name: 'A narrated explainer', line: 'Three steps, a voice and captions lit word by word.', seconds: 10 },
-  { id: 'data', name: 'A story in numbers', line: 'Real figures that count up and land, with their source on screen.', seconds: 9 },
-  { id: 'music', name: 'Cut to the beat', line: 'Shapes and words that move on every beat of the track.', seconds: 8 },
-  { id: 'ranking', name: 'A top five', line: 'A countdown from a table: change the items, and the bars follow.', seconds: 10 },
-  { id: 'event', name: 'An event announcement', line: 'Date, place, speakers and how to come, from one block of details.', seconds: 10 },
+  { id: 'kinetic', name: 'Kinetic type', line: 'Words on a beat, in one face at every weight.', seconds: 20 },
+  { id: 'explainer', name: 'A narrated explainer', line: 'Four steps, a voice and captions lit word by word.', seconds: 20 },
+  { id: 'data', name: 'A story in numbers', line: 'Real figures that count up and land, with their source on screen.', seconds: 20 },
+  { id: 'music', name: 'Cut to the beat', line: 'Shapes and words that move on every beat of the track.', seconds: 20 },
+  { id: 'ranking', name: 'A top five', line: 'A countdown from a table: change the items, and the bars follow.', seconds: 20 },
+  { id: 'event', name: 'An event announcement', line: 'Date, place, speakers and how to come, from one block of details.', seconds: 20 },
 ];
 /** The templates' folders, as the app ships them. */
 export const TEMPLATES = join(__dirname, '..', '..', 'resources', 'templates');

@@ -1,26 +1,26 @@
 {
   "kinetic": {
-    "seconds": 8,
-    "files": "1b6312e402884064d04d5a3398646ba0d6888931a9882ca18cf176c571952eb9"
+    "seconds": 20,
+    "files": "048e9968d67f2e7fb3174164a4e2c7c74b54dd0c6a1a49ce1636cb8d5ecffd82"
   },
   "explainer": {
-    "seconds": 10,
-    "files": "4d1362d2a2d44b4fed8412591f592f03b3ee3ae85e0c60e28c845eefdee46b47"
+    "seconds": 20,
+    "files": "69a7b0173b92b836965a4f67512b31f552f64e9edcf863a9f6ab4cac2220f39e"
   },
   "data": {
-    "seconds": 9,
-    "files": "65bc8ce4dbf671d43a554e74bf6c675838efe1cce974e08c7d6bea6b16c70516"
+    "seconds": 20,
+    "files": "e8d2ef9beb022cd525a8237027f2a6b7a8cbd8b5d0f817a9687a5f4fe3677b49"
   },
   "music": {
-    "seconds": 8,
-    "files": "d8aa59e2d2d5efb3970bdfe6aa6275c466666a5744f4b390cc9ba1a3e81428d5"
+    "seconds": 20,
+    "files": "82cf2bfa92feddee22f4079b47db3ce925cbe232f84b96ba3eea7d782100f683"
   },
   "ranking": {
-    "seconds": 10,
-    "files": "361a477545a63379509bd9609f8cf12a28d4a83bdc8e5d6715b2df23a9817112"
+    "seconds": 20,
+    "files": "8a16073b5d005cf99216b40ee1cb60a609298876d2301ee5cf95ef45a7385084"
   },
   "event": {
-    "seconds": 10,
-    "files": "4651f2311cd65092f0141a3f6908e56100ad9690806c6451c766a23db74797b7"
+    "seconds": 20,
+    "files": "a5a2d4273bca81eab04f08d5cb03e7cb7fe58d9e72695cf4645dd5b8fc34ef16"
   }
 }

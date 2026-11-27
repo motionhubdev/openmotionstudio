@@ -1,0 +1,9 @@
+bed.mp3: the film's bed, 20 s in G: rain on the opening and closing sky, a slow pad that moves with each step, a bell as each step begins; the film ducks it under the narration.
+It was made for this OpenMotionStudio template, synthesised from sine, saw and noise waves (no samples or recordings
+of anyone else's), and levelled to -16 LUFS.
+
+Source: https://github.com/motionhubdev/openmotionstudio (apps/desktop/resources/templates/)
+
+Licence: CC0 1.0 Universal. The OpenMotionStudio authors dedicate this track to the public domain: you may copy,
+change, distribute and use it, commercially too, without asking permission or giving credit.
+https://creativecommons.org/publicdomain/zero/1.0/

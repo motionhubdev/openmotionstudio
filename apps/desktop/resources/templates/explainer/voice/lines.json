@@ -1,8 +1,11 @@
 {
   "voice": "recording:template",
   "lines": {
-    "enter": "bfbe02b717a11e6f",
+    "sky": "8ed8fb3f02bd5219",
+    "enter": "5c9a9cfe225a7076",
     "bend": "bd35a5f84e9d04a0",
-    "fan": "d64c8c31347889cf"
+    "reflect": "5b5d6e32ad3bd2a0",
+    "leave": "580ee198aff80c44",
+    "arc": "46f3127db5e16385"
   }
 }

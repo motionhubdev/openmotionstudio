@@ -160,7 +160,7 @@ own export made of it: `pnpm templates` (`scripts/render-templates.mjs`) drives 
 an isolated profile, exports every template, and keeps a 960 px MP4 without sound and a poster frame
 per template in `src/renderer/src/templates/`, which the renderer bundles; `manifest.json` there holds the hash of each
 template's whole folder, and `examples.test.ts` fails when any file of a template changed without being rendered
-again. The files are rendered on a developer's machine and committed (about 900 KB in all): CI does not render them.
+again. The files are rendered on a developer's machine and committed (about 2 MB in all): CI does not render them.
 
 The preview core loads every face the page declares before it reports the film ready: the project's motions' faces
 (`build/fonts.css`) before the film's code, and the faces the film declares itself once its first frame is drawn, so

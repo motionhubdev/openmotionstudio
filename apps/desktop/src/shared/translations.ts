@@ -746,7 +746,7 @@ export const zh: Record<string, string> = {
   "Kinetic type": "动态文字",
   "Words on a beat, in one face at every weight.": "一款字体的全部字重，随节拍跳动的文字。",
   "A narrated explainer": "带旁白的讲解片",
-  "Three steps, a voice and captions lit word by word.": "三个步骤，一段旁白，字幕逐词点亮。",
+  "Four steps, a voice and captions lit word by word.": "四个步骤，一段旁白，字幕逐词点亮。",
   "A story in numbers": "用数字讲故事",
   "Real figures that count up and land, with their source on screen.": "真实数据逐步计数并落定，来源标注在画面上。",
   "Cut to the beat": "踩点剪辑",

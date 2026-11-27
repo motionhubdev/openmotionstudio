@@ -1,6 +1,7 @@
-beat.mp3: a four-bar loop at 120 beats a minute in A minor (A minor, F, C, G), 8 seconds and a short tail, a beat
-every 0.5 s from 0. It was made for OpenMotionStudio's "Cut to the beat" template, synthesised from sine, saw and noise
-waves (no samples or recordings of anyone else's), and levelled to -16 LUFS.
+beat.mp3: a 20-second track at 120 beats a minute in A minor (A minor, F, C, G), a beat every 0.5 s from 0, in five
+parts of two bars: an intro, a build with a riser, a drop, a breakdown on the pad alone, and an outro ending on a chord
+at 18 s. It was made for OpenMotionStudio's "Cut to the beat" template, synthesised from sine, saw and noise waves
+(no samples or recordings of anyone else's), and levelled to -16 LUFS.
 
 Source: https://github.com/motionhubdev/openmotionstudio (apps/desktop/resources/templates/music/)
 
