@@ -152,8 +152,8 @@ licence beside each face and track, and `voice/` for the narrated one), copied w
 the copy looks and sounds the same on every computer as Home's video of it. The six are `EXAMPLES` in
 `src/main/examples.ts`, each a different capability, and each with sound: kinetic type and a data story with its source
 on screen, both with effects made by `oms sound`, a narrated explainer with word-lit captions, a film timed to the
-beats of a `<Sound>`, the Moon's phases in three.js, and a Chinese poem set vertically in a brush face cut by
-`oms font`. The explainer ships its narration's clips in `voice/`, which
+beats of a `<Sound>`, and two to reuse as they are: a top-five countdown and an event announcement, each drawn from one
+table of content at the top of its `film.tsx`. The explainer ships its narration's clips in `voice/`, which
 the preview core reads from the project as it reads any narration, so it speaks with no voice provider set up; its
 `<Film voice>` is `recording:template`, a take no provider speaks over. Home plays each template as a video the Studio's
 own export made of it: `pnpm templates` (`scripts/render-templates.mjs`) drives the built app in a hidden window with

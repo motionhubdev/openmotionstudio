@@ -1,5 +1,5 @@
-orbit.mp3: this film's sound effects, one cue for each thing the picture does (the Moon setting off, each
-new phase it reaches), rendered by `oms sound` from the sound OpenMotionStudio synthesises itself (@motionhub/runtime/sound:
+effects.mp3: this film's sound effects, one cue for each thing the picture does (each row and speaker landing, the
+cuts), rendered by `oms sound` from the sound OpenMotionStudio synthesises itself (@motionhub/runtime/sound:
 oscillators and noise, no samples or recordings). It was made for this template, as part of OpenMotionStudio, under the
 Apache License 2.0 (https://www.apache.org/licenses/LICENSE-2.0); use it in your films freely.
 
