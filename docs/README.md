@@ -48,3 +48,4 @@ Read [positioning](prd/positioning.md) first, then [the architecture](tech/archi
 - [0023 A dev build of the Studio can be driven from outside](adr/0023-a-dev-build-of-the-studio-can-be-driven-from-outside.md) — a control server and a script for making and testing films, in dev builds only; the same paths as the UI.
 - [0024 A web player's clips are files beside its frame](adr/0024-a-web-players-clips-are-files-beside-its-frame.md) — `oms player` writes each clip to clips/, and the player hands it to the frame as a Blob.
 - [0025 The Studio counts anonymous usage unless turned off](adr/0025-the-studio-counts-anonymous-usage-unless-turned-off.md) — a fixed list of events to PostHog under a random id, one switch in Settings.
+- [0027 A reference video is studied, never shown](adr/0027-a-reference-video-is-studied-never-shown.md) — Draft: a picked reference kept in `.motion-studio/references/`, studied by `study_reference`, compared beside the film, unreachable from it.
