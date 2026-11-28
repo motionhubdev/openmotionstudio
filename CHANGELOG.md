@@ -3,6 +3,22 @@
 Every key change to OpenMotionStudio, newest first, by date. What counts as key and the entry format are in
 `CLAUDE.md`, "The changelog".
 
+## 2026-11-27 — Six starter films, each showing what the Studio can do
+
+- **What:** Home's three templates, which were one film with three titles, are six distinct films of about 20 seconds, each a whole short film with its own score or bed: **Kinetic type** (one face's weight axis cut to a 120 BPM score: a whisper, a shout, a weight wave, a word a beat, a breath, a close), **A narrated explainer** (how a rainbow forms, from the sky to one drop and back, in four steps, with its narration's clips in `voice/` and captions lit word by word; it speaks with no voice provider set up), **A story in numbers** (the United Nations' years to each billion people, counted to their real values, the population curve since 1800 and the UN's projection to its peak, the source on screen) **Cut to the beat** (a film timed to a CC0 track made for it, through `<Sound>`), **A top five** (a countdown drawn from one table, a scene a place with each item as a disc to scale, then the board; here NASA's diameters of the five largest planets) and **An event announcement** (date, place, programme, speakers laid out for their number, and how to come, from one block of sample details). Each is a folder of `apps/desktop/resources/templates/`, copied whole into the new project with its face, its sound (effects made with `oms sound`, a track or a narration) and their licences. A card rests on a film's frame at 1.5 s.
+- **Why:** The old templates showed none of what the Studio does; a person starting from one learns nothing about narration, captions or sound, and none could be reused by changing its content.
+- **Breaking:** None. Projects made from the old templates are independent copies and stay as they are.
+- **Upgrade:** Nothing.
+- **Refs:** `apps/desktop/src/main/examples.ts`, `apps/desktop/resources/templates/`, `apps/desktop/scripts/render-templates.mjs`.
+
+## 2026-11-27 — Anonymous usage statistics, on unless turned off
+
+- **What:** A packaged Studio counts a fixed list of events in PostHog: the app starting, a project opened, a motion added from the hub, an agent turn (agent, outcome, model id, seconds, tool calls, tokens as an order of magnitude) and an export finished, failed or cancelled, with the Studio's version, system, chip and language. Under a random id kept in `settings.json`, with no profile kept and IP addresses dropped; never a path, a name, a brief, a prompt, a reply or a key. Settings → General → "Share anonymous usage statistics" turns it off.
+- **Why:** Without it the makers could not tell how the Studio is used or how often an export fails.
+- **Breaking:** None.
+- **Upgrade:** Nothing; to share nothing, turn the switch off in Settings → General.
+- **Refs:** [ADR 0025](docs/adr/0025-the-studio-counts-anonymous-usage-unless-turned-off.md), `apps/desktop/src/main/statistics.ts`.
+
 ## 2026-11-26 — oms 0.3.1
 
 - **What:** `@motionhub/oms` 0.3.1 on npm, with `oms media search` and `oms media use` (the entry below): pictures, clips and sounds a film may use commercially, from Wikimedia Commons and Openverse, with their credit in `media/credits.json`.

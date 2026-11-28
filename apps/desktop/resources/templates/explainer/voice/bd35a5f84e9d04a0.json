@@ -1,0 +1,37 @@
+{
+  "text": "Each colour bends a different amount.",
+  "voice": "recording:template",
+  "seconds": 2.064,
+  "words": [
+    {
+      "text": "Each",
+      "start": 0.05,
+      "end": 0.25
+    },
+    {
+      "text": "colour",
+      "start": 0.25,
+      "end": 0.6
+    },
+    {
+      "text": "bends",
+      "start": 0.6,
+      "end": 0.888
+    },
+    {
+      "text": "a",
+      "start": 0.888,
+      "end": 0.95
+    },
+    {
+      "text": "different",
+      "start": 0.95,
+      "end": 1.237
+    },
+    {
+      "text": "amount.",
+      "start": 1.237,
+      "end": 1.875
+    }
+  ]
+}

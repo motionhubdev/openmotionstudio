@@ -30,6 +30,8 @@ interface Settings {
   agents?: Partial<AgentSettings>;
   /** The voice providers set up, by kind; their keys are in keys.json as `voice:<kind>`. */
   voices?: Partial<Record<VoiceKind, Omit<VoiceInput, 'kind' | 'key'>>>;
+  /** The install's random id for usage statistics (ADR 0025), tied to nothing else. */
+  statisticsId?: string;
 }
 
 
@@ -188,8 +190,9 @@ export class ProviderStore {
   async savePreferences(input: unknown): Promise<StudioPreferences> {
     if (!input || typeof input !== 'object' || Array.isArray(input)) throw new Error('Invalid preferences.');
     const value = input as Record<string, unknown>;
-    if (Object.keys(value).some(key => key !== 'theme' && key !== 'language' && key !== 'onboardingComplete' && key !== 'backgroundNoticeSeen' && key !== 'checkUpdatesAutomatically') ||
+    if (Object.keys(value).some(key => key !== 'theme' && key !== 'language' && key !== 'onboardingComplete' && key !== 'backgroundNoticeSeen' && key !== 'checkUpdatesAutomatically' && key !== 'shareUsageStatistics') ||
         ('checkUpdatesAutomatically' in value && typeof value.checkUpdatesAutomatically !== 'boolean') ||
+        ('shareUsageStatistics' in value && typeof value.shareUsageStatistics !== 'boolean') ||
         ('backgroundNoticeSeen' in value && typeof value.backgroundNoticeSeen !== 'boolean') ||
         ('onboardingComplete' in value && typeof value.onboardingComplete !== 'boolean') ||
         ('theme' in value && !['system', 'light', 'dark'].includes(value.theme as string)) ||
@@ -200,6 +203,18 @@ export class ProviderStore {
       settings.preferences = next;
       await writeJson(this.settingsFile, settings);
       return next;
+    });
+  }
+
+  /** The install's id for usage statistics: random, made the first time it is asked for, and kept. */
+  async statisticsId(): Promise<string> {
+    const kept = (await this.settings()).statisticsId;
+    if (kept) return kept;
+    return this.change(async () => {
+      const settings = await this.settings();
+      settings.statisticsId ??= randomUUID();
+      await writeJson(this.settingsFile, settings);
+      return settings.statisticsId;
     });
   }
 

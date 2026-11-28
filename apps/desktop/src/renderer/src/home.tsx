@@ -59,7 +59,7 @@ const RENDERED = import.meta.glob('./templates/*.{mp4,jpg}', { eager: true, quer
 const rendered = (id: string, kind: 'mp4' | 'jpg'): string | undefined => RENDERED[`./templates/${id}.${kind}`];
 
 /** The moment a template's poster is taken, where its card's video rests (render-templates.mjs takes the same). */
-const POSTER_AT = 2.4;
+const POSTER_AT = 1.5;
 
 /** Whether the person asked the system for less motion: nothing then plays by itself. */
 const reducedMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;

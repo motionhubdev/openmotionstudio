@@ -230,4 +230,15 @@ describe('Studio preferences', () => {
     }
     expect(await store.preferences()).toEqual({ theme: 'dark', language: 'system' });
   });
+
+  it('keeps the statistics switch and one random install id beside the rest', async () => {
+    const store = new ProviderStore(dir);
+    await expect(store.savePreferences({ shareUsageStatistics: 'no' })).rejects.toThrow('Invalid preferences');
+    expect(await store.savePreferences({ shareUsageStatistics: false })).toMatchObject({ shareUsageStatistics: false });
+    const [a, b] = await Promise.all([store.statisticsId(), store.statisticsId()]);
+    expect(a).toMatch(/^[0-9a-f-]{36}$/);
+    expect(b).toBe(a);
+    expect(await new ProviderStore(dir).statisticsId()).toBe(a);
+    expect((await new ProviderStore(dir).preferences()).shareUsageStatistics).toBe(false);
+  });
 });

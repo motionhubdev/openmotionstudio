@@ -1,0 +1,37 @@
+{
+  "text": "Light enters a raindrop and bends.",
+  "voice": "recording:template",
+  "seconds": 2.208,
+  "words": [
+    {
+      "text": "Light",
+      "start": 0.05,
+      "end": 0.3
+    },
+    {
+      "text": "enters",
+      "start": 0.3,
+      "end": 0.588
+    },
+    {
+      "text": "a",
+      "start": 0.588,
+      "end": 0.675
+    },
+    {
+      "text": "raindrop",
+      "start": 0.675,
+      "end": 1.225
+    },
+    {
+      "text": "and",
+      "start": 1.225,
+      "end": 1.35
+    },
+    {
+      "text": "bends.",
+      "start": 1.35,
+      "end": 2.025
+    }
+  ]
+}

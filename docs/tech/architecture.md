@@ -1,6 +1,6 @@
 # Architecture
 
-> **Status:** Plan — steps 1 to 3 and 6 built, 7 under way; signing waits for its accounts · **Updated:** 2026-11-26
+> **Status:** Plan — steps 1 to 3 and 6 built, 7 under way; signing waits for its accounts · **Updated:** 2026-11-27
 
 The components of the Studio and what each owns, the film, the agent and its providers, what is expensive to change, and the order of work.
 
@@ -33,6 +33,7 @@ apps/desktop/
     project.ts         open / create a folder, whether it holds a film, the project library
     dev-control.ts     a dev build's control server, for a script to drive the Studio as its UI does (ADR 0023); not in a release
     oms-file.ts        a project as one film file (.oms) and back: `oms pack`, Home's Import and a .oms the system opens (ADR 0019)
+    statistics.ts      anonymous usage statistics, a fixed list of events sent to PostHog unless turned off (ADR 0025)
     history.ts         local checkpoints of the agent's source writes in .motion-studio/history.json, and restoring
                        one only when no file it touches was changed since (ADR 0007)
     examples.ts        the bundled starting films, copied into a fresh project in the default workspace on each click
@@ -146,14 +147,20 @@ folder that is gone stays, marked missing. A project's cover is not in the libra
 written to the project's own `.motion-studio/cover.jpg` (its long side 1280 px) when the timeline's stills are made, or
 again when the one there is smaller, and read back as a data URL when Home lists the library.
 
-Home plays each bundled template as a video the Studio's own export made of it: `pnpm templates`
-(`scripts/render-templates.mjs`) drives the built app in a hidden window with an isolated profile, exports every
-template, and keeps a 960 px MP4 without sound and a poster frame per template in `src/renderer/src/templates/`, which
-the renderer bundles; `manifest.json` there holds each template's `film.tsx` hash, and `examples.test.ts` fails when a
-template changed without being rendered again. The files are rendered on a developer's machine and committed (about
-250 KB in all): CI does not render them. A template draws in Inter, its own face: the app ships its Latin variable
-face and its licence (OFL) in `resources/fonts/`, a template copy gets both in its `media/`, and its `film.tsx` imports
-the face and declares it, so the film, its export and Home's video look the same on every computer.
+A template is a folder of `resources/templates/<id>/`: its `film.tsx` and every file it plays (`media/`, with a
+licence beside each face and track, and `voice/` for the narrated one), copied whole into a fresh workspace project, so
+the copy looks and sounds the same on every computer as Home's video of it. The six are `EXAMPLES` in
+`src/main/examples.ts`, each a different capability, and each with sound: kinetic type and a data story with its source
+on screen, both with effects made by `oms sound`, a narrated explainer with word-lit captions, a film timed to the
+beats of a `<Sound>`, and two to reuse as they are: a top-five countdown and an event announcement, each drawn from one
+table of content at the top of its `film.tsx`. The explainer ships its narration's clips in `voice/`, which
+the preview core reads from the project as it reads any narration, so it speaks with no voice provider set up; its
+`<Film voice>` is `recording:template`, a take no provider speaks over. Home plays each template as a video the Studio's
+own export made of it: `pnpm templates` (`scripts/render-templates.mjs`) drives the built app in a hidden window with
+an isolated profile, exports every template, and keeps a 960 px MP4 without sound and a poster frame
+per template in `src/renderer/src/templates/`, which the renderer bundles; `manifest.json` there holds the hash of each
+template's whole folder, and `examples.test.ts` fails when any file of a template changed without being rendered
+again. The files are rendered on a developer's machine and committed (about 2 MB in all): CI does not render them.
 
 The preview core loads every face the page declares before it reports the film ready: the project's motions' faces
 (`build/fonts.css`) before the film's code, and the faces the film declares itself once its first frame is drawn, so
@@ -450,6 +457,7 @@ panels, built and planned, each a projection of the project:
   folders hold them.
 - **Where a motion's files go**, since people's projects will hold motions installed that way.
 - **The provider settings and the keychain entries**, which people's machines hold.
+- **What usage statistics send** (ADR 0025): people trust the list of events not to grow into their work.
 
 Cheap to change at any time: every panel, the layout, the skills' wording, the presets.
 
@@ -537,7 +545,6 @@ What gates what: 2 gates everything; 3 gates nothing else; 7 needs nothing after
   another H.264 encoder (the platform's own, or OpenH264).
 - **Keys on Linux without a keyring**: kept today with Electron's fixed secret, which Models warns of. Whether to ask the
   person first, or refuse, is still open.
-- **Telemetry**: none is planned; crash reports, if any, opt-in.
 
 ## How done is verified
 
