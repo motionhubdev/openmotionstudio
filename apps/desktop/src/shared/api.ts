@@ -434,7 +434,6 @@ export interface Example {
   id: string;
   name: string;
   line: string;
-  title: string;
   seconds: number;
 }
 export interface Asset {

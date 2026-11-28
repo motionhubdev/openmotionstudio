@@ -1,0 +1,9 @@
+bed.mp3: the film's bed, 20 s in D: a low pulse that tightens place by place, a chord and a pluck for each place, a drop and a bell for the first place, a last chord under the board.
+It was made for this OpenMotionStudio template, synthesised from sine, saw and noise waves (no samples or recordings
+of anyone else's), and levelled to -16 LUFS.
+
+Source: https://github.com/motionhubdev/openmotionstudio (apps/desktop/resources/templates/)
+
+Licence: CC0 1.0 Universal. The OpenMotionStudio authors dedicate this track to the public domain: you may copy,
+change, distribute and use it, commercially too, without asking permission or giving credit.
+https://creativecommons.org/publicdomain/zero/1.0/

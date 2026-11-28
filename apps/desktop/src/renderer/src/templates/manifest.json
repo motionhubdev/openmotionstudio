@@ -1,14 +1,26 @@
 {
   "kinetic": {
-    "seconds": 7,
-    "film": "0b27be3920fbe0a3af5344ed0a2996ba2c435f14ddc4770cc7c6cc43835928a9"
+    "seconds": 20,
+    "files": "048e9968d67f2e7fb3174164a4e2c7c74b54dd0c6a1a49ce1636cb8d5ecffd82"
   },
-  "product": {
-    "seconds": 7,
-    "film": "2d62b4e5ef1aa52bd91cdad43c70c01ceb2c4f2204487e083216c0f709396432"
+  "explainer": {
+    "seconds": 20,
+    "files": "69a7b0173b92b836965a4f67512b31f552f64e9edcf863a9f6ab4cac2220f39e"
   },
   "data": {
-    "seconds": 7,
-    "film": "df17d9a0048ae1c2e382e3992396d7052117d5dfc646d7b49620498f3fe98661"
+    "seconds": 20,
+    "files": "e8d2ef9beb022cd525a8237027f2a6b7a8cbd8b5d0f817a9687a5f4fe3677b49"
+  },
+  "music": {
+    "seconds": 20,
+    "files": "82cf2bfa92feddee22f4079b47db3ce925cbe232f84b96ba3eea7d782100f683"
+  },
+  "ranking": {
+    "seconds": 20,
+    "files": "8a16073b5d005cf99216b40ee1cb60a609298876d2301ee5cf95ef45a7385084"
+  },
+  "event": {
+    "seconds": 20,
+    "files": "a5a2d4273bca81eab04f08d5cb03e7cb7fe58d9e72695cf4645dd5b8fc34ef16"
   }
 }

@@ -1,9 +1,10 @@
 // Renders each bundled template (src/main/examples.ts) through the Studio's own export, then keeps a small MP4 and a
 // poster frame of it beside the renderer (src/renderer/src/templates/), where Home plays them. manifest.json holds the
-// hash of each template's film.tsx, so a test fails when a template changes and its video was not rendered again.
-// Run after a build: `pnpm templates`.
+// hash of each template's whole folder (resources/templates/<id>/), so a test fails when any file of a template changes
+// and its video was not rendered again. Run after a build: `pnpm templates`.
 import { spawn, spawnSync } from 'node:child_process';
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
+import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -13,7 +14,15 @@ import ffmpeg from 'ffmpeg-static';
 const desktop = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const out = join(desktop, 'src', 'renderer', 'src', 'templates');
 /** The moment a template's poster is taken: its first scene, settled (home.tsx shows the same). */
-const POSTER_AT = 2.4;
+const POSTER_AT = 1.5;
+/** A template folder's hash: each file's path and bytes, in path order (examples.test.ts takes it the same way). */
+async function folderHash(dir) {
+  const hash = createHash('sha256');
+  const files = (await readdir(dir, { recursive: true, withFileTypes: true })).filter((entry) => entry.isFile());
+  const paths = files.map((entry) => join(entry.parentPath, entry.name).slice(dir.length + 1).split('\\').join('/')).sort();
+  for (const path of paths) hash.update(`${path}\0`).update(await readFile(join(dir, path))).update('\0');
+  return hash.digest('hex');
+}
 const temp = await mkdtemp(join(tmpdir(), 'oms-templates-'));
 await mkdir(join(temp, 'user-data'));
 await writeFile(join(temp, 'user-data', 'settings.json'), JSON.stringify({
@@ -24,7 +33,6 @@ await writeFile(join(temp, 'runner.cjs'), `
 const { app, BrowserWindow, dialog, webContents } = require('electron');
 const fs = require('node:fs/promises');
 const path = require('node:path');
-const { createHash } = require('node:crypto');
 const temp = ${JSON.stringify(temp)};
 app.setPath('userData', path.join(temp, 'user-data'));
 app.setAppPath(${JSON.stringify(desktop)});
@@ -54,13 +62,12 @@ require(${JSON.stringify(join(desktop, 'out', 'main', 'index.js'))});
     const known = new Set(webContents.getAllWebContents().map((w) => w.id));
     await js(home, 'window.studio.openExample(' + JSON.stringify(example.id) + ')');
     const editor = await until(() => webContents.getAllWebContents().find((w) => !known.has(w.id) && w.getURL() === home.getURL()), example.id + ' editor');
-    const project = await until(() => js(editor, 'window.studio.currentProject()'), example.id + ' project');
+    await until(() => js(editor, 'window.studio.currentProject()'), example.id + ' project');
     target = path.join(temp, example.id + '.mp4');
     // The export refuses until the film has built; ask again until it takes.
     await until(() => js(editor, 'window.studio.exportFilm()'), example.id + ' export');
     target = null;
-    const source = await fs.readFile(path.join(project.path, 'film.tsx'), 'utf8');
-    manifest[example.id] = { seconds: example.seconds, film: createHash('sha256').update(source).digest('hex') };
+    manifest[example.id] = { seconds: example.seconds };
     console.log('Exported ' + example.id);
     await js(editor, 'window.studio.closeProject()');
     await sleep(300);
@@ -85,6 +92,7 @@ if (code) {
 
 // Home shows a template at most a few hundred pixels wide: 960 px, no sound or subtitles, small enough to bundle.
 const manifest = JSON.parse(await readFile(join(temp, 'manifest.json'), 'utf8'));
+for (const id of Object.keys(manifest)) manifest[id].files = await folderHash(join(desktop, 'resources', 'templates', id));
 await mkdir(out, { recursive: true });
 const run = (args) => {
   const result = spawnSync(ffmpeg, ['-y', '-loglevel', 'error', ...args], { stdio: 'inherit' });

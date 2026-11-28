@@ -1,0 +1,3 @@
+# A template is hashed byte for byte (render-templates.mjs, examples.test.ts) and copied into projects as it is:
+# keep its files exactly as committed on every platform.
+apps/desktop/resources/templates/** -text

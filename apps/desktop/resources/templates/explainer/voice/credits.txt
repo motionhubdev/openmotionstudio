@@ -1,0 +1,4 @@
+The narration in this folder was spoken for OpenMotionStudio's "A narrated explainer" template by Kokoro-82M, an
+open-weight speech model (https://huggingface.co/hexgrad/Kokoro-82M, Apache-2.0), in its voice af_heart, and levelled
+to -16 LUFS. It plays with no voice provider set up. Change a line's words and that line is silent until it is voiced
+again: give the film a voice of your own (Voice, in the top bar) and generate the narration.
